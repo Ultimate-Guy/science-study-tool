@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+<title>ExistenceGG2 - Snow Rider 3D</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #controls {
+        padding: 10px;
+        background: #111;
+        display: flex;
+    }
+
+    #urlInput {
+        flex: 1;
+        padding: 8px;
+        font-size: 16px;
+    }
+
+    #goBtn {
+        padding: 8px 15px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    iframe {
+        flex: 1;
+        border: none;
+        width: 100%;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="controls">
+    <input type="text" id="urlInput" value="https://rycellgames.github.io/games/snowrider3d">
+    <button id="goBtn">Go</button>
+</div>
+
+<iframe id="viewer" 
+        src="https://rycellgames.github.io/games/snowrider3d"
+        referrerpolicy="no-referrer">
+</iframe>
+
+<script>
+    const input = document.getElementById("urlInput");
+    const button = document.getElementById("goBtn");
+    const iframe = document.getElementById("viewer");
+
+    function loadSite() {
+        let url = input.value.trim();
+
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            url = "https://" + url;
+        }
+
+        iframe.src = url;
+    }
+
+    button.addEventListener("click", loadSite);
+    input.addEventListener("keypress", function(e) {
+        if (e.key === "Enter") {
+            loadSite();
+        }
+    });
+</script>
+
+</body>
+</html>
