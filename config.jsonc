@@ -780,6 +780,11 @@
             "path": "run-3-beta",
             "aliases": [],
             "categories": []
+       },
+        "Rycell Games": {
+            "path": "snowrider2",
+            "aliases": [],
+            "categories": []
         },
         "Sabercut": {
             "path": "sabercut",
@@ -822,7 +827,7 @@
             "categories": []
         },
         "snowrider": {
-            "path": "snowrider2",
+            "path": "snowrider",
             "aliases": [],
             "categories": []
         },
