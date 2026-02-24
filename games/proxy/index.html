@@ -1,81 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-<title>ExistenceGG2 - Proxy! </title>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-
-<style>
-    body {
-        margin: 0;
-        padding: 0;
-        height: 100vh;
-        width: 100vw;
-        display: flex;
-        flex-direction: column;
-    }
-
-    #controls {
-        padding: 10px;
-        background: #111;
-        display: flex;
-    }
-
-    #urlInput {
-        flex: 1;
-        padding: 8px;
-        font-size: 16px;
-    }
-
-    #goBtn {
-        padding: 8px 15px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-
-    iframe {
-        flex: 1;
-        border: none;
-        width: 100%;
-    }
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<title>Ultra Browser</title>
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+<script src="script.js" defer></script>
 </head>
-
 <body>
 
-<div id="controls">
-    <input type="text" id="urlInput" value="https://www.google.com/">
-    <button id="goBtn">Go</button>
+<div id="topbar">
+  <div id="tabs" role="tablist"></div>
+  <button onclick="newTab()" title="New Tab">+</button>
+  <input type="text" id="urlInput" placeholder="Enter URL or search...">
+  <button onclick="navigate()" title="Go">Go</button>
+  <button onclick="back()" title="Back">◀</button>
+  <button onclick="forward()" title="Forward">▶</button>
+  <button onclick="reload()" title="Reload">⟳</button>
+  <button onclick="stop()" title="Stop">✖</button>
+  <input type="text" id="tabSearch" placeholder="Search tabs..." oninput="searchTabs()">
+  <button onclick="toggleTheme()" title="Toggle Theme">🌙</button>
+  <button onclick="togglePrivate()" title="Toggle Private Mode">🕶</button>
+  <button onclick="addBookmark()" title="Add Bookmark">★</button>
+  <button onclick="toggleSettings()" title="Settings">⚙</button>
 </div>
 
-<iframe id="viewer" 
-        src="https://www.google.com/"
-        referrerpolicy="no-referrer">
-</iframe>
+<div id="bookmarks"></div>
+<div id="viewerContainer"></div>
+<div id="dashboard">Ultra Browser Dashboard</div>
 
-<script>
-    const input = document.getElementById("urlInput");
-    const button = document.getElementById("goBtn");
-    const iframe = document.getElementById("viewer");
+<div id="settingsPanel">
+  <b>Ultra Browser Settings</b>
+  <button onclick="toggleTheme()">Toggle Theme</button>
+  <button onclick="clearBookmarks()">Clear Bookmarks</button>
+  <button onclick="manageFolders()">Manage Bookmark Folders</button>
+  <button onclick="exportBookmarks()">Export Bookmarks</button>
+  <button onclick="importBookmarks()">Import Bookmarks</button>
+</div>
 
-    function loadSite() {
-        let url = input.value.trim();
-
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            url = "https://" + url;
-        }
-
-        iframe.src = url;
-    }
-
-    button.addEventListener("click", loadSite);
-    input.addEventListener("keypress", function(e) {
-        if (e.key === "Enter") {
-            loadSite();
-        }
-    });
-</script>
+<div id="tabMenu" class="contextMenu">
+  <button onclick="closeCurrentTab()">Close Tab</button>
+  <button onclick="closeOtherTabs()">Close Other Tabs</button>
+  <button onclick="togglePin()">Pin/Unpin Tab</button>
+</div>
 
 </body>
 </html>
