@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>About Blank Embedder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, sans-serif;
+            background: #0f172a;
+            color: white;
+        }
+
+        header {
+            padding: 20px;
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+            background: #111827;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            padding: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        input {
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            width: 200px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            background: #2563eb;
+            color: white;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .apps {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .app-card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .app-card:hover {
+            background: #334155;
+        }
+
+        .remove {
+            margin-top: 10px;
+            background: #dc2626;
+        }
+
+        .remove:hover {
+            background: #b91c1c;
+        }
+    </style>
+</head>
+<body>
+
+<header>Focus Workspace Launcher</header>
+
+<div class="controls">
+    <input type="text" id="appName" placeholder="App Name">
+    <input type="text" id="appUrl" placeholder="https://example.com">
+    <button onclick="addApp()">Add App</button>
+</div>
+
+<div class="apps" id="apps"></div>
+
+<script>
+let apps = JSON.parse(localStorage.getItem("workspaceApps")) || [];
+
+function saveApps() {
+    localStorage.setItem("workspaceApps", JSON.stringify(apps));
+}
+
+function renderApps() {
+    const container = document.getElementById("apps");
+    container.innerHTML = "";
+
+    apps.forEach((app, index) => {
+        const card = document.createElement("div");
+        card.className = "app-card";
+        card.innerHTML = `
+            <div onclick="openApp('${app.url}')">${app.name}</div>
+            <button class="remove" onclick="removeApp(${index})">Remove</button>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function addApp() {
+    const name = document.getElementById("appName").value.trim();
+    let url = document.getElementById("appUrl").value.trim();
+
+    if (!name || !url) return alert("Enter both name and URL.");
+
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://" + url;
+    }
+
+    apps.push({ name, url });
+    saveApps();
+    renderApps();
+
+    document.getElementById("appName").value = "";
+    document.getElementById("appUrl").value = "";
+}
+
+function removeApp(index) {
+    apps.splice(index, 1);
+    saveApps();
+    renderApps();
+}
+
+function openApp(url) {
+    const win = window.open("about:blank", "_blank");
+
+    win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Workspace</title>
+            <style>
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    height: 100%;
+                    overflow: hidden;
+                    background: #000;
+                }
+                iframe {
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                }
+            </style>
+        </head>
+        <body>
+            <iframe src="${url}" allowfullscreen></iframe>
+        </body>
+        </html>
+    `);
+
+    win.document.close();
+}
+
+renderApps();
+</script>
+
+</body>
+</html>
