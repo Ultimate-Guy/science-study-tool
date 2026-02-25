@@ -10,6 +10,15 @@ document.addEventListener("DOMContentLoaded",()=>{
   restoreSession();
   newTab();
   renderBookmarks();
+
+  // Optional: request fullscreen on first user interaction
+  const requestFS = () => {
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(()=>{});
+    }
+    document.removeEventListener("click", requestFS);
+  };
+  document.addEventListener("click", requestFS);
 });
 
 // -------------------- UTILITY FUNCTIONS --------------------
