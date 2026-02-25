@@ -11,18 +11,30 @@
   --text:#111;
 }
 
+/* FULLSCREEN SETUP */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 body{
-  margin:0;
   background:var(--bg);
   color:var(--text);
   font-family:Arial, sans-serif;
   display:flex;
   flex-direction:column;
-  height:100vh;
-  overflow:hidden;
 }
 
-#topbar{
+/* TOPBAR FIXED */
+#topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
   background:var(--panel);
   padding:6px;
   display:flex;
@@ -52,7 +64,6 @@ body{
 .tab.active{background:var(--accent);}
 .tab.private{background:#6b7280;}
 .tab.pinned{border:2px solid gold;}
-
 .closeTab{font-weight:bold; cursor:pointer;}
 .favicon{width:16px;height:16px;}
 
@@ -67,18 +78,14 @@ button{
   color:white;
 }
 
-iframe{
-  flex:1;
-  border:none;
-  width:100%;
-  background:white;
-  animation:fade 0.2s ease-in-out;
-}
-
-@keyframes fade{from{opacity:0;} to{opacity:1;}}
-
-#bookmarks{
-  background:var(--panel);
+/* BOOKMARKS FIXED BELOW TOPBAR */
+#bookmarks {
+  position: fixed;
+  top: 50px; /* Adjust according to topbar height */
+  left: 0;
+  right: 0;
+  z-index: 998;
+  background: var(--panel);
   padding:6px;
   display:flex;
   gap:6px;
@@ -86,34 +93,29 @@ iframe{
   overflow-x:auto;
 }
 
-.bookmark-folder{
-  border:1px solid #888;
-  padding:4px 8px;
-  border-radius:6px;
-  background:#1e293b;
-  cursor:pointer;
-  position:relative;
-}
-.bookmark-folder:hover .folder-content{display:flex;}
-.folder-content{
-  display:none;
-  position:absolute;
-  top:28px;
+/* IFRAME FULLSCREEN AREA */
+#viewerContainer {
+  position: absolute;
+  top:90px; /* topbar + bookmarks */
+  bottom:0;
   left:0;
+  right:0;
+  display:flex;
   flex-direction:column;
-  background:#334155;
-  padding:4px;
-  border-radius:6px;
-  gap:4px;
-  z-index:1000;
-}
-.folder-content button{
-  background:#2563eb;
-  color:white;
-  padding:4px 6px;
-  cursor:grab;
 }
 
+iframe{
+  flex:1;
+  width:100%;
+  height:100%;
+  border:none;
+  background:white;
+  animation:fade 0.2s ease-in-out;
+}
+
+@keyframes fade{from{opacity:0;} to{opacity:1;}}
+
+/* SETTINGS PANEL & CONTEXT MENU */
 #settingsPanel{
   position:fixed;
   right:10px;
@@ -138,8 +140,13 @@ iframe{
 }
 .contextMenu button{width:100%;}
 
+/* DASHBOARD CENTER */
 #dashboard{
-  flex:1;
+  position:absolute;
+  top:90px;
+  left:0;
+  right:0;
+  bottom:0;
   display:flex;
   justify-content:center;
   align-items:center;
