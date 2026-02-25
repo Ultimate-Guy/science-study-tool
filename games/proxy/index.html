@@ -3,9 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="referrer" content="no-referrer">
 <title>Ultra Browser</title>
-<link rel="icon" href="favicon.png">
 <link rel="stylesheet" href="style.css">
 <script src="script.js" defer></script>
 </head>
@@ -13,37 +11,30 @@
 
 <div id="topbar">
   <div id="tabs" role="tablist"></div>
-  <button onclick="newTab()" title="New Tab">+</button>
+  <button onclick="newTab()">+</button>
   <input type="text" id="urlInput" placeholder="Enter URL or search...">
   <button onclick="navigate()" title="Go">Go</button>
-  <button onclick="back()" title="Back">◀</button>
-  <button onclick="forward()" title="Forward">▶</button>
-  <button onclick="reload()" title="Reload">⟳</button>
-  <button onclick="stop()" title="Stop">✖</button>
-  <input type="text" id="tabSearch" placeholder="Search tabs..." oninput="searchTabs()">
   <button onclick="toggleTheme()" title="Toggle Theme">🌙</button>
   <button onclick="togglePrivate()" title="Toggle Private Mode">🕶</button>
   <button onclick="addBookmark()" title="Add Bookmark">★</button>
-  <button onclick="toggleSettings()" title="Settings">⚙</button>
 </div>
 
 <div id="bookmarks"></div>
 <div id="viewerContainer"></div>
-<div id="dashboard">Ultra Browser Dashboard</div>
+
+<div id="dashboard">
+  <b>Ultra Browser Search</b>
+  <form id="searchForm" onsubmit="searchDDG(event)">
+    <input type="text" id="searchInput" placeholder="Search DuckDuckGo...">
+    <button type="submit">Search</button>
+  </form>
+  <div id="searchResults"></div>
+</div>
 
 <div id="settingsPanel">
   <b>Ultra Browser Settings</b>
   <button onclick="toggleTheme()">Toggle Theme</button>
   <button onclick="clearBookmarks()">Clear Bookmarks</button>
-  <button onclick="manageFolders()">Manage Bookmark Folders</button>
-  <button onclick="exportBookmarks()">Export Bookmarks</button>
-  <button onclick="importBookmarks()">Import Bookmarks</button>
-</div>
-
-<div id="tabMenu" class="contextMenu">
-  <button onclick="closeCurrentTab()">Close Tab</button>
-  <button onclick="closeOtherTabs()">Close Other Tabs</button>
-  <button onclick="togglePin()">Pin/Unpin Tab</button>
 </div>
 
 </body>
