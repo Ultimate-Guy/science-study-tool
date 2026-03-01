@@ -1,239 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>ExistenceGG2V2 Ultimate Browser</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pagefind@latest/pagefind.css">
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; transition: background 0.3s, color 0.3s; }
-    body.light { background: #f0f0f0; color: #000; }
-    body.dark { background: #1e1e1e; color: #fff; }
+<meta charset="utf-8">
+<title>Proxy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    /* Scrollable tab bar */
-    #tab-bar { display: flex; background: #222; color: white; padding: 5px; overflow-x: auto; white-space: nowrap; }
-    body.light #tab-bar { background: #ddd; color: #000; }
-    .tab { padding: 5px 10px; background: #444; margin-right: 2px; cursor: grab; border-radius: 3px; display: flex; align-items: center; gap: 5px; user-select: none; flex-shrink: 0; position: relative; }
-    .tab.active { background: #fff; color: #000; }
-    body.light .tab.active { background: #bbb; color: #000; }
-    .tab button { background: red; border: none; color: white; cursor: pointer; padding: 0 5px; border-radius: 2px; }
-    .tab img { width: 16px; height: 16px; border-radius: 2px; }
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: black;
+        overflow: hidden;
+    }
 
-    #controls { display: flex; gap: 5px; padding: 5px; background: #333; color: white; align-items: center; }
-    body.light #controls { background: #eee; color: #000; }
-    #controls button, #controls input { padding: 5px; }
-    #url { flex: 1; }
-    #search { flex: 1; }
+    #gameFrame {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
 
-    #browser-container { flex: 1; position: relative; }
-    iframe { width: 100%; height: 100%; border: none; display: none; }
-    iframe.active { display: block; }
-
-    .spinner { position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border: 2px solid #fff; border-top: 2px solid #888; border-radius: 50%; animation: spin 1s linear infinite; }
-    body.light .spinner { border: 2px solid #000; border-top: 2px solid #666; }
-
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    #search-results { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); overflow-y: auto; padding: 10px; display: none; }
-    body.dark #search-results { background: rgba(30,30,30,0.95); color: #fff; }
-    #search-results h3 { margin-top: 0; }
-    #search-results a { display: block; margin-bottom: 5px; color: blue; text-decoration: underline; }
-    body.dark #search-results a { color: lightblue; }
-  </style>
+    /* Optional loading screen */
+    #loader {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: black;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, sans-serif;
+        font-size: 20px;
+        z-index: 10;
+    }
+</style>
 </head>
-<body class="light">
-  <div id="tab-bar"></div>
-  <div id="controls">
-    <button onclick="goBack()">◀ Back</button>
-    <button onclick="goForward()">▶ Forward</button>
-    <button onclick="reload()">⟳ Reload</button>
-    <input type="text" id="url" placeholder="Enter URL..." />
-    <button onclick="navigate()">Go</button>
-    <input type="text" id="search" placeholder="Search site..." />
-    <button onclick="doSearch()">🔍</button>
-    <button onclick="addTab()">+ Tab</button>
-    <button onclick="toggleTheme()">🌓 Theme</button>
-  </div>
-  <div id="browser-container"></div>
-  <div id="search-results">
-    <h3>Search Results</h3>
-    <div id="results-list"></div>
-    <button onclick="closeSearch()">Close Search</button>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/pagefind@latest/pagefind.js"></script>
-  <script>
-    const browserContainer = document.getElementById('browser-container');
-    const tabBar = document.getElementById('tab-bar');
-    const urlInput = document.getElementById('url');
-    const searchResults = document.getElementById('search-results');
-    const resultsList = document.getElementById('results-list');
-    const bodyEl = document.body;
+<body>
 
-    let tabs = [];
-    let currentTab = null;
-    let pinnedCount = 0;
+<div id="loader">Loading Game...</div>
 
-    function saveTabs() {
-      const data = tabs.map(t => ({
-        url: t.iframe.src,
-        pinned: t.pinned || false
-      }));
-      localStorage.setItem('browserTabs', JSON.stringify(data));
-      localStorage.setItem('theme', bodyEl.className);
-    }
+<iframe 
+    id="gameFrame"
+    allowfullscreen
+    referrerpolicy="no-referrer">
+</iframe>
 
-    function loadTabs() {
-      const data = JSON.parse(localStorage.getItem('browserTabs') || '[]');
-      const theme = localStorage.getItem('theme');
-      if (theme) bodyEl.className = theme;
-      if (data.length) {
-        data.forEach(d => addTab(d.url, d.pinned));
-      } else {
-        addTab();
-      }
-    }
+<script>
+    // 🔵 PUT YOUR GAME WEBSITE HERE
+    const gameURL = "https://existence-proxy.dprabhav75.workers.dev/vcsefghfhreesgfdf.dfgrdcfhfgfds.bonded-game.com";
 
-    function addTab(url = 'https://xhunter75.github.io/ExistenceGG2V2', pinned = false) {
-      const iframe = document.createElement('iframe');
-      iframe.src = url;
-      const tabIndex = tabs.length;
+    const frame = document.getElementById("gameFrame");
+    frame.src = gameURL;
 
-      const tabEl = document.createElement('div');
-      tabEl.className = 'tab';
-      tabEl.draggable = true;
+    // Hide loading screen when loaded
+    frame.onload = function() {
+        document.getElementById("loader").style.display = "none";
+    };
+</script>
 
-      const favicon = document.createElement('img');
-      favicon.src = 'https://www.google.com/s2/favicons?domain=' + new URL(url).hostname;
-      favicon.alt = 'favicon';
-      tabEl.appendChild(favicon);
-
-      const spinner = document.createElement('div');
-      spinner.className = 'spinner';
-      spinner.style.display = 'none';
-      tabEl.appendChild(spinner);
-
-      const titleSpan = document.createElement('span');
-      titleSpan.textContent = 'New Tab';
-      tabEl.appendChild(titleSpan);
-
-      const closeBtn = document.createElement('button');
-      closeBtn.textContent = 'x';
-      closeBtn.onclick = (e) => { e.stopPropagation(); closeTab(tabIndex); };
-      tabEl.appendChild(closeBtn);
-
-      tabEl.addEventListener('click', () => switchTab(tabIndex));
-
-      // Right-click menu
-      tabEl.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const menu = document.createElement('div');
-        menu.style.position = 'absolute';
-        menu.style.left = e.pageX + 'px';
-        menu.style.top = e.pageY + 'px';
-        menu.style.background = '#333';
-        menu.style.color = '#fff';
-        menu.style.padding = '5px';
-        menu.style.zIndex = 9999;
-        menu.style.borderRadius = '3px';
-        menu.innerHTML = `
-          <div style="padding:2px;cursor:pointer;">Close</div>
-          <div style="padding:2px;cursor:pointer;">Reload</div>
-          <div style="padding:2px;cursor:pointer;">Duplicate</div>
-          <div style="padding:2px;cursor:pointer;">Pin/Unpin</div>
-        `;
-        document.body.appendChild(menu);
-        const options = menu.children;
-        options[0].onclick = () => { closeTab(tabIndex); menu.remove(); };
-        options[1].onclick = () => { iframe.contentWindow.location.reload(); menu.remove(); };
-        options[2].onclick = () => { addTab(iframe.src); menu.remove(); };
-        options[3].onclick = () => { tabEl.pinned = !tabEl.pinned; menu.remove(); saveTabs(); };
-        document.addEventListener('click', () => menu.remove(), { once: true });
-      });
-
-      // Drag and Drop
-      tabEl.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', tabIndex); });
-      tabEl.addEventListener('dragover', (e) => e.preventDefault());
-      tabEl.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-        const toIndex = tabIndex;
-        reorderTabs(fromIndex, toIndex);
-      });
-
-      browserContainer.appendChild(iframe);
-      tabBar.appendChild(tabEl);
-
-      iframe.onloadstart = () => spinner.style.display = 'block';
-      iframe.onload = () => {
-        spinner.style.display = 'none';
-        const title = iframe.contentDocument.title || 'New Tab';
-        titleSpan.textContent = title;
-        const linkIcon = iframe.contentDocument.querySelector("link[rel~='icon']");
-        if (linkIcon) favicon.src = linkIcon.href;
-        if (currentTab === tabIndex) urlInput.value = iframe.src;
-        saveTabs();
-      };
-
-      tabs.push({ iframe, tabEl, titleSpan, favicon, spinner, pinned });
-      if (pinned) pinnedCount++;
-      switchTab(tabIndex);
-      saveTabs();
-    }
-
-    function reorderTabs(fromIndex, toIndex) {
-      if (fromIndex === toIndex) return;
-      const [movedTab] = tabs.splice(fromIndex, 1);
-      tabs.splice(toIndex, 0, movedTab);
-
-      tabBar.innerHTML = '';
-      tabs.forEach((t, i) => tabBar.appendChild(t.tabEl));
-      switchTab(tabs.indexOf(movedTab));
-      saveTabs();
-    }
-
-    function switchTab(index) {
-      if (currentTab !== null && tabs[currentTab]) tabs[currentTab].iframe.classList.remove('active');
-      currentTab = index;
-      if (!tabs[currentTab]) return;
-      tabs[currentTab].iframe.classList.add('active');
-      urlInput.value = tabs[currentTab].iframe.src;
-    }
-
-    function closeTab(index) {
-      if (!tabs[index]) return;
-      browserContainer.removeChild(tabs[index].iframe);
-      tabBar.removeChild(tabs[index].tabEl);
-      tabs.splice(index, 1);
-      if (tabs.length > 0) switchTab(Math.max(0, index - 1));
-      else currentTab = null;
-      saveTabs();
-    }
-
-    function navigate() { if (!currentTab) return; let url = urlInput.value; if (!url.startsWith('http')) url = 'https://' + url; tabs[currentTab].iframe.src = url; tabs[currentTab].favicon.src = 'https://www.google.com/s2/favicons?domain=' + new URL(url).hostname; }
-
-    function goBack() { if (!currentTab) return; tabs[currentTab].iframe.contentWindow.history.back(); }
-    function goForward() { if (!currentTab) return; tabs[currentTab].iframe.contentWindow.history.forward(); }
-    function reload() { if (!currentTab) return; tabs[currentTab].iframe.contentWindow.location.reload(); }
-
-    async function doSearch() {
-      const query = document.getElementById('search').value;
-      const results = await Pagefind.search(query);
-      resultsList.innerHTML = '';
-      results.forEach(r => {
-        const a = document.createElement('a');
-        a.href = '#';
-        a.textContent = r.title || r.url;
-        a.onclick = (e) => { e.preventDefault(); addTab(r.url); closeSearch(); };
-        resultsList.appendChild(a);
-      });
-      searchResults.style.display = 'block';
-    }
-
-    function closeSearch() { searchResults.style.display = 'none'; }
-
-    function toggleTheme() { bodyEl.className = bodyEl.className === 'light' ? 'dark' : 'light'; saveTabs(); }
-
-    loadTabs();
-  </script>
 </body>
 </html>
