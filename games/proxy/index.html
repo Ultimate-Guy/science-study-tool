@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 <title>Proxy</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 
 <style>
     html, body {
         margin: 0;
         padding: 0;
         height: 100%;
-        background: black;
+        width: 100%;
         overflow: hidden;
+        background: black;
     }
 
-    #gameFrame {
+    iframe {
         width: 100%;
         height: 100%;
         border: none;
@@ -41,20 +43,16 @@
 
 <div id="loader">Loading Game...</div>
 
-<iframe 
-    id="gameFrame"
-    allowfullscreen
-    referrerpolicy="no-referrer">
-</iframe>
+<iframe id="gameFrame" allowfullscreen referrerpolicy="no-referrer"></iframe>
 
 <script>
-    // 🔵 PUT YOUR GAME WEBSITE HERE
-    const gameURL = "https://existence-proxy.dprabhav75.workers.dev/vcsefghfhreesgfdf.dfgrdcfhfgfds.bonded-game.com";
+    // 🔵 CHANGE THIS URL TO EMBED ANY WEBSITE
+    const websiteURL = "https://vcsefghfhreesgfdf.dfgrdcfhfgfds.bonded-game.com/";
 
     const frame = document.getElementById("gameFrame");
-    frame.src = gameURL;
+    frame.src = websiteURL;
 
-    // Hide loading screen when loaded
+    // Hide loader when iframe is fully loaded
     frame.onload = function() {
         document.getElementById("loader").style.display = "none";
     };
