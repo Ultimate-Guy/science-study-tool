@@ -2,7 +2,6 @@
 <html> 
 <head> 
 <title>About Blank Embedder</title> 
-<link rel="icon" href="https://www.instructure.com/sites/default/files/image/2021-12/Canvas_logo_single_mark.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
 <style> 
 body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: white; } 
@@ -28,59 +27,77 @@ button:hover { background: #1d4ed8; }
 <div class="apps" id="apps"></div> 
 <script> 
 let apps = JSON.parse(localStorage.getItem("workspaceApps")) || []; 
+
 function saveApps() { 
-localStorage.setItem("workspaceApps", JSON.stringify(apps)); 
+    localStorage.setItem("workspaceApps", JSON.stringify(apps)); 
 } 
+
 function renderApps() { 
-const container = document.getElementById("apps"); 
-container.innerHTML = ""; 
-apps.forEach((app, index) => { 
-const card = document.createElement("div"); 
-card.className = "app-card"; 
-card.innerHTML = ` 
-<div onclick="openApp('${app.url}')">${app.name}</div> 
-<button class="remove" onclick="removeApp(${index})">Remove</button> 
-`; 
-container.appendChild(card); 
-}); 
+    const container = document.getElementById("apps"); 
+    container.innerHTML = ""; 
+    apps.forEach((app, index) => { 
+        const card = document.createElement("div"); 
+        card.className = "app-card"; 
+        card.innerHTML = ` 
+        <div onclick="openApp('${app.url}')">${app.name}</div> 
+        <button class="remove" onclick="removeApp(${index})">Remove</button>`; 
+        container.appendChild(card); 
+    }); 
 } 
+
 function addApp() { 
-const name = document.getElementById("appName").value.trim(); 
-let url = document.getElementById("appUrl").value.trim(); 
-if (!name || !url) return alert("Enter both name and URL."); 
-if (!url.startsWith("http://") && !url.startsWith("https://")) { 
-url = "https://" + url; 
+    const name = document.getElementById("appName").value.trim(); 
+    let url = document.getElementById("appUrl").value.trim(); 
+    if (!name || !url) return alert("Enter both name and URL."); 
+    if (!url.startsWith("http://") && !url.startsWith("https://")) { 
+        url = "https://" + url; 
+    } 
+    apps.push({ name, url }); 
+    saveApps(); 
+    renderApps(); 
+    document.getElementById("appName").value = ""; 
+    document.getElementById("appUrl").value = ""; 
 } 
-apps.push({ name, url }); 
-saveApps(); 
-renderApps(); 
-document.getElementById("appName").value = ""; 
-document.getElementById("appUrl").value = ""; 
-} 
+
 function removeApp(index) { 
-apps.splice(index, 1); 
-saveApps(); 
-renderApps(); 
+    apps.splice(index, 1); 
+    saveApps(); 
+    renderApps(); 
 } 
+
 function openApp(url) { 
-const win = window.open("about:blank", "_blank"); 
-win.document.write(` 
-<!DOCTYPE html> 
-<html> 
-<head> 
-<title>Dashboard</title> 
-<style> 
-html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; } 
-iframe { width: 100%; height: 100%; border: none; } 
-</style> 
-</head> 
-<body> 
-<iframe src="${url}" allowfullscreen></iframe> 
-</body> 
-</html> 
-`); 
-win.document.close(); 
+    const win = window.open("about:blank", "_blank");
+
+    // Step 1: Set tab title & icon instantly
+    win.document.title = "Dashboard";
+    const icon = win.document.createElement("link");
+    icon.rel = "icon";
+    icon.type = "image/svg+xml";
+    icon.href = "https://upload.wikimedia.org/wikipedia/commons/9/92/Canvas_logo.svg";
+    win.document.head.appendChild(icon);
+
+    // Step 2: Minimal HTML to avoid flash
+    win.document.write(`<!DOCTYPE html><html><head><title>Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="https://upload.wikimedia.org/wikipedia/commons/9/92/Canvas_logo.svg">
+    <link rel="shortcut icon" href="https://upload.wikimedia.org/wikipedia/commons/9/92/Canvas_logo.svg">
+    <style>
+        html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#000; }
+        iframe { width:100%; height:100%; border:none; opacity:0; transition: opacity 0.3s ease; }
+    </style>
+    </head><body></body></html>`);
+
+    // Step 3: Create iframe asynchronously with fade-in
+    setTimeout(() => {
+        const iframe = win.document.createElement("iframe");
+        iframe.src = url;
+        iframe.allowFullscreen = true;
+        iframe.onload = () => { iframe.style.opacity = "1"; }; // fade in once loaded
+        win.document.body.appendChild(iframe);
+    }, 0);
+
+    win.document.close(); 
 } 
+
 renderApps(); 
 </script> 
 </body> 
