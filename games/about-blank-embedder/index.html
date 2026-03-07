@@ -73,13 +73,13 @@ function openApp(url) {
     const icon = win.document.createElement("link");
     icon.rel = "icon";
     icon.type = "image/svg+xml";
-    icon.href = "https://www.clipartmax.com/png/small/191-1913494_adding-faculty-evaluators-tutors-si-leaders-and-canvas-instructure-logo.png";
+    icon.href = "blob:chrome-untrusted://media-app/cbf19b43-18fb-46af-a0d6-718923e0e378";
     win.document.head.appendChild(icon);
 
     // Step 2: Minimal HTML to avoid flash
     win.document.write(`<!DOCTYPE html><html><head><title>Dashboard</title>
-    <link rel="icon" type="image/svg+xml" href="https://www.clipartmax.com/png/small/191-1913494_adding-faculty-evaluators-tutors-si-leaders-and-canvas-instructure-logo.png">
-    <link rel="shortcut icon" href="https://www.clipartmax.com/png/small/191-1913494_adding-faculty-evaluators-tutors-si-leaders-and-canvas-instructure-logo.png">
+    <link rel="icon" type="image/svg+xml" href="blob:chrome-untrusted://media-app/cbf19b43-18fb-46af-a0d6-718923e0e378">
+    <link rel="shortcut icon" href="blob:chrome-untrusted://media-app/cbf19b43-18fb-46af-a0d6-718923e0e378">
     <style>
         html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#000; }
         iframe { width:100%; height:100%; border:none; opacity:0; transition: opacity 0.3s ease; }
