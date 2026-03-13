@@ -691,6 +691,11 @@
             "aliases": [],
             "categories": []
         },
+        "Ragdoll Archers": {
+            "path": "ragdoll-archers",
+            "aliases": [],
+            "categories": []
+        },
         "Ragdoll Hit": {
             "path": "ragdoll-hit",
             "aliases": [],
