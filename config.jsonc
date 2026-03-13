@@ -691,6 +691,11 @@
             "aliases": [],
             "categories": []
         },
+        "Ragdoll Hit": {
+            "path": "ragdoll-hit",
+            "aliases": [],
+            "categories": []
+        },
         "Reach The Core": {
             "path": "reach-the-core",
             "aliases": [],
