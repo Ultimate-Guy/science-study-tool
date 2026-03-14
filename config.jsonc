@@ -880,6 +880,11 @@
             "path": "subway-surfers-ny",
             "aliases": [],
             "categories": []
+       },
+        "Goofy Tank Game": {
+            "path": "tank",
+            "aliases": [],
+            "categories": []
         },
         "Stick RPG Complete": {
             "path": "flash/?game=stick-rpg-complete",
