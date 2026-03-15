@@ -33,13 +33,11 @@ jobs:
       - uses: actions/configure-pages@v5
 
       # Upload only the files needed for your site
-      - uses: actions/upload-pages-artifact@v3
+      - id: upload
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: |
-            index.html
-            css
-            js
-            imgs
+          # If your files are inside a folder like "public", point to it
+          path: public
 
       # Deploy to GitHub Pages
       - id: deploy
