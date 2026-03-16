@@ -22,29 +22,31 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
-      # Queue system so deploys run one at a time
       - name: Wait for previous deployments
         uses: softprops/turnstyle@v2
         with:
           same-branch-only: true
 
-      # Checkout newest commit (important improvement)
-      - name: Checkout latest commit
+      - name: Checkout latest branch
         uses: actions/checkout@v4
         with:
+          ref: main2
           fetch-depth: 0
 
-      # Setup GitHub Pages
+      - name: Cache site files
+        uses: actions/cache@v4
+        with:
+          path: .
+          key: pages-${{ github.sha }}
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # Upload site
-      - name: Upload artifact
+      - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      # Deploy
-      - name: Deploy to Pages
+      - name: Deploy
         id: deploy
         uses: actions/deploy-pages@v4
