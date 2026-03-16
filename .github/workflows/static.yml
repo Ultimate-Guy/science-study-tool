@@ -1,5 +1,4 @@
-# .github/workflows/static.yml
-name: Deploy static content to Pages
+name: Deploy static site to GitHub Pages
 
 on:
   push:
@@ -14,30 +13,38 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
-      # Checkout the repository
-      - uses: actions/checkout@v4
+      # Queue system so deploys run one at a time
+      - name: Wait for previous deployments
+        uses: softprops/turnstyle@v2
+        with:
+          same-branch-only: true
 
-      # Configure GitHub Pages
-      - uses: actions/configure-pages@v5
+      # Checkout newest commit (important improvement)
+      - name: Checkout latest commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Upload all site files from the root
-      - id: upload
+      # Setup GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # Upload site
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      # Deploy to GitHub Pages
-      - id: deploy
+      # Deploy
+      - name: Deploy to Pages
+        id: deploy
         uses: actions/deploy-pages@v4
