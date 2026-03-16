@@ -1050,6 +1050,11 @@
             "path": "two-ball-3d",
             "aliases": [],
             "categories": []
+       },
+        "UltraGG2 Proxy": {
+            "path": "ultragg2-proxy",
+            "aliases": [],
+            "categories": []
         },
         "Vex 3": {
             "path": "vex-3",
