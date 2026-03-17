@@ -3,9 +3,6 @@ name: Deploy static site to GitHub Pages
 on:
   push:
     branches: ["main2"]
-    paths-ignore:
-      - README.md
-      - LICENSE
   workflow_dispatch:
 
 permissions:
@@ -13,20 +10,23 @@ permissions:
   pages: write
   id-token: write
 
-# Queue runs instead of canceling
+# ---------------- Sequential queue ----------------
 concurrency:
-  group: pages
+  group: github-pages-deploy
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
+      - name: Show Commit Info
+        run: |
+          echo "Deploying commit $GITHUB_SHA by $GITHUB_ACTOR"
+          echo "Message: $GITHUB_COMMIT_MESSAGE"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
