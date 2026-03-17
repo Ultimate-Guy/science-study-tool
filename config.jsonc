@@ -354,6 +354,11 @@
             "path": "eggy-car",
             "aliases": [],
             "categories": []
+       },
+        "Elite Games": {
+            "path": "elite",
+            "aliases": [],
+            "categories": []
         },
         "EvoWars": {
             "path": "evowars",
