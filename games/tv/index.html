@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExistenceGG75 Streaming</title>
+<style>
+  body { margin:0; font-family: Arial, sans-serif; background: #111; color: #fff; }
+  header { padding: 20px; background: #222; display: flex; justify-content: space-between; align-items: center; }
+  header input { padding: 8px; width: 200px; }
+  .container { padding: 20px; }
+  .row { display: flex; overflow-x: auto; gap: 15px; margin-bottom: 30px; }
+  .card { flex: 0 0 150px; cursor: pointer; transition: transform 0.2s; }
+  .card:hover { transform: scale(1.05); }
+  .card img { width: 100%; border-radius: 8px; }
+  #detail { display: none; padding: 20px; background: #222; border-radius: 10px; margin-bottom: 30px; overflow:auto; }
+  #detail img { width: 200px; float: left; margin-right: 20px; border-radius: 8px; }
+  #detail h2 { margin-top: 0; }
+  #seasons button { margin: 3px; padding: 5px 10px; background:#ff0000; border:none; color:#fff; border-radius:4px; cursor:pointer; }
+  #watchlist { margin-top: 20px; }
+  button { padding: 6px 12px; margin: 5px; background: #ff0000; border: none; color: #fff; cursor: pointer; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ExistenceGG75</h1>
+  <input type="text" id="search" placeholder="Search movies or TV...">
+</header>
+
+<div class="container">
+  <div id="trending-section">
+    <h2>Trending</h2>
+    <div class="row" id="trending-row"></div>
+  </div>
+
+  <div id="search-section" style="display:none;">
+    <h2>Search Results</h2>
+    <div class="row" id="search-row"></div>
+  </div>
+
+  <div id="detail">
+    <img id="detail-img" src="" alt="">
+    <div>
+      <h2 id="detail-title"></h2>
+      <p id="detail-overview"></p>
+      <div id="seasons"></div>
+      <button id="add-watchlist">Add to Watchlist</button>
+    </div>
+  </div>
+
+  <div id="watchlist-section">
+    <h2>Watchlist</h2>
+    <div class="row" id="watchlist"></div>
+  </div>
+</div>
+
+<script>
+const API = 'https://api-key-gu3n.onrender.com';
+const trendingRow = document.getElementById('trending-row');
+const searchInput = document.getElementById('search');
+const searchSection = document.getElementById('search-section');
+const searchRow = document.getElementById('search-row');
+const detail = document.getElementById('detail');
+const detailImg = document.getElementById('detail-img');
+const detailTitle = document.getElementById('detail-title');
+const detailOverview = document.getElementById('detail-overview');
+const seasonsDiv = document.getElementById('seasons');
+const addWatchlistBtn = document.getElementById('add-watchlist');
+const watchlistRow = document.getElementById('watchlist');
+
+let currentDetail = null;
+let watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+
+// ---------------- Trending ----------------
+async function loadTrending() {
+  const res = await fetch(`${API}/trending`);
+  const data = await res.json();
+  const items = [...data.movies, ...data.tv].filter(item => !item.original_language || item.original_language==='en');
+  trendingRow.innerHTML = items.map(item => `
+    <div class="card" onclick="showDetail(${item.id}, '${item.media_type || (item.title?'movie':'tv')}')">
+      <img src="https://image.tmdb.org/t/p/w200${item.poster_path}" alt="${item.title||item.name}">
+      <p>${item.title||item.name}</p>
+    </div>
+  `).join('');
+}
+loadTrending();
+
+// ---------------- Search ----------------
+searchInput.addEventListener('keyup', async (e) => {
+  const q = e.target.value.trim();
+  if(!q) { searchSection.style.display='none'; return; }
+  searchSection.style.display='block';
+  const res = await fetch(`${API}/search?q=${encodeURIComponent(q)}`);
+  const data = await res.json();
+  const items = data.results.filter(item => !item.original_language || item.original_language==='en');
+  searchRow.innerHTML = items.map(item => `
+    <div class="card" onclick="showDetail(${item.id}, '${item.media_type}')">
+      <img src="https://image.tmdb.org/t/p/w200${item.poster_path}" alt="${item.title||item.name}">
+      <p>${item.title||item.name}</p>
+    </div>
+  `).join('');
+});
+
+// ---------------- Watchlist ----------------
+function saveWatchlist() {
+  localStorage.setItem('watchlist', JSON.stringify(watchlist));
+  renderWatchlist();
+}
+
+function renderWatchlist() {
+  watchlistRow.innerHTML = watchlist.map(item => `
+    <div class="card" onclick="showDetail(${item.id}, '${item.type}')">
+      <img src="https://image.tmdb.org/t/p/w200${item.poster_path}" alt="${item.title||item.name}">
+      <p>${item.title||item.name}</p>
+    </div>
+  `).join('');
+}
+
+addWatchlistBtn.addEventListener('click', () => {
+  if(!currentDetail) return;
+  const exists = watchlist.find(w => w.id===currentDetail.id && w.type===currentDetail.type);
+  if(!exists) {
+    watchlist.push({
+      id: currentDetail.id,
+      type: currentDetail.type,
+      poster_path: currentDetail.data.poster_path,
+      title: currentDetail.data.title || currentDetail.data.name
+    });
+    saveWatchlist();
+  }
+});
+
+renderWatchlist();
+
+// ---------------- TV Autoplay ----------------
+let currentEpisodeIndex = 0;
+let currentEpisodes = [];
+let currentSeasonId = null;
+let currentTVId = null;
+
+async function loadSeason(tvId, seasonNumber, startEpisode=0){
+  const res = await fetch(`${API}/tv/${tvId}/season/${seasonNumber}`);
+  const data = await res.json();
+  currentEpisodes = data.episodes.filter(e => !e.original_language || e.original_language==='en');
+  currentEpisodeIndex = startEpisode;
+  currentSeasonId = seasonNumber;
+  currentTVId = tvId;
+  if(currentEpisodes.length>0) showEpisode(currentEpisodeIndex);
+  else seasonsDiv.innerHTML="<p>No English episodes available.</p>";
+}
+
+function showEpisode(index){
+  if(index >= currentEpisodes.length){ loadNextSeason(); return; }
+  const episode = currentEpisodes[index];
+  seasonsDiv.innerHTML = `
+    <h4>Season ${currentSeasonId} - Episode ${episode.episode_number}: ${episode.name}</h4>
+    <p id="episode-overview">${episode.overview || 'No description.'}</p>
+    <button id="toggle-captions">Toggle Captions (English)</button>
+  `;
+  const captionsBtn = document.getElementById('toggle-captions');
+  let captionsOn = true;
+  captionsBtn.onclick = () => {
+    captionsOn = !captionsOn;
+    document.getElementById('episode-overview').style.display = captionsOn ? 'block' : 'none';
+  };
+  setTimeout(()=>{ currentEpisodeIndex++; showEpisode(currentEpisodeIndex); },5000);
+}
+
+async function loadNextSeason(){
+  const res = await fetch(`${API}/tv/${currentTVId}`);
+  const data = await res.json();
+  const seasons = data.seasons.sort((a,b)=>a.season_number - b.season_number);
+  const currentIndex = seasons.findIndex(s => s.season_number===currentSeasonId);
+  if(currentIndex < seasons.length-1) loadSeason(currentTVId,seasons[currentIndex+1].season_number);
+  else seasonsDiv.innerHTML+="<p>All seasons finished.</p>";
+}
+
+// ---------------- Show Detail ----------------
+async function showDetail(id,type){
+  const res = await fetch(`${API}/${type}/${id}`);
+  const data = await res.json();
+  currentDetail = {id,type,data};
+
+  detail.style.display='block';
+  detailImg.src=`https://image.tmdb.org/t/p/w300${data.poster_path}`;
+  detailTitle.textContent = data.title || data.name;
+  detailOverview.textContent = data.overview || '';
+
+  if(type==='tv'){
+    if(data.original_language && data.original_language!=='en'){ seasonsDiv.innerHTML="<p>TV show not in English.</p>"; return; }
+    seasonsDiv.innerHTML = '<h3>Seasons:</h3>' + data.seasons
+      .filter(s=>s.season_number>0)
+      .map(s=>`<button onclick="loadSeason(${id},${s.season_number})">S${s.season_number}</button>`).join('');
+  } else {
+    if(data.original_language && data.original_language!=='en'){ seasonsDiv.innerHTML="<p>Movie not in English.</p>"; }
+    else{ seasonsDiv.innerHTML=''; }
+  }
+}
+</script>
+
+</body>
+</html>
