@@ -3,6 +3,9 @@ name: Deploy static site to GitHub Pages
 on:
   push:
     branches: ["main2"]
+    paths-ignore:
+      - README.md
+      - LICENSE
   workflow_dispatch:
 
 permissions:
@@ -10,8 +13,9 @@ permissions:
   pages: write
   id-token: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -22,31 +26,27 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
-      - name: Wait for previous deployments
-        uses: softprops/turnstyle@v2
-        with:
-          same-branch-only: true
-
-      - name: Checkout latest branch
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: main2
-          fetch-depth: 0
 
-      - name: Cache site files
-        uses: actions/cache@v4
-        with:
-          path: .
-          key: pages-${{ github.sha }}
-
-      - name: Setup Pages
+      - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload site artifact
+      - name: Disable Jekyll
+        run: touch .nojekyll
+
+      - name: Validate site structure
+        run: |
+          if [ ! -f index.html ]; then
+            echo "❌ index.html not found in root"
+            exit 1
+          fi
+
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v4
