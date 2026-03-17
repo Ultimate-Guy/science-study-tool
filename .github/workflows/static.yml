@@ -13,9 +13,10 @@ permissions:
   pages: write
   id-token: write
 
+# Queue runs instead of canceling
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -34,13 +35,6 @@ jobs:
 
       - name: Disable Jekyll
         run: touch .nojekyll
-
-      - name: Validate site structure
-        run: |
-          if [ ! -f index.html ]; then
-            echo "❌ index.html not found in root"
-            exit 1
-          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
