@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 🧱 Init folders (always safe)
+      # 🧱 Init workspace
       - name: Init workspace
         run: |
           mkdir -p pages
@@ -30,16 +30,13 @@ jobs:
           mkdir -p backup
           mkdir -p preview
 
-      # ⚡ Detect changes (safe fallback always runs AI for stability)
-      - name: Detect changes
-        id: changes
-        run: |
-          echo "run_ai=true" >> $GITHUB_OUTPUT
+      # ⚡ Always run AI safely (prevents conditional bugs)
+      - name: Set AI flag
+        run: echo "run_ai=true" >> $GITHUB_ENV
 
-      # 🧱 Fallback page (NEVER allow empty deploy)
+      # 🧱 Fallback page
       - name: Fallback page
-        run: |
-          echo "<h1>Site is building...</h1>" > pages/index.html
+        run: echo "<h1>Loading site...</h1>" > pages/index.html
 
       # 📦 Node setup
       - name: Setup Node
@@ -50,81 +47,17 @@ jobs:
       - name: Install OpenAI
         run: npm install openai
 
-      # 🧠 SAFE AI GENERATOR (NO CRASH VERSION)
+      # 🧠 SAFE AI STEP (NO HEREDOC = NO YAML ERRORS)
       - name: AI Multi-page Generator
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          node << 'EOF'
-          const fs = require('fs');
-          const OpenAI = require('openai');
-
-          const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-          function safeJSON(str) {
-            try {
-              return JSON.parse(str);
-            } catch (e) {
-              const match = str.match(/\{[\s\S]*\}/);
-              if (!match) {
-                return {
-                  index: "<h1>Fallback Index</h1>",
-                  blog: "<h1>Blog</h1>",
-                  tools: "<h1>Tools</h1>",
-                  guide: "<h1>Guide</h1>"
-                };
-              }
-              return JSON.parse(match[0]);
-            }
-          }
-
-          async function run() {
-            try {
-              const res = await client.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [{
-                  role: "user",
-                  content:
-`Return ONLY JSON:
-{
-  "index": "<html>",
-  "blog": "<html>",
-  "tools": "<html>",
-  "guide": "<html>"
-}
-
-Rules:
-- no markdown
-- no explanation
-- valid HTML only`
-                }]
-              });
-
-              const data = safeJSON(res.choices[0].message.content || "");
-
-              fs.mkdirSync("pages", { recursive: true });
-
-              for (const k in data) {
-                fs.writeFileSync("pages/" + k + ".html", data[k]);
-              }
-
-            } catch (err) {
-              console.log("AI failed, using fallback");
-
-              fs.mkdirSync("pages", { recursive: true });
-              fs.writeFileSync("pages/index.html", "<h1>Fallback Site</h1>");
-            }
-          }
-
-          run();
-          EOF
+        run: node ai.js
 
       # ⚡ Build
       - name: Build dist
-        run: |
-          rsync -a pages/ dist/
+        run: rsync -a pages/ dist/
 
-      # 🌍 Sitemap generator
+      # 🌍 Sitemap
       - name: Sitemap generator
         run: |
           SITE="https://your-username.github.io/your-repo"
@@ -140,29 +73,26 @@ Rules:
           echo '</urlset>' >> sitemap.xml
           cp sitemap.xml dist/
 
-      # 📁 Required for GitHub Pages
+      # 📁 Required for Pages
       - name: Disable Jekyll
         run: touch dist/.nojekyll
 
-      # 💾 Backup system
+      # 💾 Backup
       - name: Save backup
         run: |
-          if [ -d "dist" ]; then
-            rm -rf backup/*
-            cp -r dist/* backup/ || true
-          fi
+          rm -rf backup/*
+          cp -r dist/* backup/ || true
 
       # 🔁 Rollback safety
       - name: Validate build
         run: |
           if [ ! -f "dist/index.html" ]; then
-            echo "Rollback triggered"
             rm -rf dist/*
             cp -r backup/* dist/ || true
           fi
 
       # 🔗 Preview build
-      - name: Create preview
+      - name: Preview build
         run: |
           mkdir -p preview
           cp -r dist/* preview/
@@ -173,8 +103,8 @@ Rules:
         with:
           path: dist
 
-      # 📦 Upload preview artifact
-      - name: Upload preview
+      # 📦 Upload preview
+      - name: Upload preview artifact
         uses: actions/upload-artifact@v4
         with:
           name: preview-site
