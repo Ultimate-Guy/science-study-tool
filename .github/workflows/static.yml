@@ -1,115 +1,43 @@
-name: Deploy static site
+# Simple workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
 
 on:
+  # Runs on pushes targeting the default branch
   push:
-    branches: ["main2", "staging"]
-  pull_request:
-    branches: ["main2"]
+    branches: ["main"]
 
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  build:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-
-    outputs:
-      changed: ${{ steps.filter.outputs.changed }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      # 🔍 Detect meaningful changes
-      - name: Detect changes
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            changed:
-              - '**/*.html'
-              - '**/*.css'
-              - '**/*.js'
-              - 'assets/**'
-              - 'images/**'
-
-      # ⛔ Skip everything if nothing changed
-      - name: Stop if no changes
-        if: steps.filter.outputs.changed != 'true'
-        run: |
-          echo "No relevant changes — skipping build."
-          exit 0
-
-      - name: Generate version
-        run: echo "VERSION=$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_ENV
-
-      - name: Build site
-        run: |
-          rm -rf dist
-          mkdir -p dist assets images
-
-          if [ -f index.html ]; then
-            cp index.html dist/
-          else
-            echo "<h1>Home Page</h1><p>Auto-generated site</p>" > dist/index.html
-          fi
-
-          cp -r assets dist/ 2>/dev/null || true
-          cp -r images dist/ 2>/dev/null || true
-
-      - name: Generate sitemap
-        run: |
-          SITE="https://YOUR_USERNAME.github.io/YOUR_REPO"
-
-          echo '<?xml version="1.0"?>' > dist/sitemap.xml
-          echo '<urlset>' >> dist/sitemap.xml
-
-          find dist -name "*.html" | while read file; do
-            clean=${file#dist/}
-            echo "<url><loc>$SITE/$clean</loc></url>" >> dist/sitemap.xml
-          done
-
-          echo '</urlset>' >> dist/sitemap.xml
-
-      - name: Cache busting
-        run: |
-          VERSION="${{ env.VERSION }}"
-
-          find dist -name "*.html" | while read file; do
-            sed -i "s/\.css/\.css?v=$VERSION/g" "$file" || true
-            sed -i "s/\.js/\.js?v=$VERSION/g" "$file" || true
-          done
-
-      - name: No Jekyll
-        run: touch dist/.nojekyll
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
-
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-
-    # 🚀 prevents useless redeploys running at same time
-    concurrency:
-      group: github-pages-deploy
-      cancel-in-progress: true
-
-    environment:
-      name: production
-
-    steps:
-      - name: Deploy
+          # Upload entire repository
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Show URL
-        run: echo "Live site deployed"
