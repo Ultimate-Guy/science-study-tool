@@ -24,7 +24,7 @@ jobs:
       - name: Generate version
         run: echo "VERSION=$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_ENV
 
-      # 📦 Build site (safe, no conditions that break YAML)
+      # 📦 Build site safely
       - name: Build site
         run: |
           rm -rf dist
@@ -33,7 +33,7 @@ jobs:
           if [ -f index.html ]; then
             cp index.html dist/
           else
-            echo "<h1>Home Page</h1><p>Auto-generated</p>" > dist/index.html
+            echo "<h1>Home Page</h1><p>Auto-generated site</p>" > dist/index.html
           fi
 
           cp -r assets dist/ 2>/dev/null || true
@@ -64,7 +64,7 @@ jobs:
             sed -i "s/\.js/\.js?v=$VERSION/g" "$file" || true
           done
 
-      # 📁 Pages requirement
+      # 📁 GitHub Pages requirement
       - name: No Jekyll
         run: touch dist/.nojekyll
 
@@ -72,7 +72,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # 📦 Upload artifact (ALWAYS SAFE)
+      # 📦 Upload artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -92,8 +92,7 @@ jobs:
 
     steps:
       - name: Deploy
-        id: deploy
         uses: actions/deploy-pages@v4
 
       - name: Show URL
-        run: echo "Live site: ${{ steps.deploy.outputs.page_url }}"
+        run: echo "Live: ${{ steps.deploy.outputs.page_url }}"
