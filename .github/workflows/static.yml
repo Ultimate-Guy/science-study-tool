@@ -16,44 +16,67 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    outputs:
+      changed: ${{ steps.filter.outputs.changed }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 🔍 Detect changes (incremental logic)
+      - name: Detect changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            changed:
+              - '**/*.html'
+              - '**/*.css'
+              - '**/*.js'
+              - 'assets/**'
+              - 'images/**'
+
       # 🧠 Version system
       - name: Generate version
+        if: steps.filter.outputs.changed == 'true'
         run: echo "VERSION=$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_ENV
 
-      # 📦 Create build folder
-      - name: Build site safely
+      # 📦 Build site
+      - name: Build site
+        if: steps.filter.outputs.changed == 'true'
         run: |
           rm -rf dist
           mkdir -p dist assets images
 
-          # Always ensure index exists
+          # Ensure homepage exists
           if [ -f index.html ]; then
             cp index.html dist/
           else
-            echo "<h1>Home Page</h1><p>Site is live</p>" > dist/index.html
+            echo "<h1>Home Page</h1><p>Auto-generated</p>" > dist/index.html
           fi
 
-          # Copy optional folders if they exist
           cp -r assets dist/ 2>/dev/null || true
           cp -r images dist/ 2>/dev/null || true
 
-      # 🧭 Auto-generate missing pages
-      - name: Auto page generator
+      # 🧭 Auto sitemap generator
+      - name: Generate sitemap
+        if: steps.filter.outputs.changed == 'true'
         run: |
-          if [ ! -f dist/about.html ]; then
-            echo "<h1>About</h1><p>Auto-generated page</p>" > dist/about.html
-          fi
+          SITE="https://YOUR_USERNAME.github.io/YOUR_REPO"
 
-          if [ ! -f dist/contact.html ]; then
-            echo "<h1>Contact</h1><p>Auto-generated page</p>" > dist/contact.html
-          fi
+          echo '<?xml version="1.0"?>' > dist/sitemap.xml
+          echo '<urlset>' >> dist/sitemap.xml
+
+          find dist -name "*.html" | while read file; do
+            clean=${file#dist/}
+            echo "<url><loc>$SITE/$clean</loc></url>" >> dist/sitemap.xml
+          done
+
+          echo '</urlset>' >> dist/sitemap.xml
 
       # ⚡ Cache busting
       - name: Cache busting
+        if: steps.filter.outputs.changed == 'true'
         run: |
           VERSION="${{ env.VERSION }}"
 
@@ -62,36 +85,48 @@ jobs:
             sed -i "s/\.js/\.js?v=$VERSION/g" "$file" || true
           done
 
-      # 📁 Required for GitHub Pages
+      # 📁 GitHub Pages requirement
       - name: No Jekyll
+        if: steps.filter.outputs.changed == 'true'
         run: touch dist/.nojekyll
 
       # ⚙️ Setup Pages
       - name: Setup Pages
+        if: steps.filter.outputs.changed == 'true'
         uses: actions/configure-pages@v5
 
-      # 📦 Upload artifact
-      - name: Upload artifact
+      # 📦 Upload production artifact
+      - name: Upload production artifact
+        if: steps.filter.outputs.changed == 'true' && github.ref_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
+          path: dist
+
+      # 📦 Upload PR preview artifact (SAFE PREVIEW SYSTEM)
+      - name: Upload PR preview artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-pr-${{ github.event.number }}
           path: dist
 
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
 
     concurrency:
       group: github-pages-deploy
       cancel-in-progress: true
 
     environment:
-      name: production
+      name: ${{ github.ref_name == 'staging' && 'staging' || 'production' }}
 
     steps:
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v4
 
       - name: Show URL
-        run: echo "Deployed: ${{ steps.deploy.outputs.page_url }}"
+        run: echo "Live site: ${{ steps.deploy.outputs.page_url }}"
