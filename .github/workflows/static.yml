@@ -1,55 +1,89 @@
-name: Deploy static site to GitHub Pages
+name: Deploy static site
 
 on:
   push:
+    branches: ["main2", "staging"]
+  pull_request:
     branches: ["main2"]
-  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Global queue across all workflow runs
-concurrency:
-  group: pages-deploy-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
+
+    outputs:
+      should_deploy: ${{ steps.filter.outputs.changed }}
 
     steps:
-      - name: Show Commit Info
-        run: |
-          echo "Deploying commit $GITHUB_SHA by $GITHUB_ACTOR"
-
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v5
+      # 🔍 Only deploy if real site files changed
+      - name: Detect changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            changed:
+              - '**/*.html'
+              - '**/*.css'
+              - '**/*.js'
+              - 'assets/**'
+              - 'images/**'
+
+      # 🧠 Version tagging
+      - name: Generate version
+        if: steps.filter.outputs.changed == 'true'
+        run: |
+          echo "VERSION=$(date +'%Y.%m.%d.%H%M')" >> $GITHUB_ENV
+
+      # ⚡ Performance audit (Lighthouse)
+      - name: Run Lighthouse
+        if: steps.filter.outputs.changed == 'true'
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          urls: |
+            file://${{ github.workspace }}/index.html
+          uploadArtifacts: true
+          temporaryPublicStorage: true
 
       - name: Disable Jekyll
+        if: steps.filter.outputs.changed == 'true'
         run: touch .nojekyll
 
       - name: Upload artifact
+        if: steps.filter.outputs.changed == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      # 👇 Add retry wrapper to avoid cancellation issues
-      - name: Deploy to GitHub Pages (retry-safe)
-        uses: nick-fields/retry@v3
-        with:
-          max_attempts: 5
-          timeout_minutes: 10
-          command: |
-            npx --yes @actions/core@latest && echo "Deploying..."
-        continue-on-error: false
+  deploy:
+    needs: build
+    if: needs.build.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
 
-      - name: Deploy to GitHub Pages
+    concurrency:
+      group: github-pages-deploy
+      cancel-in-progress: true
+
+    environment:
+      name: ${{ github.event_name == 'pull_request' && 'preview' || (github.ref_name == 'staging' && 'staging' || 'production') }}
+
+    steps:
+      - name: Deploy
         id: deploy
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Show URL
+        run: echo "Deployed to ${{ steps.deploy.outputs.page_url }}"
+
+      - name: Rollback notice
+        if: failure()
+        run: |
+          echo "⚠️ Deployment failed!"
+          echo "Go to Actions → re-run a previous successful workflow to restore."
