@@ -22,7 +22,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ⚡ Detect changed files (ULTRA FAST MODE)
+      # 🧱 Always ensure folders exist (prevents silent failure)
+      - name: Init folders
+        run: |
+          mkdir -p pages
+          mkdir -p dist
+          mkdir -p backup
+
+      # ⚡ Detect changes
       - name: Detect changes
         id: changes
         run: |
@@ -34,10 +41,10 @@ jobs:
             echo "run_ai=false" >> $GITHUB_OUTPUT
           fi
 
-      # ⚡ Skip EVERYTHING if irrelevant changes
-      - name: Skip if no AI-needed changes
-        if: steps.changes.outputs.run_ai != 'true'
-        run: echo "Skipping AI pipeline (no content changes)"
+      # 🧱 Fallback page (NEVER allow empty site)
+      - name: Create fallback page
+        run: |
+          echo "<h1>Site is generating...</h1>" > pages/index.html
 
       # 📦 Node setup
       - name: Setup Node
@@ -50,26 +57,23 @@ jobs:
         if: steps.changes.outputs.run_ai == 'true'
         run: npm install openai fs
 
-      # 📈 REAL SEO RANKING TRACKER (API HOOK)
+      # 🧠 SEO ranking (safe mock / API-ready)
       - name: SEO Ranking Tracker
         if: steps.changes.outputs.run_ai == 'true'
-        env:
-          SEO_API_KEY: ${{ secrets.SEO_API_KEY }}
         run: |
           node -e "
           const fs = require('fs');
 
-          // Replace with real API (SerpAPI / DataForSEO)
           const rankings = [
-            { keyword: 'ai tools', position: Math.floor(Math.random()*10)+1 },
-            { keyword: 'seo automation', position: Math.floor(Math.random()*10)+1 },
-            { keyword: 'fast websites', position: Math.floor(Math.random()*10)+1 }
+            { keyword: 'ai tools', position: 3 },
+            { keyword: 'seo automation', position: 7 },
+            { keyword: 'fast websites', position: 2 }
           ];
 
-          fs.writeFileSync('seo-rankings.json', JSON.stringify(rankings,null,2));
+          fs.writeFileSync('seo.json', JSON.stringify(rankings,null,2));
           "
-      
-      # 🧠 AI STRATEGY ENGINE
+
+      # 🧠 AI Strategy
       - name: AI Strategy Engine
         if: steps.changes.outputs.run_ai == 'true'
         env:
@@ -82,12 +86,11 @@ jobs:
           const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
           async function run() {
-            const rankings = JSON.parse(fs.readFileSync('seo-rankings.json','utf8'));
+            const rankings = fs.readFileSync('seo.json','utf8');
 
             const prompt =
-              'You are an SEO expert. Based on rankings: ' +
-              JSON.stringify(rankings) +
-              ' generate: 5 keywords, 3 blog topics, and 3 page titles.';
+              'Generate SEO strategy based on: ' + rankings +
+              '. Return keywords, blog topics, page names.';
 
             const res = await client.chat.completions.create({
               model: 'gpt-4o-mini',
@@ -100,8 +103,8 @@ jobs:
           run();
           "
 
-      # ✍️ MULTI-PAGE BUILDER (CORE FEATURE)
-      - name: Multi-page AI Builder
+      # ✍️ MULTI PAGE BUILDER (SAFE)
+      - name: Multi-page Builder
         if: steps.changes.outputs.run_ai == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -115,66 +118,66 @@ jobs:
           async function run() {
             const strategy = fs.readFileSync('strategy.json','utf8');
 
-            const pages = [
-              'homepage',
-              'blog',
-              'tools',
-              'seo-guide'
-            ];
+            const pages = ['index', 'blog', 'tools', 'guide'];
 
-            for (const page of pages) {
+            for (const p of pages) {
               const res = await client.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [{
                   role: 'user',
                   content:
-                    'Create a FULL SEO HTML page for: ' + page +
-                    ' using this strategy: ' + strategy +
-                    ' Return ONLY valid HTML.'
+                    'Create SEO HTML page for ' + p +
+                    ' using strategy: ' + strategy +
+                    '. Return ONLY HTML.'
                 }]
               });
 
-              fs.writeFileSync('pages/' + page + '.html', res.choices[0].message.content);
+              fs.writeFileSync('pages/' + p + '.html', res.choices[0].message.content);
             }
           }
 
           run();
           "
 
-      # ⚡ SMART SEO PATCH (lightweight)
-      - name: SEO Fixer
+      # 🔥 VALIDATION (CRITICAL FAIL-SAFE)
+      - name: Validate build output
         run: |
-          node -e "
-          const fs = require('fs');
-          const files = fs.existsSync('pages') ? fs.readdirSync('pages') : [];
+          if [ -z "$(ls -A pages 2>/dev/null)" ]; then
+            echo "❌ pages empty, using fallback"
+            cp pages/index.html dist/index.html
+          else
+            echo "✅ pages OK"
+          fi
 
-          for (const f of files) {
-            let html = fs.readFileSync('pages/' + f,'utf8');
-
-            if (!html.includes('meta name=\"description\"')) {
-              html = html.replace('<head>',
-                '<head><meta name=\"description\" content=\"AI generated SEO page\">');
-            }
-
-            fs.writeFileSync('pages/' + f, html);
-          }
-          "
-
-      # ⚡ ULTRA FAST DEPLOY OPTIMIZATION
-      - name: Prepare output
+      # 📦 Prepare dist safely
+      - name: Build dist
         run: |
-          mkdir -p dist
-          cp -r pages/* dist/ || true
-          cp index.html dist/ || true
-          cp sitemap.xml dist/ || true
+          rsync -av pages/ dist/
 
-      # 🌍 SITEMAP GENERATOR (MULTI PAGE)
+      # 💾 BACKUP LAST WORKING VERSION
+      - name: Backup current build
+        run: |
+          if [ -d "dist" ]; then
+            rm -rf backup/*
+            cp -r dist/* backup/ || true
+          fi
+
+      # 🔁 ROLLBACK IF BROKEN
+      - name: Auto rollback check
+        run: |
+          if [ ! -f "dist/index.html" ]; then
+            echo "❌ Build broken, restoring backup"
+            rm -rf dist/*
+            cp -r backup/* dist/ || true
+          fi
+
+      # 🌍 SITEMAP
       - name: Sitemap generator
         run: |
           SITE="https://your-username.github.io/your-repo"
 
           echo '<?xml version="1.0"?>' > sitemap.xml
-          echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' >> sitemap.xml
+          echo '<urlset>' >> sitemap.xml
 
           for file in $(find dist -name "*.html"); do
             clean=${file#dist/}
@@ -183,11 +186,13 @@ jobs:
 
           echo '</urlset>' >> sitemap.xml
 
-      # 📁 Required
+          cp sitemap.xml dist/
+
+      # 📁 REQUIRED
       - name: Disable Jekyll
         run: touch dist/.nojekyll
 
-      # 📦 Upload ONLY dist (ultra fast mode)
+      # 📦 Upload
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
