@@ -1,18 +1,16 @@
-name: Deploy static website
+name: Deploy static site
 
 on:
   push:
+    branches: ["main2", "staging"]
+  pull_request:
     branches: ["main2"]
-  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
-concurrency:
-  group: github-pages-deploy
-  cancel-in-progress: true
 
 jobs:
   build:
@@ -22,94 +20,78 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 🧱 Init workspace
-      - name: Init workspace
+      # 🧠 Version system
+      - name: Generate version
+        run: echo "VERSION=$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_ENV
+
+      # 📦 Create build folder
+      - name: Build site safely
         run: |
-          mkdir -p pages
-          mkdir -p dist
-          mkdir -p backup
-          mkdir -p preview
+          rm -rf dist
+          mkdir -p dist assets images
 
-      # ⚡ Always run AI safely (prevents conditional bugs)
-      - name: Set AI flag
-        run: echo "run_ai=true" >> $GITHUB_ENV
-
-      # 🧱 Fallback page
-      - name: Fallback page
-        run: echo "<h1>Loading site...</h1>" > pages/index.html
-
-      # 📦 Node setup
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install OpenAI
-        run: npm install openai
-
-      # 🧠 SAFE AI STEP (NO HEREDOC = NO YAML ERRORS)
-      - name: AI Multi-page Generator
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node ai.js
-
-      # ⚡ Build
-      - name: Build dist
-        run: rsync -a pages/ dist/
-
-      # 🌍 Sitemap
-      - name: Sitemap generator
-        run: |
-          SITE="https://your-username.github.io/your-repo"
-
-          echo '<?xml version="1.0"?>' > sitemap.xml
-          echo '<urlset>' >> sitemap.xml
-
-          for f in $(find dist -name "*.html"); do
-            clean=${f#dist/}
-            echo "<url><loc>$SITE/$clean</loc></url>" >> sitemap.xml
-          done
-
-          echo '</urlset>' >> sitemap.xml
-          cp sitemap.xml dist/
-
-      # 📁 Required for Pages
-      - name: Disable Jekyll
-        run: touch dist/.nojekyll
-
-      # 💾 Backup
-      - name: Save backup
-        run: |
-          rm -rf backup/*
-          cp -r dist/* backup/ || true
-
-      # 🔁 Rollback safety
-      - name: Validate build
-        run: |
-          if [ ! -f "dist/index.html" ]; then
-            rm -rf dist/*
-            cp -r backup/* dist/ || true
+          # Always ensure index exists
+          if [ -f index.html ]; then
+            cp index.html dist/
+          else
+            echo "<h1>Home Page</h1><p>Site is live</p>" > dist/index.html
           fi
 
-      # 🔗 Preview build
-      - name: Preview build
-        run: |
-          mkdir -p preview
-          cp -r dist/* preview/
+          # Copy optional folders if they exist
+          cp -r assets dist/ 2>/dev/null || true
+          cp -r images dist/ 2>/dev/null || true
 
-      # 📦 Upload production
+      # 🧭 Auto-generate missing pages
+      - name: Auto page generator
+        run: |
+          if [ ! -f dist/about.html ]; then
+            echo "<h1>About</h1><p>Auto-generated page</p>" > dist/about.html
+          fi
+
+          if [ ! -f dist/contact.html ]; then
+            echo "<h1>Contact</h1><p>Auto-generated page</p>" > dist/contact.html
+          fi
+
+      # ⚡ Cache busting
+      - name: Cache busting
+        run: |
+          VERSION=${{ env.VERSION }}
+
+          find dist -name "*.html" | while read file; do
+            sed -i "s/\.css/\.css?v=$VERSION/g" "$file" || true
+            sed -i "s/\.js/\.js?v=$VERSION/g" "$file" || true
+          done
+
+      # 📁 Required for GitHub Pages
+      - name: No Jekyll
+        run: touch dist/.nojekyll
+
+      # ⚙️ Setup Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # 📦 Upload artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      # 📦 Upload preview
-      - name: Upload preview artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: preview-site
-          path: preview
 
-      # 🚀 Deploy
-      - name: Deploy to GitHub Pages
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: github-pages-deploy
+      cancel-in-progress: true
+
+    environment:
+      name: ${{ github.event_name == 'pull_request' && 'preview' || (github.ref_name == 'staging' && 'staging' || 'production') }}
+
+    steps:
+      - name: Deploy
+        id: deploy
         uses: actions/deploy-pages@v4
+
+      - name: Show URL
+        run: echo "Deployed: ${{ steps.deploy.outputs.page_url }}"
