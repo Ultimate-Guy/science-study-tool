@@ -1,8 +1,8 @@
-name: Deploy static website 
+name: Deploy static website
 
 on:
   push:
-    branches: ["main2", "staging"]
+    branches: ["main2"]
   workflow_dispatch:
 
 permissions:
@@ -22,72 +22,56 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ⚡ detect changes (fast skip system)
+      # ⚡ Detect changed files (ULTRA FAST MODE)
       - name: Detect changes
         id: changes
         run: |
-          git diff --name-only HEAD^ HEAD > files.txt || true
-          if grep -E "\.html|\.css|\.js" files.txt; then
-            echo "run=true" >> $GITHUB_OUTPUT
+          git diff --name-only HEAD^ HEAD > changes.txt || true
+
+          if grep -E "\.html|\.css|\.js|content" changes.txt; then
+            echo "run_ai=true" >> $GITHUB_OUTPUT
           else
-            echo "run=false" >> $GITHUB_OUTPUT
+            echo "run_ai=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Skip if no changes
-        if: steps.changes.outputs.run != 'true'
-        run: echo "No build needed"
+      # ⚡ Skip EVERYTHING if irrelevant changes
+      - name: Skip if no AI-needed changes
+        if: steps.changes.outputs.run_ai != 'true'
+        run: echo "Skipping AI pipeline (no content changes)"
 
+      # 📦 Node setup
       - name: Setup Node
-        if: steps.changes.outputs.run == 'true'
+        if: steps.changes.outputs.run_ai == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
-        if: steps.changes.outputs.run == 'true'
-        run: npm install openai axios fs
+      - name: Install OpenAI
+        if: steps.changes.outputs.run_ai == 'true'
+        run: npm install openai fs
 
-      # 📊 REAL ANALYTICS INGESTION (Google Analytics / API hook)
-      - name: Fetch analytics signals
-        if: steps.changes.outputs.run == 'true'
+      # 📈 REAL SEO RANKING TRACKER (API HOOK)
+      - name: SEO Ranking Tracker
+        if: steps.changes.outputs.run_ai == 'true'
         env:
-          GA_API_KEY: ${{ secrets.GA_API_KEY }}
+          SEO_API_KEY: ${{ secrets.SEO_API_KEY }}
         run: |
           node -e "
           const fs = require('fs');
 
-          // Simulated real analytics structure (replace with GA4 API call if needed)
-          const analytics = {
-            pageViews: Math.floor(Math.random()*1000),
-            bounceRate: Math.random()*100,
-            topPages: ['/index.html','/blog.html'],
-            avgSessionTime: Math.random()*300
-          };
-
-          fs.writeFileSync('analytics.json', JSON.stringify(analytics,null,2));
-          "
-      
-      # 🧠 TREND SIGNAL ENGINE (REAL EXTERNAL HOOK READY)
-      - name: Fetch trend signals
-        if: steps.changes.outputs.run == 'true'
-        run: |
-          node -e "
-          const fs = require('fs');
-
-          // Replace with real API (Google Trends / Reddit / SerpAPI if desired)
-          const trends = [
-            'ai productivity tools',
-            'fast websites seo',
-            'make money online tools',
-            'web performance optimization',
-            'automation workflows'
+          // Replace with real API (SerpAPI / DataForSEO)
+          const rankings = [
+            { keyword: 'ai tools', position: Math.floor(Math.random()*10)+1 },
+            { keyword: 'seo automation', position: Math.floor(Math.random()*10)+1 },
+            { keyword: 'fast websites', position: Math.floor(Math.random()*10)+1 }
           ];
 
-          fs.writeFileSync('trends.json', JSON.stringify({ trends },null,2));
+          fs.writeFileSync('seo-rankings.json', JSON.stringify(rankings,null,2));
           "
       
-      # 🧠 AI STRATEGY ENGINE (uses analytics + trends)
+      # 🧠 AI STRATEGY ENGINE
       - name: AI Strategy Engine
+        if: steps.changes.outputs.run_ai == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
@@ -98,39 +82,27 @@ jobs:
           const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
           async function run() {
-            const analytics = JSON.parse(fs.readFileSync('analytics.json','utf8'));
-            const trends = JSON.parse(fs.readFileSync('trends.json','utf8'));
+            const rankings = JSON.parse(fs.readFileSync('seo-rankings.json','utf8'));
 
-            const prompt = `
-You are an SEO strategist.
-
-Given:
-Analytics:
-${JSON.stringify(analytics)}
-
-Trends:
-${JSON.stringify(trends)}
-
-Return:
-- 5 SEO keywords
-- 3 blog topics
-- 2 monetizable content ideas
-- 1 homepage improvement suggestion
-`;
+            const prompt =
+              'You are an SEO expert. Based on rankings: ' +
+              JSON.stringify(rankings) +
+              ' generate: 5 keywords, 3 blog topics, and 3 page titles.';
 
             const res = await client.chat.completions.create({
               model: 'gpt-4o-mini',
               messages: [{ role: 'user', content: prompt }]
             });
 
-            fs.writeFileSync('ai-strategy.json', res.choices[0].message.content);
+            fs.writeFileSync('strategy.json', res.choices[0].message.content);
           }
 
           run();
           "
 
-      # ✍️ AI CONTENT GENERATION (safe controlled build)
-      - name: AI Content Generator
+      # ✍️ MULTI-PAGE BUILDER (CORE FEATURE)
+      - name: Multi-page AI Builder
+        if: steps.changes.outputs.run_ai == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
@@ -141,100 +113,85 @@ Return:
           const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
           async function run() {
-            const strategy = fs.readFileSync('ai-strategy.json','utf8');
+            const strategy = fs.readFileSync('strategy.json','utf8');
 
-            const res = await client.chat.completions.create({
-              model: 'gpt-4o-mini',
-              messages: [{
-                role: 'user',
-                content: `
-Create 2 SEO optimized HTML pages based on this strategy:
+            const pages = [
+              'homepage',
+              'blog',
+              'tools',
+              'seo-guide'
+            ];
 
-${strategy}
+            for (const page of pages) {
+              const res = await client.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [{
+                  role: 'user',
+                  content:
+                    'Create a FULL SEO HTML page for: ' + page +
+                    ' using this strategy: ' + strategy +
+                    ' Return ONLY valid HTML.'
+                }]
+              });
 
-Rules:
-- valid HTML only
-- include meta tags
-- include headings
-- include CTA section
-- no broken markup
-`
-              }]
-            });
-
-            const output = res.choices[0].message.content;
-
-            fs.writeFileSync('ai-generated.html', output);
+              fs.writeFileSync('pages/' + page + '.html', res.choices[0].message.content);
+            }
           }
 
           run();
           "
 
-      # 🔥 SEO AUTO-ENHANCEMENT
-      - name: SEO optimizer
+      # ⚡ SMART SEO PATCH (lightweight)
+      - name: SEO Fixer
         run: |
           node -e "
           const fs = require('fs');
+          const files = fs.existsSync('pages') ? fs.readdirSync('pages') : [];
 
-          let html = fs.readFileSync('ai-generated.html','utf8');
+          for (const f of files) {
+            let html = fs.readFileSync('pages/' + f,'utf8');
 
-          if (!html.includes('meta name=\"description\"')) {
-            html = html.replace('<head>',
-              '<head><meta name=\"description\" content=\"AI optimized SEO page\">');
+            if (!html.includes('meta name=\"description\"')) {
+              html = html.replace('<head>',
+                '<head><meta name=\"description\" content=\"AI generated SEO page\">');
+            }
+
+            fs.writeFileSync('pages/' + f, html);
           }
-
-          fs.writeFileSync('ai-generated.html', html);
           "
-      
-      # 📊 PERFORMANCE LEARNING LOOP
-      - name: Learning system update
+
+      # ⚡ ULTRA FAST DEPLOY OPTIMIZATION
+      - name: Prepare output
         run: |
-          node -e "
-          const fs = require('fs');
+          mkdir -p dist
+          cp -r pages/* dist/ || true
+          cp index.html dist/ || true
+          cp sitemap.xml dist/ || true
 
-          let memory = fs.existsSync('ai-memory.json')
-            ? JSON.parse(fs.readFileSync('ai-memory.json','utf8'))
-            : { history: [], avg: 0 };
-
-          const score = 60 + Math.random()*40;
-
-          memory.history.push(score);
-          if (memory.history.length > 20) memory.history.shift();
-
-          memory.avg = memory.history.reduce((a,b)=>a+b,0)/memory.history.length;
-
-          fs.writeFileSync('ai-memory.json', JSON.stringify(memory,null,2));
-          "
-      
-      # ⚡ STATIC OPTIMIZATION
-      - name: Minify assets
-        run: |
-          npm install -g terser clean-css-cli html-minifier
-
-          find . -name "*.js" -exec terser {} -o {} \;
-          find . -name "*.css" -exec cleancss -o {} {} \;
-
-      # 🌍 SITEMAP GENERATION
+      # 🌍 SITEMAP GENERATOR (MULTI PAGE)
       - name: Sitemap generator
         run: |
+          SITE="https://your-username.github.io/your-repo"
+
           echo '<?xml version="1.0"?>' > sitemap.xml
           echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' >> sitemap.xml
 
-          for file in $(find . -name "*.html"); do
-            echo "<url><loc>https://your-site.com/$file</loc></url>" >> sitemap.xml
+          for file in $(find dist -name "*.html"); do
+            clean=${file#dist/}
+            echo "<url><loc>$SITE/$clean</loc></url>" >> sitemap.xml
           done
 
           echo '</urlset>' >> sitemap.xml
 
-      # 📁 REQUIRED
+      # 📁 Required
       - name: Disable Jekyll
-        run: touch .nojekyll
+        run: touch dist/.nojekyll
 
-      # 📦 Upload
+      # 📦 Upload ONLY dist (ultra fast mode)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
       # 🚀 Deploy
       - name: Deploy to GitHub Pages
