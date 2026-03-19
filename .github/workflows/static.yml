@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 🧱 Init safe folders
+      # 🧱 Init folders
       - name: Init workspace
         run: |
           mkdir -p pages
@@ -30,7 +30,7 @@ jobs:
           mkdir -p backup
           mkdir -p preview
 
-      # ⚡ Detect changed files (true incremental mode)
+      # ⚡ Detect changes
       - name: Detect changes
         id: changes
         run: |
@@ -42,11 +42,11 @@ jobs:
             echo "run_ai=false" >> $GITHUB_OUTPUT
           fi
 
-      # 🧱 Always fallback page (prevents empty deploy)
+      # 🧱 Fallback page
       - name: Fallback page
         run: echo "<h1>Site is building...</h1>" > pages/index.html
 
-      # 📦 Node setup
+      # 📦 Node
       - name: Setup Node
         if: steps.changes.outputs.run_ai == 'true'
         uses: actions/setup-node@v4
@@ -55,15 +55,15 @@ jobs:
 
       - name: Install OpenAI
         if: steps.changes.outputs.run_ai == 'true'
-        run: npm install openai fs
+        run: npm install openai
 
-      # 🧠 SINGLE AI CALL (fast generator)
+      # 🧠 SAFE AI GENERATOR (FIXED)
       - name: AI Multi-page Generator
         if: steps.changes.outputs.run_ai == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          node -e "
+          node << 'EOF'
           const fs = require('fs');
           const OpenAI = require('openai');
 
@@ -72,48 +72,29 @@ jobs:
           async function run() {
 
             const res = await client.chat.completions.create({
-              model: 'gpt-4o-mini',
+              model: "gpt-4o-mini",
               messages: [{
-                role: 'user',
-                content: `
-Generate 4 SEO HTML pages:
-- index
-- blog
-- tools
-- guide
-
-Return JSON:
-{
-  \"index\": \"html\",
-  \"blog\": \"html\",
-  \"tools\": \"html\",
-  \"guide\": \"html\"
-}
-
-Rules:
-- valid HTML only
-- include meta tags
-- no explanation
-`
+                role: "user",
+                content:
+"Generate 4 SEO HTML pages (index, blog, tools, guide).\nReturn ONLY valid JSON like:\n{\n\"index\":\"html\",\n\"blog\":\"html\",\n\"tools\":\"html\",\n\"guide\":\"html\"\n}\nRules:\n- valid HTML only\n- include meta tags\n- no explanations"
               }]
             });
 
             const data = JSON.parse(res.choices[0].message.content);
 
             for (const k in data) {
-              fs.writeFileSync('pages/' + k + '.html', data[k]);
+              fs.writeFileSync("pages/" + k + ".html", data[k]);
             }
           }
 
           run();
-          "
+          EOF
 
-      # ⚡ BUILD ONLY CHANGED OUTPUT (fast sync)
+      # ⚡ Build
       - name: Build dist
-        run: |
-          rsync -a pages/ dist/
+        run: rsync -a pages/ dist/
 
-      # 🌍 SITEMAP
+      # 🌍 Sitemap
       - name: Sitemap generator
         run: |
           SITE="https://your-username.github.io/your-repo"
@@ -129,11 +110,11 @@ Rules:
           echo '</urlset>' >> sitemap.xml
           cp sitemap.xml dist/
 
-      # 📁 REQUIRED FILE
+      # 📁 Required
       - name: Disable Jekyll
         run: touch dist/.nojekyll
 
-      # 💾 BACKUP LAST GOOD BUILD
+      # 💾 Backup
       - name: Save backup
         run: |
           if [ -d "dist" ]; then
@@ -141,7 +122,7 @@ Rules:
             cp -r dist/* backup/ || true
           fi
 
-      # 🔁 ROLLBACK IF BUILD IS BROKEN
+      # 🔁 Rollback safety
       - name: Validate build
         run: |
           if [ ! -f "dist/index.html" ]; then
@@ -150,27 +131,25 @@ Rules:
             cp -r backup/* dist/ || true
           fi
 
-      # 🔗 PREVIEW BUILD (PER COMMIT)
-      - name: Create preview build
+      # 🔗 Preview
+      - name: Preview build
         run: |
           mkdir -p preview
           cp -r dist/* preview/
 
-          echo "Preview build ready for this commit"
-
-      # 📦 Upload (PRODUCTION)
+      # 📦 Upload production
       - name: Upload production artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      # 📦 Upload (PREVIEW ARTIFACT)
+      # 📦 Upload preview
       - name: Upload preview artifact
         uses: actions/upload-artifact@v4
         with:
           name: preview-site
           path: preview
 
-      # 🚀 DEPLOY
+      # 🚀 Deploy
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
