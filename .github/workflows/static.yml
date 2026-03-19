@@ -16,39 +16,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    outputs:
-      changed: ${{ steps.filter.outputs.changed }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 🔍 Detect changes (incremental logic)
-      - name: Detect changes
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            changed:
-              - '**/*.html'
-              - '**/*.css'
-              - '**/*.js'
-              - 'assets/**'
-              - 'images/**'
-
-      # 🧠 Version system
+      # 🧠 Version
       - name: Generate version
-        if: steps.filter.outputs.changed == 'true'
         run: echo "VERSION=$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_ENV
 
-      # 📦 Build site
+      # 📦 Build site (safe, no conditions that break YAML)
       - name: Build site
-        if: steps.filter.outputs.changed == 'true'
         run: |
           rm -rf dist
           mkdir -p dist assets images
 
-          # Ensure homepage exists
           if [ -f index.html ]; then
             cp index.html dist/
           else
@@ -58,9 +39,8 @@ jobs:
           cp -r assets dist/ 2>/dev/null || true
           cp -r images dist/ 2>/dev/null || true
 
-      # 🧭 Auto sitemap generator
+      # 🧭 Sitemap
       - name: Generate sitemap
-        if: steps.filter.outputs.changed == 'true'
         run: |
           SITE="https://YOUR_USERNAME.github.io/YOUR_REPO"
 
@@ -76,7 +56,6 @@ jobs:
 
       # ⚡ Cache busting
       - name: Cache busting
-        if: steps.filter.outputs.changed == 'true'
         run: |
           VERSION="${{ env.VERSION }}"
 
@@ -85,46 +64,34 @@ jobs:
             sed -i "s/\.js/\.js?v=$VERSION/g" "$file" || true
           done
 
-      # 📁 GitHub Pages requirement
+      # 📁 Pages requirement
       - name: No Jekyll
-        if: steps.filter.outputs.changed == 'true'
         run: touch dist/.nojekyll
 
       # ⚙️ Setup Pages
       - name: Setup Pages
-        if: steps.filter.outputs.changed == 'true'
         uses: actions/configure-pages@v5
 
-      # 📦 Upload production artifact
-      - name: Upload production artifact
-        if: steps.filter.outputs.changed == 'true' && github.ref_name != 'pull_request'
+      # 📦 Upload artifact (ALWAYS SAFE)
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
-
-      # 📦 Upload PR preview artifact (SAFE PREVIEW SYSTEM)
-      - name: Upload PR preview artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: preview-pr-${{ github.event.number }}
           path: dist
 
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
 
     concurrency:
       group: github-pages-deploy
       cancel-in-progress: true
 
     environment:
-      name: ${{ github.ref_name == 'staging' && 'staging' || 'production' }}
+      name: production
 
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         id: deploy
         uses: actions/deploy-pages@v4
 
