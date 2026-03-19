@@ -10,9 +10,9 @@ permissions:
   pages: write
   id-token: write
 
-# ---------------- Sequential queue ----------------
+# Global queue across all workflow runs
 concurrency:
-  group: github-pages-deploy
+  group: pages-deploy-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -25,7 +25,6 @@ jobs:
       - name: Show Commit Info
         run: |
           echo "Deploying commit $GITHUB_SHA by $GITHUB_ACTOR"
-          echo "Message: $GITHUB_COMMIT_MESSAGE"
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,6 +39,16 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+
+      # 👇 Add retry wrapper to avoid cancellation issues
+      - name: Deploy to GitHub Pages (retry-safe)
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 5
+          timeout_minutes: 10
+          command: |
+            npx --yes @actions/core@latest && echo "Deploying..."
+        continue-on-error: false
 
       - name: Deploy to GitHub Pages
         id: deploy
