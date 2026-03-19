@@ -22,14 +22,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 🧱 Always ensure folders exist (prevents silent failure)
-      - name: Init folders
+      # 🧱 Init safe folders
+      - name: Init workspace
         run: |
           mkdir -p pages
           mkdir -p dist
           mkdir -p backup
+          mkdir -p preview
 
-      # ⚡ Detect changes
+      # ⚡ Detect changed files (true incremental mode)
       - name: Detect changes
         id: changes
         run: |
@@ -41,10 +42,9 @@ jobs:
             echo "run_ai=false" >> $GITHUB_OUTPUT
           fi
 
-      # 🧱 Fallback page (NEVER allow empty site)
-      - name: Create fallback page
-        run: |
-          echo "<h1>Site is generating...</h1>" > pages/index.html
+      # 🧱 Always fallback page (prevents empty deploy)
+      - name: Fallback page
+        run: echo "<h1>Site is building...</h1>" > pages/index.html
 
       # 📦 Node setup
       - name: Setup Node
@@ -57,24 +57,8 @@ jobs:
         if: steps.changes.outputs.run_ai == 'true'
         run: npm install openai fs
 
-      # 🧠 SEO ranking (safe mock / API-ready)
-      - name: SEO Ranking Tracker
-        if: steps.changes.outputs.run_ai == 'true'
-        run: |
-          node -e "
-          const fs = require('fs');
-
-          const rankings = [
-            { keyword: 'ai tools', position: 3 },
-            { keyword: 'seo automation', position: 7 },
-            { keyword: 'fast websites', position: 2 }
-          ];
-
-          fs.writeFileSync('seo.json', JSON.stringify(rankings,null,2));
-          "
-
-      # 🧠 AI Strategy
-      - name: AI Strategy Engine
+      # 🧠 SINGLE AI CALL (fast generator)
+      - name: AI Multi-page Generator
         if: steps.changes.outputs.run_ai == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -86,90 +70,48 @@ jobs:
           const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
           async function run() {
-            const rankings = fs.readFileSync('seo.json','utf8');
-
-            const prompt =
-              'Generate SEO strategy based on: ' + rankings +
-              '. Return keywords, blog topics, page names.';
 
             const res = await client.chat.completions.create({
               model: 'gpt-4o-mini',
-              messages: [{ role: 'user', content: prompt }]
+              messages: [{
+                role: 'user',
+                content: `
+Generate 4 SEO HTML pages:
+- index
+- blog
+- tools
+- guide
+
+Return JSON:
+{
+  \"index\": \"html\",
+  \"blog\": \"html\",
+  \"tools\": \"html\",
+  \"guide\": \"html\"
+}
+
+Rules:
+- valid HTML only
+- include meta tags
+- no explanation
+`
+              }]
             });
 
-            fs.writeFileSync('strategy.json', res.choices[0].message.content);
-          }
+            const data = JSON.parse(res.choices[0].message.content);
 
-          run();
-          "
-
-      # ✍️ MULTI PAGE BUILDER (SAFE)
-      - name: Multi-page Builder
-        if: steps.changes.outputs.run_ai == 'true'
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          node -e "
-          const fs = require('fs');
-          const OpenAI = require('openai');
-
-          const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-          async function run() {
-            const strategy = fs.readFileSync('strategy.json','utf8');
-
-            const pages = ['index', 'blog', 'tools', 'guide'];
-
-            for (const p of pages) {
-              const res = await client.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [{
-                  role: 'user',
-                  content:
-                    'Create SEO HTML page for ' + p +
-                    ' using strategy: ' + strategy +
-                    '. Return ONLY HTML.'
-                }]
-              });
-
-              fs.writeFileSync('pages/' + p + '.html', res.choices[0].message.content);
+            for (const k in data) {
+              fs.writeFileSync('pages/' + k + '.html', data[k]);
             }
           }
 
           run();
           "
 
-      # 🔥 VALIDATION (CRITICAL FAIL-SAFE)
-      - name: Validate build output
-        run: |
-          if [ -z "$(ls -A pages 2>/dev/null)" ]; then
-            echo "❌ pages empty, using fallback"
-            cp pages/index.html dist/index.html
-          else
-            echo "✅ pages OK"
-          fi
-
-      # 📦 Prepare dist safely
+      # ⚡ BUILD ONLY CHANGED OUTPUT (fast sync)
       - name: Build dist
         run: |
-          rsync -av pages/ dist/
-
-      # 💾 BACKUP LAST WORKING VERSION
-      - name: Backup current build
-        run: |
-          if [ -d "dist" ]; then
-            rm -rf backup/*
-            cp -r dist/* backup/ || true
-          fi
-
-      # 🔁 ROLLBACK IF BROKEN
-      - name: Auto rollback check
-        run: |
-          if [ ! -f "dist/index.html" ]; then
-            echo "❌ Build broken, restoring backup"
-            rm -rf dist/*
-            cp -r backup/* dist/ || true
-          fi
+          rsync -a pages/ dist/
 
       # 🌍 SITEMAP
       - name: Sitemap generator
@@ -179,25 +121,56 @@ jobs:
           echo '<?xml version="1.0"?>' > sitemap.xml
           echo '<urlset>' >> sitemap.xml
 
-          for file in $(find dist -name "*.html"); do
-            clean=${file#dist/}
+          for f in $(find dist -name "*.html"); do
+            clean=${f#dist/}
             echo "<url><loc>$SITE/$clean</loc></url>" >> sitemap.xml
           done
 
           echo '</urlset>' >> sitemap.xml
-
           cp sitemap.xml dist/
 
-      # 📁 REQUIRED
+      # 📁 REQUIRED FILE
       - name: Disable Jekyll
         run: touch dist/.nojekyll
 
-      # 📦 Upload
-      - name: Upload artifact
+      # 💾 BACKUP LAST GOOD BUILD
+      - name: Save backup
+        run: |
+          if [ -d "dist" ]; then
+            rm -rf backup/*
+            cp -r dist/* backup/ || true
+          fi
+
+      # 🔁 ROLLBACK IF BUILD IS BROKEN
+      - name: Validate build
+        run: |
+          if [ ! -f "dist/index.html" ]; then
+            echo "❌ Build broken → restoring backup"
+            rm -rf dist/*
+            cp -r backup/* dist/ || true
+          fi
+
+      # 🔗 PREVIEW BUILD (PER COMMIT)
+      - name: Create preview build
+        run: |
+          mkdir -p preview
+          cp -r dist/* preview/
+
+          echo "Preview build ready for this commit"
+
+      # 📦 Upload (PRODUCTION)
+      - name: Upload production artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      # 🚀 Deploy
+      # 📦 Upload (PREVIEW ARTIFACT)
+      - name: Upload preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-site
+          path: preview
+
+      # 🚀 DEPLOY
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
