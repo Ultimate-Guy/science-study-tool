@@ -20,11 +20,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 🧠 Version
       - name: Generate version
         run: echo "VERSION=$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_ENV
 
-      # 📦 Build site safely
       - name: Build site
         run: |
           rm -rf dist
@@ -39,7 +37,6 @@ jobs:
           cp -r assets dist/ 2>/dev/null || true
           cp -r images dist/ 2>/dev/null || true
 
-      # 🧭 Sitemap
       - name: Generate sitemap
         run: |
           SITE="https://YOUR_USERNAME.github.io/YOUR_REPO"
@@ -54,7 +51,6 @@ jobs:
 
           echo '</urlset>' >> dist/sitemap.xml
 
-      # ⚡ Cache busting
       - name: Cache busting
         run: |
           VERSION="${{ env.VERSION }}"
@@ -64,15 +60,12 @@ jobs:
             sed -i "s/\.js/\.js?v=$VERSION/g" "$file" || true
           done
 
-      # 📁 GitHub Pages requirement
       - name: No Jekyll
         run: touch dist/.nojekyll
 
-      # ⚙️ Setup Pages
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # 📦 Upload artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -95,4 +88,4 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Show URL
-        run: echo "Live: ${{ steps.deploy.outputs.page_url }}"
+        run: echo "Live site deployed"
