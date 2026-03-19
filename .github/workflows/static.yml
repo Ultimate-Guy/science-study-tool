@@ -55,7 +55,7 @@ jobs:
       # ⚡ Cache busting
       - name: Cache busting
         run: |
-          VERSION=${{ env.VERSION }}
+          VERSION="${{ env.VERSION }}"
 
           find dist -name "*.html" | while read file; do
             sed -i "s/\.css/\.css?v=$VERSION/g" "$file" || true
@@ -86,7 +86,7 @@ jobs:
       cancel-in-progress: true
 
     environment:
-      name: ${{ github.event_name == 'pull_request' && 'preview' || (github.ref_name == 'staging' && 'staging' || 'production') }}
+      name: production
 
     steps:
       - name: Deploy
