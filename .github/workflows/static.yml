@@ -16,9 +16,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    outputs:
+      changed: ${{ steps.filter.outputs.changed }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # 🔍 Detect meaningful changes
+      - name: Detect changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            changed:
+              - '**/*.html'
+              - '**/*.css'
+              - '**/*.js'
+              - 'assets/**'
+              - 'images/**'
+
+      # ⛔ Skip everything if nothing changed
+      - name: Stop if no changes
+        if: steps.filter.outputs.changed != 'true'
+        run: |
+          echo "No relevant changes — skipping build."
+          exit 0
 
       - name: Generate version
         run: echo "VERSION=$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_ENV
@@ -76,6 +99,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
 
+    # 🚀 prevents useless redeploys running at same time
     concurrency:
       group: github-pages-deploy
       cancel-in-progress: true
