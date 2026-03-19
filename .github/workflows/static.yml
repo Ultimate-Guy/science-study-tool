@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 🧱 Init folders
+      # 🧱 Init folders (always safe)
       - name: Init workspace
         run: |
           mkdir -p pages
@@ -30,36 +30,28 @@ jobs:
           mkdir -p backup
           mkdir -p preview
 
-      # ⚡ Detect changes
+      # ⚡ Detect changes (safe fallback always runs AI for stability)
       - name: Detect changes
         id: changes
         run: |
-          git diff --name-only HEAD^ HEAD > changes.txt || true
+          echo "run_ai=true" >> $GITHUB_OUTPUT
 
-          if grep -E "\.html|\.css|\.js|content" changes.txt; then
-            echo "run_ai=true" >> $GITHUB_OUTPUT
-          else
-            echo "run_ai=false" >> $GITHUB_OUTPUT
-          fi
-
-      # 🧱 Fallback page
+      # 🧱 Fallback page (NEVER allow empty deploy)
       - name: Fallback page
-        run: echo "<h1>Site is building...</h1>" > pages/index.html
+        run: |
+          echo "<h1>Site is building...</h1>" > pages/index.html
 
-      # 📦 Node
+      # 📦 Node setup
       - name: Setup Node
-        if: steps.changes.outputs.run_ai == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Install OpenAI
-        if: steps.changes.outputs.run_ai == 'true'
         run: npm install openai
 
-      # 🧠 SAFE AI GENERATOR (FIXED)
+      # 🧠 SAFE AI GENERATOR (NO CRASH VERSION)
       - name: AI Multi-page Generator
-        if: steps.changes.outputs.run_ai == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
@@ -69,21 +61,58 @@ jobs:
 
           const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+          function safeJSON(str) {
+            try {
+              return JSON.parse(str);
+            } catch (e) {
+              const match = str.match(/\{[\s\S]*\}/);
+              if (!match) {
+                return {
+                  index: "<h1>Fallback Index</h1>",
+                  blog: "<h1>Blog</h1>",
+                  tools: "<h1>Tools</h1>",
+                  guide: "<h1>Guide</h1>"
+                };
+              }
+              return JSON.parse(match[0]);
+            }
+          }
+
           async function run() {
+            try {
+              const res = await client.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [{
+                  role: "user",
+                  content:
+`Return ONLY JSON:
+{
+  "index": "<html>",
+  "blog": "<html>",
+  "tools": "<html>",
+  "guide": "<html>"
+}
 
-            const res = await client.chat.completions.create({
-              model: "gpt-4o-mini",
-              messages: [{
-                role: "user",
-                content:
-"Generate 4 SEO HTML pages (index, blog, tools, guide).\nReturn ONLY valid JSON like:\n{\n\"index\":\"html\",\n\"blog\":\"html\",\n\"tools\":\"html\",\n\"guide\":\"html\"\n}\nRules:\n- valid HTML only\n- include meta tags\n- no explanations"
-              }]
-            });
+Rules:
+- no markdown
+- no explanation
+- valid HTML only`
+                }]
+              });
 
-            const data = JSON.parse(res.choices[0].message.content);
+              const data = safeJSON(res.choices[0].message.content || "");
 
-            for (const k in data) {
-              fs.writeFileSync("pages/" + k + ".html", data[k]);
+              fs.mkdirSync("pages", { recursive: true });
+
+              for (const k in data) {
+                fs.writeFileSync("pages/" + k + ".html", data[k]);
+              }
+
+            } catch (err) {
+              console.log("AI failed, using fallback");
+
+              fs.mkdirSync("pages", { recursive: true });
+              fs.writeFileSync("pages/index.html", "<h1>Fallback Site</h1>");
             }
           }
 
@@ -92,9 +121,10 @@ jobs:
 
       # ⚡ Build
       - name: Build dist
-        run: rsync -a pages/ dist/
+        run: |
+          rsync -a pages/ dist/
 
-      # 🌍 Sitemap
+      # 🌍 Sitemap generator
       - name: Sitemap generator
         run: |
           SITE="https://your-username.github.io/your-repo"
@@ -110,11 +140,11 @@ jobs:
           echo '</urlset>' >> sitemap.xml
           cp sitemap.xml dist/
 
-      # 📁 Required
+      # 📁 Required for GitHub Pages
       - name: Disable Jekyll
         run: touch dist/.nojekyll
 
-      # 💾 Backup
+      # 💾 Backup system
       - name: Save backup
         run: |
           if [ -d "dist" ]; then
@@ -126,25 +156,25 @@ jobs:
       - name: Validate build
         run: |
           if [ ! -f "dist/index.html" ]; then
-            echo "❌ Build broken → restoring backup"
+            echo "Rollback triggered"
             rm -rf dist/*
             cp -r backup/* dist/ || true
           fi
 
-      # 🔗 Preview
-      - name: Preview build
+      # 🔗 Preview build
+      - name: Create preview
         run: |
           mkdir -p preview
           cp -r dist/* preview/
 
       # 📦 Upload production
-      - name: Upload production artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      # 📦 Upload preview
-      - name: Upload preview artifact
+      # 📦 Upload preview artifact
+      - name: Upload preview
         uses: actions/upload-artifact@v4
         with:
           name: preview-site
