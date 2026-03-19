@@ -1,43 +1,100 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+name: Deploy static site (fast + safe hybrid)
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+    paths:
+      - "**/*.html"
+      - "**/*.css"
+      - "**/*.js"
+      - "imgs/**"
+      - "img/**"
+      - "fonts/**"
+      - "games/**"
+      - "favicon.ico"
+      - ".github/workflows/**"
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
+    runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # -----------------------------
+      # Setup GitHub Pages
+      # -----------------------------
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      # -----------------------------
+      # Version (fast + stable cache bust)
+      # -----------------------------
+      - name: Generate version
+        run: echo "VERSION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      # -----------------------------
+      # Safe cache busting
+      # (only targets YOUR structure)
+      # -----------------------------
+      - name: Cache busting (safe)
+        run: |
+          VERSION="${{ env.VERSION }}"
+
+          find . -name "*.html" | while read file; do
+            sed -i "s/\.css/\.css?v=$VERSION/g" "$file" || true
+            sed -i "s/\.js/\.js?v=$VERSION/g" "$file" || true
+          done
+
+      # -----------------------------
+      # Generate sitemap (safe for your repo)
+      # -----------------------------
+      - name: Generate sitemap
+        run: |
+          SITE="https://XHunter75.github.io/ExistenceGG75"
+
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > sitemap.xml
+          echo '<urlset>' >> sitemap.xml
+
+          find . -name "*.html" | while read file; do
+            clean=${file#./}
+            echo "<url><loc>$SITE/$clean</loc></url>" >> sitemap.xml
+          done
+
+          echo '</urlset>' >> sitemap.xml
+
+      # -----------------------------
+      # Prevent Jekyll breaking folders like /games
+      # -----------------------------
+      - name: Disable Jekyll
+        run: touch .nojekyll
+
+      # -----------------------------
+      # Upload ROOT (matches your repo exactly)
+      # -----------------------------
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          path: .
+
+      # -----------------------------
+      # Deploy
+      # -----------------------------
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
