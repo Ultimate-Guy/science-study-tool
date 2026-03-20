@@ -21,8 +21,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -43,20 +43,35 @@ jobs:
         uses: actions/configure-pages@v5
 
       # -----------------------------
-      # Version
+      # Generate content-based version
       # -----------------------------
       - name: Generate version
-        run: echo "VERSION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+        run: |
+          VERSION=$(find . -type f \( -name "*.css" -o -name "*.js" \) -exec sha1sum {} + | sha1sum | cut -c1-8)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       # -----------------------------
-      # Safe cache busting
-      # 
+      # Cache busting (safe + changed HTML only)
       # -----------------------------
       - name: Cache busting
         run: |
           VERSION="${{ env.VERSION }}"
 
-          find . -name "*.html" | while read file; do
+          FILES=$(git diff --name-only HEAD^ HEAD 2>/dev/null | grep "\.html$" || true)
+
+          # fallback if diff fails (first commit, etc.)
+          if [ -z "$FILES" ]; then
+            FILES=$(find . -name "*.html")
+          fi
+
+          for file in $FILES; do
+            [ -f "$file" ] || continue
+
+            # remove old ?v=
+            sed -i -E "s/\.css\?v=[^\"']*/.css/g" "$file" || true
+            sed -i -E "s/\.js\?v=[^\"']*/.js/g" "$file" || true
+
+            # add fresh version
             sed -i "s/\.css/\.css?v=$VERSION/g" "$file" || true
             sed -i "s/\.js/\.js?v=$VERSION/g" "$file" || true
           done
@@ -79,13 +94,13 @@ jobs:
           echo '</urlset>' >> sitemap.xml
 
       # -----------------------------
-      # Prevent Jekyll breaking folders like /games
+      # Prevent Jekyll issues
       # -----------------------------
       - name: Disable Jekyll
         run: touch .nojekyll
 
       # -----------------------------
-      # Upload ROOT (matches this repo exactly)
+      # Upload artifact
       # -----------------------------
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
