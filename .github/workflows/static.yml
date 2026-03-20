@@ -1,4 +1,4 @@
-name: Deploy static site (fast + safe hybrid)
+name: Deploy static site
 
 on:
   push:
@@ -13,6 +13,7 @@ on:
       - "games/**"
       - "favicon.ico"
       - ".github/workflows/**"
+      
   workflow_dispatch:
 
 permissions:
@@ -43,16 +44,16 @@ jobs:
         uses: actions/configure-pages@v5
 
       # -----------------------------
-      # Version (fast + stable cache bust)
+      # Version
       # -----------------------------
       - name: Generate version
         run: echo "VERSION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       # -----------------------------
       # Safe cache busting
-      # (only targets YOUR structure)
+      # 
       # -----------------------------
-      - name: Cache busting (safe)
+      - name: Cache busting
         run: |
           VERSION="${{ env.VERSION }}"
 
@@ -62,7 +63,7 @@ jobs:
           done
 
       # -----------------------------
-      # Generate sitemap (safe for your repo)
+      # Generate sitemap
       # -----------------------------
       - name: Generate sitemap
         run: |
@@ -85,7 +86,7 @@ jobs:
         run: touch .nojekyll
 
       # -----------------------------
-      # Upload ROOT (matches your repo exactly)
+      # Upload ROOT (matches this repo exactly)
       # -----------------------------
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
