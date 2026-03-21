@@ -5,11 +5,10 @@ on:
     branches: ["main2"]
     paths:
       - "**"
-      - "!README.md"
+      - "!*.md"
       - "!LICENSE"
       - "!package.json"
       - "!package-lock.json"
-      - "!*.md"
 
   workflow_dispatch:
 
@@ -31,6 +30,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      # -----------------------------
+      # Checkout
+      # -----------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -41,15 +43,15 @@ jobs:
         uses: actions/configure-pages@v5
 
       # -----------------------------
-      # Generate content-based version
+      # Generate version (FAST + scoped)
       # -----------------------------
       - name: Generate version
         run: |
-          VERSION=$(find . -type f \( -name "*.css" -o -name "*.js" \) -exec sha1sum {} + | sha1sum | cut -c1-8)
+          VERSION=$(find ./css ./js -type f \( -name "*.css" -o -name "*.js" \) -exec sha1sum {} + | sha1sum | cut -c1-8)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       # -----------------------------
-      # Cache busting (safe + changed HTML only)
+      # Cache busting (SAFE)
       # -----------------------------
       - name: Cache busting
         run: |
@@ -65,13 +67,9 @@ jobs:
           for file in $FILES; do
             [ -f "$file" ] || continue
 
-            # remove old ?v=
-            sed -i -E "s/\.css\?v=[^\"']*/.css/g" "$file" || true
-            sed -i -E "s/\.js\?v=[^\"']*/.js/g" "$file" || true
-
-            # add fresh version
-            sed -i "s/\.css/\.css?v=$VERSION/g" "$file" || true
-            sed -i "s/\.js/\.js?v=$VERSION/g" "$file" || true
+            # Only modify proper HTML asset tags
+            sed -i -E "s/(href=\"[^\"]+\.css)(\?v=[^\"]*)?\"/\1?v=$VERSION\"/g" "$file"
+            sed -i -E "s/(src=\"[^\"]+\.js)(\?v=[^\"]*)?\"/\1?v=$VERSION\"/g" "$file"
           done
 
       # -----------------------------
@@ -92,18 +90,33 @@ jobs:
           echo '</urlset>' >> sitemap.xml
 
       # -----------------------------
-      # Prevent Jekyll issues
+      # Disable Jekyll
       # -----------------------------
       - name: Disable Jekyll
         run: touch .nojekyll
 
       # -----------------------------
-      # Upload artifact
+      # Prepare clean deploy folder (FASTER)
+      # -----------------------------
+      - name: Prepare build folder
+        run: |
+          mkdir dist
+          rsync -av \
+            --exclude=".git" \
+            --exclude=".github" \
+            --exclude="node_modules" \
+            --exclude="package*.json" \
+            --exclude="README.md" \
+            --exclude="LICENSE" \
+            ./ dist/
+
+      # -----------------------------
+      # Upload artifact (smaller)
       # -----------------------------
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
       # -----------------------------
       # Deploy
