@@ -1,1 +1,43 @@
-<iframe src="https://wanocapy.github.io/ChickenKingsVault/ragdollarchers.html" style="position:fixed; top:0; left:0; bottom:0; right:0; width:100%; height:100%; border:none; margin:0; padding:0; overflow:hidden; z-index:999999;">
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Blob Game Loader</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+    }
+    iframe {
+      width: 100%;
+      height: 100vh;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+
+<iframe id="gameFrame"></iframe>
+
+<script>
+async function loadGame(url) {
+  try {
+    const response = await fetch(url);
+    const html = await response.text();
+
+    const blob = new Blob([html], { type: "text/html" });
+    const blobUrl = URL.createObjectURL(blob);
+
+    document.getElementById("gameFrame").src = blobUrl;
+
+  } catch (err) {
+    console.error("Failed to load game:", err);
+  }
+}
+
+// Example game URL
+loadGame("https://wanocapy.github.io/ChickenKingsVault/ragdollarchers.html");
+</script>
+
+</body>
+</html>
