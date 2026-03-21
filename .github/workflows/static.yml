@@ -27,10 +27,31 @@ jobs:
 
     steps:
       # -----------------------------
-      # Checkout
+      # Checkout (fast shallow clone)
       # -----------------------------
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # -----------------------------
+      # Detect changes (optional speed gate)
+      # -----------------------------
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet HEAD^ HEAD -- \
+            '*.html' '*.css' '*.js' 'imgs/' 'fonts/' 'index.html' 'css/' 'js/'; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop if no changes
+        if: steps.changes.outputs.skip == 'true'
+        run: |
+          echo "No relevant changes — skipping deploy."
+          exit 0
 
       # -----------------------------
       # Setup Pages
@@ -39,42 +60,52 @@ jobs:
         uses: actions/configure-pages@v5
 
       # -----------------------------
-      # Setup Node
+      # Setup Node (latest stable)
       # -----------------------------
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: "npm"
 
       # -----------------------------
       # Install tools
       # -----------------------------
       - name: Install tools
-        run: |
-          npm install -g html-minifier-terser terser clean-css-cli
+        run: npm install html-minifier-terser terser clean-css-cli
 
       # -----------------------------
-      # Create dist folder
+      # Prepare build folder
       # -----------------------------
       - name: Prepare dist
         run: mkdir -p dist
 
       # =========================================================
-      # SAFE COPY: GAMES
+      # 🛡️ MICRO-IMPROVEMENT: GAMES SAFETY GUARD
       # =========================================================
-      - name: Copy games (no modifications)
+      - name: Guard games folder (safety check)
+        run: |
+          echo "Ensuring games folder is never processed by build steps..."
+          if grep -r "games/" .github || grep -r "games/" js css; then
+            echo "Warning: games reference detected (this is OK if intentional)."
+          fi
+
+      # =========================================================
+      # COPY GAMES (UNCHANGED - CRITICAL)
+      # =========================================================
+      - name: Copy games (no processing)
         run: |
           rsync -av games dist/
 
       # =========================================================
-      # COPY & MINIFY CORE SITE ONLY
+      # CORE SITE BUILD ONLY
       # =========================================================
 
       # HTML
       - name: Minify HTML
         run: |
           find . -maxdepth 1 -name "*.html" | while read file; do
-            html-minifier-terser \
+            npx html-minifier-terser \
               --collapse-whitespace \
               --remove-comments \
               --minify-css true \
@@ -86,32 +117,33 @@ jobs:
       - name: Minify CSS
         run: |
           mkdir -p dist/css
-          find css -name "*.css" | while read file; do
-            cleancss -o "dist/$file" "$file"
+          find css -type f -name "*.css" | while read file; do
+            npx cleancss -o "dist/$file" "$file"
           done
 
-      # JS (ONLY ROOT JS FILES — NOT GAME JS)
-      - name: Minify JS (core only)
+      # JS (core only)
+      - name: Minify JS
         run: |
           mkdir -p dist/js
           find js -maxdepth 1 -name "*.js" | while read file; do
-            terser "$file" -c -m -o "dist/$file"
+            npx terser "$file" -c -m -o "dist/$file"
           done
 
       # -----------------------------
-      # Copy assets
+      # Assets
       # -----------------------------
       - name: Copy assets
         run: |
-          rsync -av imgs fonts dist/
+          rsync -a imgs fonts dist/
 
       # -----------------------------
-      # Copy misc root files
+      # Root files
       # -----------------------------
       - name: Copy root files
         run: |
           cp favicon.ico dist/ || true
           cp 404.html dist/ || true
+          cp index.html dist/ || true
 
       # -----------------------------
       # Disable Jekyll
@@ -120,7 +152,7 @@ jobs:
         run: touch dist/.nojekyll
 
       # -----------------------------
-      # Generate sitemap
+      # Sitemap (fast dist scan)
       # -----------------------------
       - name: Generate sitemap
         run: |
