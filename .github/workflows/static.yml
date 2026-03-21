@@ -1,4 +1,4 @@
-name: Deploy static site (PRO SAFE build)
+name: Deploy static site
 
 on:
   push:
@@ -39,12 +39,12 @@ jobs:
         uses: actions/configure-pages@v5
 
       # -----------------------------
-      # Setup Node (for safe minify)
+      # Setup Node
       # -----------------------------
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       # -----------------------------
       # Install tools
@@ -60,7 +60,7 @@ jobs:
         run: mkdir -p dist
 
       # =========================================================
-      # SAFE COPY: GAMES (UNCHANGED - IMPORTANT)
+      # SAFE COPY: GAMES
       # =========================================================
       - name: Copy games (no modifications)
         run: |
@@ -99,7 +99,7 @@ jobs:
           done
 
       # -----------------------------
-      # Copy assets safely
+      # Copy assets
       # -----------------------------
       - name: Copy assets
         run: |
