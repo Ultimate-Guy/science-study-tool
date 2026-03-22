@@ -12,133 +12,158 @@
         header { padding: 12px 20px; background: var(--header); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
         .logo { font-weight: 600; color: var(--accent); font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
         
-        .setup-area { display: flex; flex-direction: column; gap: 10px; padding: 20px; background: rgba(0,0,0,0.05); border-bottom: 1px solid var(--border); color: var(--card-text); }
-        .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-        
-        input, select, textarea { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: #000; }
-        button { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; background: var(--accent); color: white; font-weight: bold; transition: 0.2s; }
-        button:hover { opacity: 0.8; }
-        .bulk-btn { background: #6b7280; }
+        /* Main Proxy Status */
+        .proxy-status { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: bold; padding: 6px 12px; border-radius: 20px; background: rgba(0,0,0,0.2); }
+        .status-light { width: 10px; height: 10px; border-radius: 50%; background: #666; transition: 0.3s; }
+        .online { background: #10b981; box-shadow: 0 0 8px #10b981; }
+        .offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
 
-        #bulkModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 100; border: 1px solid var(--border); width: 300px; }
-        #bulkModal textarea { width: 100%; height: 150px; margin-bottom: 10px; box-sizing: border-box; }
-
-        .category-section { padding: 10px 20px; }
-        .category-title { font-size: 0.9rem; font-weight: bold; margin: 25px 0 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; display: block; border-bottom: 1px solid var(--border); }
-        .recent-title { color: #888; border-bottom: 1px dashed #888; }
+        .setup-area { display: none; flex-direction: column; gap: 10px; padding: 20px; background: rgba(0,0,0,0.05); border-bottom: 1px solid var(--border); color: var(--card-text); }
+        .setup-area.visible { display: flex; }
         
-        .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
-        .app-card { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 12px; color: var(--card-text); transition: 0.2s; }
-        .app-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .app-icon { width: 32px; height: 32px; border-radius: 4px; pointer-events: none; }
-        .app-info { flex: 1; overflow: hidden; pointer-events: none; }
-        .app-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .delete-btn { font-size: 18px; color: #ff4d4d; cursor: pointer; padding: 5px; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; }
+        .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 5px; align-items: center; }
+        input, select, textarea { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: #000; font-size: 13px; }
+        
+        button { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; background: var(--accent); color: white; font-weight: bold; transition: 0.2s; font-size: 13px; }
+        .edit-toggle { background: transparent; border: 1px solid var(--accent); color: var(--accent); font-size: 18px; padding: 4px 10px; }
+
+        .category-header { border-bottom: 1px solid var(--border); padding: 0 20px; margin: 25px 0 10px; }
+        .category-title { font-size: 0.85rem; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+
+        .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; padding: 0 20px; }
+        .app-card { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 12px; color: var(--card-text); position: relative; }
+        
+        /* App Status Light */
+        .app-status-dot { width: 8px; height: 8px; border-radius: 50%; position: absolute; top: 12px; right: 12px; background: #999; }
+        .app-online { background: #10b981; }
+        .app-offline { background: #ef4444; }
+
+        .app-icon { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; }
+        .delete-btn { font-size: 18px; color: #ff4d4d; cursor: pointer; padding: 5px; display: none; margin-left: auto; }
+        .editing .delete-btn { display: flex; }
     </style>
 </head>
 <body data-theme="canvas">
 
 <header>
     <div class="logo"><img id="header-img" src="https://du11hjcvhe62z.cloudfront.net" width="24"> <span id="header-text">Canvas</span></div>
-    <select id="cloakSelect" onchange="applyTheme(this.value)">
-        <option value="canvas">Cloak: Canvas</option>
-        <option value="drive">Cloak: Google Drive</option>
-        <option value="dark">Cloak: Dark Mode</option>
-    </select>
+    
+    <div class="proxy-status">
+        <div id="proxyLight" class="status-light"></div>
+        <span id="proxyText">Proxy: Offline</span>
+    </div>
+
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <select id="cloakSelect" onchange="applyTheme(this.value)">
+            <option value="canvas">Cloak: Canvas</option>
+            <option value="drive">Cloak: Google Drive</option>
+            <option value="dark">Cloak: Dark Mode</option>
+        </select>
+        <button class="edit-toggle" onclick="toggleEditMode()">⚙️</button>
+    </div>
 </header>
 
-<div class="setup-area">
+<div id="setupArea" class="setup-area">
     <div class="row">
         <input type="text" id="appName" placeholder="App Name">
-        <input type="text" id="appUrl" placeholder="URL (e.g. discord.com)">
+        <input type="text" id="appUrl" placeholder="URL (example.com)">
         <input type="text" id="appCat" placeholder="Category">
-        <button onclick="addApp()">+ Add</button>
-        <button class="bulk-btn" onclick="toggleBulk()">Bulk Import</button>
+        <select id="proxyEngine">
+            <option value="auto">Auto-Detect</option>
+            <option value="none">No Proxy</option>
+            <option value="uv">Ultraviolet</option>
+            <option value="sj">Scramjet</option>
+        </select>
     </div>
-    <div class="row" style="font-size: 0.85rem; opacity: 0.8;">
+    <div class="row">
+        <label style="font-size: 11px;">Custom Icon: <input type="file" id="appIconFile" accept="image/*"></label>
+        <button onclick="addApp()">+ Add App</button>
+    </div>
+
+    <div class="row">
+        <input type="text" id="proxyUrl" placeholder="Your Codespace URL" style="width: 350px;" oninput="saveProxyUrl()">
+        <select id="openMethod">
+            <option value="blank">Open: about:blank</option>
+            <option value="blob">Open: Blob URL</option>
+        </select>
+    </div>
+    <div class="row" style="font-size: 0.8rem; opacity: 0.8;">
         <span>Panic Key: <input type="text" id="panicKey" placeholder="-" style="width:30px; text-align:center;" oninput="savePanic()"></span>
         <span>Redirect: <input type="text" id="panicLink" placeholder="google.com" oninput="savePanic()"></span>
     </div>
 </div>
 
-<div id="bulkModal">
-    <h3 style="margin-top:0; color:var(--card-text);">Bulk Import</h3>
-    <p style="font-size:11px; color:#666;">Paste URLs (one per line):</p>
-    <textarea id="bulkInput" placeholder="google.com&#10;youtube.com"></textarea>
-    <div class="row">
-        <button onclick="importBulk()">Import</button>
-        <button class="bulk-btn" onclick="toggleBulk()">Cancel</button>
-    </div>
-</div>
-
-<div id="categories-container" class="category-section"></div>
+<div id="categories-container"></div>
 
 <script>
     let apps = JSON.parse(localStorage.getItem("workspaceApps")) || [];
-    let recentApps = JSON.parse(localStorage.getItem("recentApps")) || [];
+    let isEditing = false;
 
-    function applyTheme(type) {
-        document.body.setAttribute("data-theme", type);
-        const title = document.getElementById("tab-title"), icon = document.getElementById("tab-icon");
-        const logoText = document.getElementById("header-text"), logoImg = document.getElementById("header-img");
-        if (type === "canvas") {
-            title.innerText = "Dashboard"; logoText.innerText = "Canvas";
-            logoImg.src = icon.href = "https://du11hjcvhe62z.cloudfront.net";
-        } else if (type === "drive") {
-            title.innerText = "My Drive - Google Drive"; logoText.innerText = "Google Drive";
-            logoImg.src = icon.href = "https://ssl.gstatic.com";
+    function toggleEditMode() {
+        isEditing = !isEditing;
+        document.getElementById("setupArea").classList.toggle("visible", isEditing);
+        document.body.classList.toggle("editing", isEditing);
+    }
+
+    async function checkProxyStatus() {
+        const url = localStorage.getItem("customProxyUrl");
+        if (!url) return;
+        try {
+            await fetch(url, { mode: 'no-cors' });
+            document.getElementById("proxyLight").className = "status-light online";
+            document.getElementById("proxyText").innerText = "Proxy: Online";
+        } catch (e) {
+            document.getElementById("proxyLight").className = "status-light offline";
+            document.getElementById("proxyText").innerText = "Proxy: Offline";
         }
-        localStorage.setItem("preferredTheme", type);
     }
 
-    function savePanic() {
-        localStorage.setItem("panicKey", document.getElementById("panicKey").value);
-        localStorage.setItem("panicLink", document.getElementById("panicLink").value);
+    async function checkAppStatus(url, elementId) {
+        const dot = document.getElementById(elementId);
+        try {
+            await fetch(`https://corsproxy.io{encodeURIComponent(url)}`, { method: 'HEAD', mode: 'no-cors' });
+            dot.className = "app-status-dot app-online";
+        } catch (e) {
+            dot.className = "app-status-dot app-offline";
+        }
     }
 
-    window.onkeydown = (e) => {
-        const key = localStorage.getItem("panicKey") || "-";
-        let link = localStorage.getItem("panicLink") || "https://google.com";
-        if (!link.startsWith("http")) link = "https://" + link;
-        if (e.key === key) window.location.replace(link);
-    };
+    async function addApp() {
+        const name = document.getElementById("appName").value;
+        const urlInput = document.getElementById("appUrl").value;
+        const cat = document.getElementById("appCat").value || "General";
+        let eng = document.getElementById("proxyEngine").value;
+        const iconFile = document.getElementById("appIconFile").files;
 
-    function toggleBulk() {
-        const modal = document.getElementById("bulkModal");
-        modal.style.display = modal.style.display === "block" ? "none" : "block";
-    }
+        if (!name || !urlInput) return;
+        let url = urlInput.startsWith("http") ? urlInput : "https://" + urlInput;
 
-    function importBulk() {
-        const input = document.getElementById("bulkInput").value.trim();
-        if (!input) return;
-        const lines = input.split('\n');
-        lines.forEach(line => {
-            let url = line.trim();
-            if (!url) return;
-            if (!url.startsWith("http")) url = "https://" + url;
-            const name = url.replace('https://', '').replace('http://', '').split('.')[0];
-            apps.push({ name: name.charAt(0).toUpperCase() + name.slice(1), url, category: "Imported" });
-        });
+        let iconData = null;
+        if (iconFile.length > 0) {
+            iconData = await new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(iconFile[0]);
+            });
+        }
+
+        if (eng === "auto") {
+            try {
+                const res = await fetch(`https://corsproxy.io{encodeURIComponent(url)}`, { method: 'HEAD' });
+                const blocked = res.headers.get("X-Frame-Options") || res.headers.get("Content-Security-Policy");
+                eng = blocked ? "uv" : "none";
+            } catch (e) { eng = "uv"; }
+        }
+
+        const icon = iconData || `https://www.google.com{url}&sz=64`;
+        apps.push({ name, url, category: cat, proxy: eng, icon });
         localStorage.setItem("workspaceApps", JSON.stringify(apps));
         renderApps();
-        toggleBulk();
-        document.getElementById("bulkInput").value = "";
     }
 
     function renderApps() {
         const container = document.getElementById("categories-container");
         container.innerHTML = "";
-        
-        if (recentApps.length > 0) {
-            const recentDiv = document.createElement("div");
-            recentDiv.innerHTML = `<div class="category-title recent-title">Recently Used</div>`;
-            const recentGrid = document.createElement("div");
-            recentGrid.className = "apps";
-            recentApps.forEach(app => recentGrid.appendChild(createAppCard(app, true)));
-            recentDiv.appendChild(recentGrid);
-            container.appendChild(recentDiv);
-        }
-
         const groups = apps.reduce((acc, app) => {
             const cat = app.category || "General";
             if (!acc[cat]) acc[cat] = [];
@@ -146,62 +171,66 @@
             return acc;
         }, {});
 
-        for (const cat in groups) {
-            const section = document.createElement("div");
-            section.innerHTML = `<div class="category-title">${cat}</div>`;
-            const appGrid = document.createElement("div");
-            appGrid.className = "apps";
-            groups[cat].forEach(app => appGrid.appendChild(createAppCard(app, false)));
-            section.appendChild(appGrid);
-            container.appendChild(section);
+        Object.keys(groups).sort().forEach(cat => {
+            const header = document.createElement("div");
+            header.className = "category-header";
+            header.innerHTML = `<div class="category-title">${cat}</div>`;
+            const grid = document.createElement("div");
+            grid.className = "apps";
+            groups[cat].forEach((app, idx) => {
+                const statusId = `status-${cat}-${idx}`;
+                const card = document.createElement("div");
+                card.className = "app-card";
+                card.onclick = () => openApp(app);
+                card.innerHTML = `
+                    <div id="${statusId}" class="app-status-dot"></div>
+                    <img src="${app.icon}" class="app-icon">
+                    <span style="font-weight:600;">${app.name}</span>
+                    <span class="delete-btn" onclick="event.stopPropagation(); removeApp('${app.name}')">&times;</span>
+                `;
+                grid.appendChild(card);
+                checkAppStatus(app.url, statusId);
+            });
+            container.appendChild(header);
+            container.appendChild(grid);
+        });
+    }
+
+    function openApp(app) {
+        const proxyBase = localStorage.getItem("customProxyUrl");
+        const method = document.getElementById("openMethod").value;
+        let finalUrl = app.url;
+
+        if (app.proxy !== "none" && proxyBase) {
+            // Ultraviolet standard path
+            const enginePath = app.proxy === 'uv' ? '/service/' : '/main/';
+            finalUrl = proxyBase.replace(/\/$/, "") + enginePath + btoa(app.url).replace(/=/g, "");
         }
-    }
 
-    function createAppCard(app, isRecent) {
-        const card = document.createElement("div");
-        card.className = "app-card";
-        card.onclick = () => openApp(app);
-        card.innerHTML = `
-            <img src="https://www.google.com{app.url}&sz=64" class="app-icon">
-            <div class="app-info"><span class="app-name">${app.name}</span></div>
-            ${!isRecent ? `<span class="delete-btn" onclick="event.stopPropagation(); removeApp('${app.name}')">&times;</span>` : ''}
-        `;
-        return card;
-    }
-
-    function addApp() {
-        const name = document.getElementById("appName").value, urlInput = document.getElementById("appUrl").value;
-        const category = document.getElementById("appCat").value || "General";
-        if (!name || !urlInput) return;
-        let url = urlInput.startsWith("http") ? urlInput : "https://" + urlInput;
-        apps.push({ name, url, category });
-        localStorage.setItem("workspaceApps", JSON.stringify(apps));
-        renderApps();
-        document.getElementById("appName").value = "";
-        document.getElementById("appUrl").value = "";
+        const html = `<html><body style="margin:0;"><iframe src="${finalUrl}" style="width:100%;height:100vh;border:none;"></iframe></body></html>`;
+        if (method === "blob") {
+            window.open(URL.createObjectURL(new Blob([html], { type: "text/html" })), "_blank");
+        } else {
+            const win = window.open("about:blank", "_blank");
+            win.document.write(html);
+            win.document.close();
+        }
     }
 
     function removeApp(name) {
         apps = apps.filter(a => a.name !== name);
-        recentApps = recentApps.filter(a => a.name !== name);
         localStorage.setItem("workspaceApps", JSON.stringify(apps));
-        localStorage.setItem("recentApps", JSON.stringify(recentApps));
         renderApps();
     }
 
-    function openApp(app) {
-        recentApps = [app, ...recentApps.filter(a => a.name !== app.name)].slice(0, 4);
-        localStorage.setItem("recentApps", JSON.stringify(recentApps));
-        renderApps();
-        const win = window.open("about:blank", "_blank");
-        win.document.write(`<html><body style="margin:0;overflow:hidden;"><iframe src="${app.url}" style="width:100%;height:100vh;border:none;"></iframe></body></html>`);
-        win.document.close();
-    }
+    function saveProxyUrl() { localStorage.setItem("customProxyUrl", document.getElementById("proxyUrl").value); checkProxyStatus(); }
+    function savePanic() { localStorage.setItem("panicKey", document.getElementById("panicKey").value); localStorage.setItem("panicLink", document.getElementById("panicLink").value); }
+    function applyTheme(type) { document.body.setAttribute("data-theme", type); localStorage.setItem("preferredTheme", type); }
 
-    document.getElementById("panicKey").value = localStorage.getItem("panicKey") || "-";
-    document.getElementById("panicLink").value = localStorage.getItem("panicLink") || "google.com";
     applyTheme(localStorage.getItem("preferredTheme") || "canvas");
     renderApps();
+    checkProxyStatus();
+    setInterval(checkProxyStatus, 60000);
 </script>
 </body>
 </html>
