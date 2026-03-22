@@ -4,8 +4,6 @@ on:
   push:
     branches: ["main2"]
 
-  workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
@@ -20,103 +18,98 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # -----------------------------
-      # Checkout
-      # -----------------------------
+      # =========================================================
+      # ⚡ ULTRA FAST CHECKOUT
+      # =========================================================
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      # -----------------------------
-      # Setup Node
-      # -----------------------------
+      # =========================================================
+      # ⚡ NODE + ESBUILD
+      # =========================================================
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # -----------------------------
-      # Install esbuild
-      # -----------------------------
       - run: npm install -g esbuild
 
-      # -----------------------------
-      # Prepare dist
-      # -----------------------------
-      - run: mkdir -p dist/assets
+      # =========================================================
+      # ⚡ CLEAN BUILD
+      # =========================================================
+      - run: rm -rf dist && mkdir -p dist
 
       # =========================================================
-      # ⚡ BUILD JS + CSS WITH HASHING (IDENTICAL TO PREVIEW)
+      # ⚡ JS (PARALLEL)
       # =========================================================
-      - name: Build assets (hashed)
+      - name: Build JS
         run: |
-          rm -f manifest.txt
-
-          # JS
-          for file in js/*.js; do
-            name=$(basename "$file" .js)
-            hash=$(sha1sum "$file" | cut -c1-8)
-            out="dist/assets/${name}.${hash}.js"
-
-            esbuild "$file" --minify --outfile="$out"
-
-            echo "$file=$out" >> manifest.txt
-          done
-
-          # CSS
-          for file in css/*.css; do
-            name=$(basename "$file" .css)
-            hash=$(sha1sum "$file" | cut -c1-8)
-            out="dist/assets/${name}.${hash}.css"
-
-            esbuild "$file" --minify --outfile="$out"
-
-            echo "$file=$out" >> manifest.txt
-          done
+          mkdir -p dist/js
+          find js -name "*.js" | xargs -P 4 -I {} sh -c '
+            esbuild "{}" --minify --outfile="dist/{}"
+          '
 
       # =========================================================
-      # 🧠 HTML REWRITE (IDENTICAL TO PREVIEW)
+      # ⚡ CSS (PARALLEL)
       # =========================================================
-      - name: Build HTML
+      - name: Build CSS
         run: |
-          for file in *.html; do
-            out="dist/$file"
-            cp "$file" "$out"
+          mkdir -p dist/css
+          find css -name "*.css" | xargs -P 4 -I {} sh -c '
+            esbuild "{}" --minify --outfile="dist/{}"
+          '
 
-            while IFS="=" read -r src dest; do
-              clean=$(echo "$dest" | sed 's|dist/||')
-              sed -i "s|$src|$clean|g" "$out"
-            done < manifest.txt
-
-            # Remove comments
-            sed -i '/<!--.*-->/d' "$out"
-
-            # Compress
-            tr -d '\n' < "$out" > tmp && mv tmp "$out"
-
-            # HTML = NO CACHE
-            sed -i 's|<head>|<head><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">|' "$out"
+      # =========================================================
+      # ⚡ HTML (ZERO PROCESSING)
+      # =========================================================
+      - name: Copy HTML
+        run: |
+          find . -maxdepth 1 -name "*.html" | while read file; do
+            cp "$file" "dist/$(basename "$file")"
           done
 
-      # -----------------------------
-      # Static assets
-      # -----------------------------
+      # =========================================================
+      # ⚡ SMART GAME SYNC (KEY OPTIMIZATION)
+      # =========================================================
+      - name: Detect game changes
+        id: games
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep '^games/'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Sync games (only if changed)
+        if: steps.games.outputs.changed == 'true'
+        run: rsync -a games/ dist/games/
+
+      # =========================================================
+      # ⚡ STATIC ASSETS
+      # =========================================================
       - run: rsync -a imgs/ dist/imgs/
       - run: rsync -a fonts/ dist/fonts/
 
-      # -----------------------------
-      # Root files
-      # -----------------------------
-      - run: |
-          cp 404.html dist/ 2>/dev/null || true
-          cp favicon.ico dist/ 2>/dev/null || true
+      # =========================================================
+      # ⚡ ROOT FILES
+      # =========================================================
+      - run: cp favicon.ico dist/ 2>/dev/null || true
+      - run: cp 404.html dist/ 2>/dev/null || true
 
-      # -----------------------------
-      # Disable Jekyll
-      # -----------------------------
-      - run: touch dist/.nojekyll
+      # =========================================================
+      # ⚡ SPEED BOOST: SKIP SITEMAP WHEN UNCHANGED HTML
+      # =========================================================
+      - name: Detect HTML changes
+        id: html
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep '\.html'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
 
-      # -----------------------------
-      # Sitemap
-      # -----------------------------
       - name: Sitemap
+        if: steps.html.outputs.changed == 'true'
         run: |
           SITE="https://XHunter75.github.io/ExistenceGG75"
 
@@ -130,14 +123,16 @@ jobs:
 
           echo '</urlset>' >> dist/sitemap.xml
 
-      # -----------------------------
-      # Upload
-      # -----------------------------
+      # =========================================================
+      # ⚡ DISABLE JEKYLL
+      # =========================================================
+      - run: touch dist/.nojekyll
+
+      # =========================================================
+      # ⚡ DEPLOY
+      # =========================================================
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      # -----------------------------
-      # Deploy
-      # -----------------------------
       - uses: actions/deploy-pages@v4
