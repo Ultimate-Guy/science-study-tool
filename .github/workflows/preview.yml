@@ -8,6 +8,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  pull-requests: write
 
 concurrency:
   group: "preview-${{ github.head_ref }}"
@@ -15,22 +16,126 @@ concurrency:
 
 jobs:
   preview:
-    uses: ./.github/workflows/build.yml
-
-  deploy:
-    needs: preview
     runs-on: ubuntu-latest
 
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
+      # -----------------------------
+      # Checkout
+      # -----------------------------
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # -----------------------------
+      # Setup Node
+      # -----------------------------
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # -----------------------------
+      # Install esbuild
+      # -----------------------------
+      - run: npm install -g esbuild
+
+      # -----------------------------
+      # Prepare dist
+      # -----------------------------
+      - run: mkdir -p dist/assets
+
+      # =========================================================
+      # ⚡ BUILD JS + CSS WITH HASHING
+      # =========================================================
+      - name: Build assets (hashed)
+        run: |
+          # JS
+          for file in js/*.js; do
+            name=$(basename "$file" .js)
+            hash=$(sha1sum "$file" | cut -c1-8)
+            out="dist/assets/${name}.${hash}.js"
+
+            esbuild "$file" --minify --outfile="$out"
+
+            echo "$file=$out" >> manifest.txt
+          done
+
+          # CSS
+          for file in css/*.css; do
+            name=$(basename "$file" .css)
+            hash=$(sha1sum "$file" | cut -c1-8)
+            out="dist/assets/${name}.${hash}.css"
+
+            esbuild "$file" --minify --outfile="$out"
+
+            echo "$file=$out" >> manifest.txt
+          done
+
+      # =========================================================
+      # 🧠 REWRITE HTML TO USE HASHED FILES
+      # =========================================================
+      - name: Build HTML (rewrite assets)
+        run: |
+          for file in *.html; do
+            out="dist/$file"
+            cp "$file" "$out"
+
+            while IFS="=" read -r src dest; do
+              clean=$(echo "$dest" | sed 's|dist/||')
+              sed -i "s|$src|$clean|g" "$out"
+            done < manifest.txt
+
+            # Remove comments + compress
+            sed -i '/<!--.*-->/d' "$out"
+            tr -d '\n' < "$out" > tmp && mv tmp "$out"
+
+            # HTML should NOT be cached
+            sed -i 's|<head>|<head><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">|' "$out"
+          done
+
+      # -----------------------------
+      # Static assets
+      # -----------------------------
+      - run: rsync -a imgs/ dist/imgs/
+      - run: rsync -a fonts/ dist/fonts/
+
+      # -----------------------------
+      # Root files
+      # -----------------------------
+      - run: |
+          cp 404.html dist/ 2>/dev/null || true
+          cp favicon.ico dist/ 2>/dev/null || true
+
+      # -----------------------------
+      # Disable Jekyll
+      # -----------------------------
+      - run: touch dist/.nojekyll
+
+      # -----------------------------
+      # Upload
+      # -----------------------------
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      - id: deployment
+      # -----------------------------
+      # Deploy preview
+      # -----------------------------
+      - name: Deploy
+        id: deployment
         uses: actions/deploy-pages@v4
         with:
           preview: true
+
+      # -----------------------------
+      # 💬 Comment preview URL
+      # -----------------------------
+      - name: Comment preview
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = "${{ steps.deployment.outputs.page_url }}";
+            github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: `🔥 FINAL BOSS Preview:\n${url}`
+            });
