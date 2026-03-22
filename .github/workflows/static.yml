@@ -19,35 +19,24 @@ jobs:
 
     steps:
       # =========================================================
-      # ⚡ CHECKOUT (FAST)
+      # ⚡ FAST CHECKOUT
       # =========================================================
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 1
+          lfs: false
 
       # =========================================================
-      # ⚡ DETECT CHANGES (CORE OF HYBRID MODE)
-      # =========================================================
-      - name: Detect changes
-        id: changes
-        run: |
-          git diff --name-only HEAD^ HEAD > changed.txt
-          cat changed.txt
-
-          if grep -qE '^games/|^css/|^js/|^imgs/|^fonts/' changed.txt; then
-            echo "full=true" >> $GITHUB_OUTPUT
-          else
-            echo "full=false" >> $GITHUB_OUTPUT
-          fi
-
-      # =========================================================
-      # ⚡ NODE + ESBUILD (ONLY IF NEEDED)
+      # ⚡ NODE
       # =========================================================
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Install build tool
+      # =========================================================
+      # ⚡ ESBUILD ONLY
+      # =========================================================
+      - name: Install esbuild
         run: npm install -g esbuild
 
       # =========================================================
@@ -56,71 +45,65 @@ jobs:
       - run: rm -rf dist && mkdir -p dist
 
       # =========================================================
-      # ⚡ FAST PATH (NO HEAVY FOLDERS CHANGED)
+      # ⚡ JS BUILD
       # =========================================================
-      - name: Fast build (HTML only)
-        if: steps.changes.outputs.full == 'false'
+      - name: Build JS
         run: |
-          echo "FAST MODE"
-
-          find . -maxdepth 1 -name "*.html" | while read file; do
-            cp "$file" "dist/$(basename "$file")"
-          done
-
-          rsync -a imgs/ dist/imgs/
-          rsync -a fonts/ dist/fonts/
-          rsync -a games/ dist/games/
-          rsync -a css/ dist/css/
-          rsync -a js/ dist/js/
-
-      # =========================================================
-      # ⚡ FULL SAFE BUILD (WHEN HEAVY CHANGES DETECTED)
-      # =========================================================
-      - name: Full build (optimized)
-        if: steps.changes.outputs.full == 'true'
-        run: |
-          echo "FULL MODE (games/css/js changed)"
-
-          # JS
           mkdir -p dist/js
-          find js -name "*.js" | xargs -P 4 -I {} sh -c '
+          find js -name "*.js" -print0 | xargs -0 -P 4 -I {} sh -c '
             esbuild "{}" --minify --outfile="dist/{}"
           '
 
-          # CSS
+      # =========================================================
+      # ⚡ CSS BUILD
+      # =========================================================
+      - name: Build CSS
+        run: |
           mkdir -p dist/css
-          find css -name "*.css" | xargs -P 4 -I {} sh -c '
+          find css -name "*.css" -print0 | xargs -0 -P 4 -I {} sh -c '
             esbuild "{}" --minify --outfile="dist/{}"
           '
 
-          # HTML
-          find . -maxdepth 1 -name "*.html" | while read file; do
-            cp "$file" "dist/$(basename "$file")"
-          done
+      # =========================================================
+      # ⚡ HTML COPY
+      # =========================================================
+      - name: Copy HTML
+        run: cp -f *.html dist/ || true
 
-          # Assets
+      # =========================================================
+      # ⚡ GAMES
+      # =========================================================
+      - name: Sync games
+        run: |
+          rsync -a --delete --info=stats2 games/ dist/games/
+
+      # =========================================================
+      # ⚡ ASSETS
+      # =========================================================
+      - name: Sync assets
+        run: |
           rsync -a imgs/ dist/imgs/
           rsync -a fonts/ dist/fonts/
-          rsync -a games/ dist/games/
 
       # =========================================================
       # ⚡ ROOT FILES
       # =========================================================
-      - name: Copy root files
-        run: |
-          cp favicon.ico dist/ 2>/dev/null || true
-          cp 404.html dist/ 2>/dev/null || true
+      - run: cp favicon.ico dist/ 2>/dev/null || true
+      - run: cp 404.html dist/ 2>/dev/null || true
 
       # =========================================================
-      # ⚡ DISABLE JEKYLL
+      # ⚡ NO JEKYLL
       # =========================================================
       - run: touch dist/.nojekyll
 
       # =========================================================
-      # ⚡ DEPLOY
+      # ⚡ ARTIFACT UPLOAD
       # =========================================================
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
+      # =========================================================
+      # ⚡ DEPLOY
+      # =========================================================
       - uses: actions/deploy-pages@v4
