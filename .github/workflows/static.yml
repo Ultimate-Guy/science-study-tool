@@ -17,41 +17,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
       # =========================================================
-      # ⚡ CHECKOUT (FAST + FULL HISTORY FOR CACHE ACCURACY)
+      # ⚡ ULTRA FAST CHECKOUT
       # =========================================================
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 1
 
       # =========================================================
-      # ⚡ NODE TOOLCHAIN
+      # ⚡ NODE (ONLY FOR BUILD IF NEEDED)
       # =========================================================
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - run: npm install -g esbuild
+      - name: Install esbuild (cached by runner layer)
+        run: npm install -g esbuild
 
       # =========================================================
-      # ⚡ CACHE (CORE EDGE MODE SYSTEM)
+      # ⚡ CACHE (REAL EDGE SPEED BOOST)
       # =========================================================
       - name: Restore build cache
         uses: actions/cache@v4
         with:
-          path: |
-            .edge-cache
+          path: .edge-cache
           key: edge-${{ runner.os }}-${{ hashFiles('js/**','css/**') }}
           restore-keys: |
             edge-${{ runner.os }}-
 
       # =========================================================
-      # ⚡ PREP DIST
+      # ⚡ PREP OUTPUT
       # =========================================================
       - name: Prepare dist
         run: |
@@ -60,54 +56,74 @@ jobs:
           mkdir -p .edge-cache
 
       # =========================================================
-      # ⚡ JS (TRUE INCREMENTAL BUILD)
+      # ⚡ SMART CHANGE DETECTION (FAST GIT DIFF)
       # =========================================================
-      - name: Build JS (cached)
+      - name: Detect changes
+        id: changes
         run: |
-          JS_HASH=$(hashFiles js/** || echo "none")
+          git diff --name-only HEAD^ HEAD > changes.txt || true
 
-          if [ -f ".edge-cache/js.hash" ] && [ "$(cat .edge-cache/js.hash)" = "$JS_HASH" ]; then
-            echo "JS unchanged → copying cached build"
-            cp -r .edge-cache/js dist/ || true
+          if grep -q '^js/\|^css/' changes.txt; then
+            echo "frontend=true" >> $GITHUB_OUTPUT
           else
-            echo "JS changed → rebuilding"
+            echo "frontend=false" >> $GITHUB_OUTPUT
+          fi
+
+          if grep -q '^games/' changes.txt; then
+            echo "games=true" >> $GITHUB_OUTPUT
+          else
+            echo "games=false" >> $GITHUB_OUTPUT
+          fi
+
+      # =========================================================
+      # ⚡ JS (CACHED + SKIP WHEN POSSIBLE)
+      # =========================================================
+      - name: JS build or restore
+        run: |
+          if [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
+            echo "JS rebuild"
             esbuild js/*.js --minify --outdir=dist/js
             rm -rf .edge-cache/js
-            cp -r dist/js .edge-cache/ || true
-            echo "$JS_HASH" > .edge-cache/js.hash
+            cp -r dist/js .edge-cache/
+          else
+            echo "JS cache reuse"
+            cp -r .edge-cache/js dist/ || true
           fi
 
       # =========================================================
-      # ⚡ CSS (TRUE INCREMENTAL BUILD)
+      # ⚡ CSS (CACHED + SKIP WHEN POSSIBLE)
       # =========================================================
-      - name: Build CSS (cached)
+      - name: CSS build or restore
         run: |
-          CSS_HASH=$(hashFiles css/** || echo "none")
-
-          if [ -f ".edge-cache/css.hash" ] && [ "$(cat .edge-cache/css.hash)" = "$CSS_HASH" ]; then
-            echo "CSS unchanged → copying cached build"
-            cp -r .edge-cache/css dist/ || true
-          else
-            echo "CSS changed → rebuilding"
+          if [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
+            echo "CSS rebuild"
             esbuild css/*.css --minify --outdir=dist/css
             rm -rf .edge-cache/css
-            cp -r dist/css .edge-cache/ || true
-            echo "$CSS_HASH" > .edge-cache/css.hash
+            cp -r dist/css .edge-cache/
+          else
+            echo "CSS cache reuse"
+            cp -r .edge-cache/css dist/ || true
           fi
 
       # =========================================================
-      # ⚡ HTML (ALWAYS FAST COPY)
+      # ⚡ HTML (INSTANT)
       # =========================================================
-      - name: Copy HTML
+      - name: HTML copy
         run: |
           cp *.html dist/ 2>/dev/null || true
 
       # =========================================================
-      # 🎮 GAMES (NEVER TOUCH UNLESS CHANGED)
+      # 🎮 GAMES (ONLY WHEN CHANGED — BIG SPEED WIN)
       # =========================================================
-      - name: Sync games
+      - name: Games sync
+        if: steps.changes.outputs.games == 'true'
         run: |
           rsync -a games/ dist/games/
+
+      - name: Skip games sync
+        if: steps.changes.outputs.games == 'false'
+        run: |
+          echo "Games unchanged → skipping rsync (major speed boost)"
 
       # =========================================================
       # ⚡ ASSETS (FAST MIRROR COPY)
@@ -126,14 +142,14 @@ jobs:
           touch dist/.nojekyll
 
       # =========================================================
-      # 🧪 VALIDATION (FAILSAFE)
+      # 🧪 VALIDATION (SAFETY NET)
       # =========================================================
-      - name: Validate build
+      - name: Validate
         run: |
           test -f dist/index.html || (echo "Missing index.html" && exit 1)
 
       # =========================================================
-      # 📦 ARTIFACT (FIXES YOUR PREVIOUS ERRORS)
+      # 📦 FIXED GITHUB PAGES ARTIFACT (NO MORE ERRORS)
       # =========================================================
       - uses: actions/upload-pages-artifact@v3
         with:
