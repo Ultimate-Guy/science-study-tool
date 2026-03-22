@@ -1,243 +1,207 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>About Blank Embedder</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<style>
-body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: white; }
-
-header {
-  padding: 20px;
-  font-size: 22px;
-  font-weight: bold;
-  text-align: center;
-  background: #111827;
-}
-
-.controls {
-  display: flex;
-  gap: 10px;
-  padding: 20px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-input {
-  padding: 10px;
-  border-radius: 6px;
-  border: none;
-  width: 200px;
-}
-
-button {
-  padding: 10px 15px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  background: #2563eb;
-  color: white;
-}
-
-button:hover {
-  background: #1d4ed8;
-}
-
-.apps {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 20px;
-  padding: 20px;
-}
-
-.app-card {
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 10px;
-  text-align: center;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.app-card:hover {
-  background: #334155;
-}
-
-.remove {
-  margin-top: 10px;
-  background: #dc2626;
-}
-
-.remove:hover {
-  background: #b91c1c;
-}
-</style>
-</head>
-
-<body>
-
-<header>About Blank Embedder</header>
-
-<div class="controls">
-  <input type="text" id="appName" placeholder="App Name">
-  <input type="text" id="appUrl" placeholder="https://example.com">
-  <button onclick="addApp()">Add App</button>
-</div>
-
-<div class="apps" id="apps"></div>
-
-<script>
-let apps = JSON.parse(localStorage.getItem("workspaceApps")) || [];
-
-function saveApps() {
-  localStorage.setItem("workspaceApps", JSON.stringify(apps));
-}
-
-function renderApps() {
-  const container = document.getElementById("apps");
-  container.innerHTML = "";
-
-  apps.forEach((app, index) => {
-    const card = document.createElement("div");
-    card.className = "app-card";
-
-    card.innerHTML = `
-      <div onclick="openApp('${app.url}')">${app.name}</div>
-      <button class="remove" onclick="removeApp(${index})">Remove</button>
-    `;
-
-    container.appendChild(card);
-  });
-}
-
-function addApp() {
-  const name = document.getElementById("appName").value.trim();
-  let url = document.getElementById("appUrl").value.trim();
-
-  if (!name || !url) return alert("Enter both name and URL.");
-
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = "https://" + url;
-  }
-
-  apps.push({ name, url });
-  saveApps();
-  renderApps();
-
-  document.getElementById("appName").value = "";
-  document.getElementById("appUrl").value = "";
-}
-
-function removeApp(index) {
-  apps.splice(index, 1);
-  saveApps();
-  renderApps();
-}
-
-/* =========================================================
-   🚀 REPLACED OPEN APP SYSTEM (YOUR NEW VERSION, FIXED)
-========================================================= */
-
-let activeWin = null;
-let lastUrl = null;
-
-function openApp(url) {
-  // Reuse existing window if still open
-  if (activeWin && !activeWin.closed) {
-    loadInWindow(activeWin, url);
-    return;
-  }
-
-  const win = window.open("about:blank", "_blank");
-
-  if (!win) {
-    alert("Popup blocked. Please allow popups.");
-    return;
-  }
-
-  activeWin = win;
-
-  win.document.write(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dashboard</title>
-
-    <link rel="icon" type="image/png" href="/imgs/canvas.png">
-    <link rel="shortcut icon" type="image/png" href="/imgs/canvas.png">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <title id="tab-title">Dashboard</title>
+    <link id="tab-icon" rel="icon" type="image/png" href="https://du11hjcvhe62z.cloudfront.net">
     <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-            background: #000;
-        }
+        :root { --bg: #f5f5f5; --header: #24292e; --text: #ffffff; --accent: #e00122; --card: #ffffff; --border: #d1d1d1; --card-text: #2d3b45; }
+        [data-theme="drive"] { --bg: #f7f9fc; --header: #ffffff; --text: #1f1f1f; --accent: #1a73e8; --card: #ffffff; --border: #e0e0e0; --card-text: #1f1f1f; }
+        [data-theme="dark"] { --bg: #0f172a; --header: #111827; --text: #ffffff; --accent: #3b82f6; --card: #1e293b; --border: #334155; --card-text: #ffffff; }
 
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
+        body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; min-height: 100vh; }
+        header { padding: 12px 20px; background: var(--header); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+        .logo { font-weight: 600; color: var(--accent); font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
+        
+        .setup-area { display: flex; flex-direction: column; gap: 10px; padding: 20px; background: rgba(0,0,0,0.05); border-bottom: 1px solid var(--border); color: var(--card-text); }
+        .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        
+        input, select, textarea { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: #000; }
+        button { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; background: var(--accent); color: white; font-weight: bold; transition: 0.2s; }
+        button:hover { opacity: 0.8; }
+        .bulk-btn { background: #6b7280; }
+
+        #bulkModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 100; border: 1px solid var(--border); width: 300px; }
+        #bulkModal textarea { width: 100%; height: 150px; margin-bottom: 10px; box-sizing: border-box; }
+
+        .category-section { padding: 10px 20px; }
+        .category-title { font-size: 0.9rem; font-weight: bold; margin: 25px 0 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; display: block; border-bottom: 1px solid var(--border); }
+        .recent-title { color: #888; border-bottom: 1px dashed #888; }
+        
+        .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .app-card { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 12px; color: var(--card-text); transition: 0.2s; }
+        .app-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .app-icon { width: 32px; height: 32px; border-radius: 4px; pointer-events: none; }
+        .app-info { flex: 1; overflow: hidden; pointer-events: none; }
+        .app-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .delete-btn { font-size: 18px; color: #ff4d4d; cursor: pointer; padding: 5px; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
-<body></body>
-</html>
-  `);
+<body data-theme="canvas">
 
-  win.document.close();
-  win.document.title = "Dashboard";
+<header>
+    <div class="logo"><img id="header-img" src="https://du11hjcvhe62z.cloudfront.net" width="24"> <span id="header-text">Canvas</span></div>
+    <select id="cloakSelect" onchange="applyTheme(this.value)">
+        <option value="canvas">Cloak: Canvas</option>
+        <option value="drive">Cloak: Google Drive</option>
+        <option value="dark">Cloak: Dark Mode</option>
+    </select>
+</header>
 
-  loadInWindow(win, url);
-}
+<div class="setup-area">
+    <div class="row">
+        <input type="text" id="appName" placeholder="App Name">
+        <input type="text" id="appUrl" placeholder="URL (e.g. discord.com)">
+        <input type="text" id="appCat" placeholder="Category">
+        <button onclick="addApp()">+ Add</button>
+        <button class="bulk-btn" onclick="toggleBulk()">Bulk Import</button>
+    </div>
+    <div class="row" style="font-size: 0.85rem; opacity: 0.8;">
+        <span>Panic Key: <input type="text" id="panicKey" placeholder="-" style="width:30px; text-align:center;" oninput="savePanic()"></span>
+        <span>Redirect: <input type="text" id="panicLink" placeholder="google.com" oninput="savePanic()"></span>
+    </div>
+</div>
 
-/* =========================================================
-   CORE LOADER (FIXED + SAFE)
-========================================================= */
+<div id="bulkModal">
+    <h3 style="margin-top:0; color:var(--card-text);">Bulk Import</h3>
+    <p style="font-size:11px; color:#666;">Paste URLs (one per line):</p>
+    <textarea id="bulkInput" placeholder="google.com&#10;youtube.com"></textarea>
+    <div class="row">
+        <button onclick="importBulk()">Import</button>
+        <button class="bulk-btn" onclick="toggleBulk()">Cancel</button>
+    </div>
+</div>
 
-function loadInWindow(win, url) {
-  lastUrl = url;
+<div id="categories-container" class="category-section"></div>
 
-  const iframe = win.document.createElement("iframe");
+<script>
+    let apps = JSON.parse(localStorage.getItem("workspaceApps")) || [];
+    let recentApps = JSON.parse(localStorage.getItem("recentApps")) || [];
 
-  iframe.src = "about:blank";
+    function applyTheme(type) {
+        document.body.setAttribute("data-theme", type);
+        const title = document.getElementById("tab-title"), icon = document.getElementById("tab-icon");
+        const logoText = document.getElementById("header-text"), logoImg = document.getElementById("header-img");
+        if (type === "canvas") {
+            title.innerText = "Dashboard"; logoText.innerText = "Canvas";
+            logoImg.src = icon.href = "https://du11hjcvhe62z.cloudfront.net";
+        } else if (type === "drive") {
+            title.innerText = "My Drive - Google Drive"; logoText.innerText = "Google Drive";
+            logoImg.src = icon.href = "https://ssl.gstatic.com";
+        }
+        localStorage.setItem("preferredTheme", type);
+    }
 
-  iframe.onload = () => {
-    iframe.src = url;
+    function savePanic() {
+        localStorage.setItem("panicKey", document.getElementById("panicKey").value);
+        localStorage.setItem("panicLink", document.getElementById("panicLink").value);
+    }
 
-    iframe.onload = () => {
-      iframe.style.opacity = "1";
+    window.onkeydown = (e) => {
+        const key = localStorage.getItem("panicKey") || "-";
+        let link = localStorage.getItem("panicLink") || "https://google.com";
+        if (!link.startsWith("http")) link = "https://" + link;
+        if (e.key === key) window.location.replace(link);
     };
-  };
 
-  win.document.body.innerHTML = "";
-  win.document.body.appendChild(iframe);
-}
+    function toggleBulk() {
+        const modal = document.getElementById("bulkModal");
+        modal.style.display = modal.style.display === "block" ? "none" : "block";
+    }
 
-/* =========================================================
-   SESSION RESTORE
-========================================================= */
+    function importBulk() {
+        const input = document.getElementById("bulkInput").value.trim();
+        if (!input) return;
+        const lines = input.split('\n');
+        lines.forEach(line => {
+            let url = line.trim();
+            if (!url) return;
+            if (!url.startsWith("http")) url = "https://" + url;
+            const name = url.replace('https://', '').replace('http://', '').split('.')[0];
+            apps.push({ name: name.charAt(0).toUpperCase() + name.slice(1), url, category: "Imported" });
+        });
+        localStorage.setItem("workspaceApps", JSON.stringify(apps));
+        renderApps();
+        toggleBulk();
+        document.getElementById("bulkInput").value = "";
+    }
 
-window.addEventListener("load", () => {
-  const last = localStorage.getItem("lastAppUrl");
-  if (last) lastUrl = last;
-});
+    function renderApps() {
+        const container = document.getElementById("categories-container");
+        container.innerHTML = "";
+        
+        if (recentApps.length > 0) {
+            const recentDiv = document.createElement("div");
+            recentDiv.innerHTML = `<div class="category-title recent-title">Recently Used</div>`;
+            const recentGrid = document.createElement("div");
+            recentGrid.className = "apps";
+            recentApps.forEach(app => recentGrid.appendChild(createAppCard(app, true)));
+            recentDiv.appendChild(recentGrid);
+            container.appendChild(recentDiv);
+        }
 
-/* SAVE LAST APP */
-setInterval(() => {
-  if (lastUrl) {
-    localStorage.setItem("lastAppUrl", lastUrl);
-  }
-}, 1000);
+        const groups = apps.reduce((acc, app) => {
+            const cat = app.category || "General";
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(app);
+            return acc;
+        }, {});
 
-/* INIT */
-renderApps();
+        for (const cat in groups) {
+            const section = document.createElement("div");
+            section.innerHTML = `<div class="category-title">${cat}</div>`;
+            const appGrid = document.createElement("div");
+            appGrid.className = "apps";
+            groups[cat].forEach(app => appGrid.appendChild(createAppCard(app, false)));
+            section.appendChild(appGrid);
+            container.appendChild(section);
+        }
+    }
 
+    function createAppCard(app, isRecent) {
+        const card = document.createElement("div");
+        card.className = "app-card";
+        card.onclick = () => openApp(app);
+        card.innerHTML = `
+            <img src="https://www.google.com{app.url}&sz=64" class="app-icon">
+            <div class="app-info"><span class="app-name">${app.name}</span></div>
+            ${!isRecent ? `<span class="delete-btn" onclick="event.stopPropagation(); removeApp('${app.name}')">&times;</span>` : ''}
+        `;
+        return card;
+    }
+
+    function addApp() {
+        const name = document.getElementById("appName").value, urlInput = document.getElementById("appUrl").value;
+        const category = document.getElementById("appCat").value || "General";
+        if (!name || !urlInput) return;
+        let url = urlInput.startsWith("http") ? urlInput : "https://" + urlInput;
+        apps.push({ name, url, category });
+        localStorage.setItem("workspaceApps", JSON.stringify(apps));
+        renderApps();
+        document.getElementById("appName").value = "";
+        document.getElementById("appUrl").value = "";
+    }
+
+    function removeApp(name) {
+        apps = apps.filter(a => a.name !== name);
+        recentApps = recentApps.filter(a => a.name !== name);
+        localStorage.setItem("workspaceApps", JSON.stringify(apps));
+        localStorage.setItem("recentApps", JSON.stringify(recentApps));
+        renderApps();
+    }
+
+    function openApp(app) {
+        recentApps = [app, ...recentApps.filter(a => a.name !== app.name)].slice(0, 4);
+        localStorage.setItem("recentApps", JSON.stringify(recentApps));
+        renderApps();
+        const win = window.open("about:blank", "_blank");
+        win.document.write(`<html><body style="margin:0;overflow:hidden;"><iframe src="${app.url}" style="width:100%;height:100vh;border:none;"></iframe></body></html>`);
+        win.document.close();
+    }
+
+    document.getElementById("panicKey").value = localStorage.getItem("panicKey") || "-";
+    document.getElementById("panicLink").value = localStorage.getItem("panicLink") || "google.com";
+    applyTheme(localStorage.getItem("preferredTheme") || "canvas");
+    renderApps();
 </script>
 </body>
 </html>
