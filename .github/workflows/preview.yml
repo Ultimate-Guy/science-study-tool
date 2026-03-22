@@ -33,67 +33,44 @@ jobs:
         with:
           node-version: 22
 
-      # -----------------------------
-      # Install esbuild
-      # -----------------------------
       - run: npm install -g esbuild
 
       # -----------------------------
-      # Prepare dist
+      # Prepare build
       # -----------------------------
-      - run: mkdir -p dist/assets
+      - run: mkdir -p dist
 
-      # =========================================================
-      # ⚡ BUILD JS + CSS WITH HASHING
-      # =========================================================
-      - name: Build assets (hashed)
+      # -----------------------------
+      # Build JS (simple, NO hashing)
+      # -----------------------------
+      - name: Build JS
         run: |
-          # JS
           for file in js/*.js; do
-            name=$(basename "$file" .js)
-            hash=$(sha1sum "$file" | cut -c1-8)
-            out="dist/assets/${name}.${hash}.js"
-
-            esbuild "$file" --minify --outfile="$out"
-
-            echo "$file=$out" >> manifest.txt
+            mkdir -p dist/js
+            esbuild "$file" --minify --outfile="dist/$file"
           done
 
-          # CSS
+      # -----------------------------
+      # Build CSS
+      # -----------------------------
+      - name: Build CSS
+        run: |
           for file in css/*.css; do
-            name=$(basename "$file" .css)
-            hash=$(sha1sum "$file" | cut -c1-8)
-            out="dist/assets/${name}.${hash}.css"
-
-            esbuild "$file" --minify --outfile="$out"
-
-            echo "$file=$out" >> manifest.txt
+            mkdir -p dist/css
+            esbuild "$file" --minify --outfile="dist/$file"
           done
 
-      # =========================================================
-      # 🧠 REWRITE HTML TO USE HASHED FILES
-      # =========================================================
-      - name: Build HTML (rewrite assets)
+      # -----------------------------
+      # HTML
+      # -----------------------------
+      - name: Build HTML
         run: |
           for file in *.html; do
-            out="dist/$file"
-            cp "$file" "$out"
-
-            while IFS="=" read -r src dest; do
-              clean=$(echo "$dest" | sed 's|dist/||')
-              sed -i "s|$src|$clean|g" "$out"
-            done < manifest.txt
-
-            # Remove comments + compress
-            sed -i '/<!--.*-->/d' "$out"
-            tr -d '\n' < "$out" > tmp && mv tmp "$out"
-
-            # HTML should NOT be cached
-            sed -i 's|<head>|<head><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">|' "$out"
+            cp "$file" "dist/$file"
           done
 
       # -----------------------------
-      # Static assets
+      # Assets
       # -----------------------------
       - run: rsync -a imgs/ dist/imgs/
       - run: rsync -a fonts/ dist/fonts/
@@ -102,8 +79,8 @@ jobs:
       # Root files
       # -----------------------------
       - run: |
-          cp 404.html dist/ 2>/dev/null || true
           cp favicon.ico dist/ 2>/dev/null || true
+          cp 404.html dist/ 2>/dev/null || true
 
       # -----------------------------
       # Disable Jekyll
@@ -120,22 +97,20 @@ jobs:
       # -----------------------------
       # Deploy preview
       # -----------------------------
-      - name: Deploy
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
         with:
           preview: true
 
       # -----------------------------
-      # 💬 Comment preview URL
+      # Comment PR link
       # -----------------------------
-      - name: Comment preview
-        uses: actions/github-script@v7
+      - uses: actions/github-script@v7
         with:
           script: |
             const url = "${{ steps.deployment.outputs.page_url }}";
             github.rest.issues.createComment({
               ...context.repo,
               issue_number: context.issue.number,
-              body: `🔥 FINAL BOSS Preview:\n${url}`
+              body: `🚀 Preview ready:\n${url}`
             });
