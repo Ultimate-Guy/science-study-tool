@@ -19,71 +19,68 @@ jobs:
 
     steps:
       # =========================================================
-      # ⚡ FAST CHECKOUT
+      # ⚡ ULTRA FAST CHECKOUT
       # =========================================================
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          lfs: false
 
       # =========================================================
-      # ⚡ NODE
+      # ⚡ DETECT HEAVY CHANGE (KEY OPTIMIZATION)
+      # =========================================================
+      - name: Detect heavy changes
+        id: mode
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep -qE '^games/|^css/|^js/'; then
+            echo "heavy=true" >> $GITHUB_OUTPUT
+          else
+            echo "heavy=false" >> $GITHUB_OUTPUT
+          fi
+
+      # =========================================================
+      # ⚡ NODE + ESBUILD
       # =========================================================
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # =========================================================
-      # ⚡ ESBUILD ONLY
-      # =========================================================
-      - name: Install esbuild
-        run: npm install -g esbuild
+      - run: npm install -g esbuild
 
       # =========================================================
-      # ⚡ CLEAN BUILD FOLDER
+      # ⚡ CLEAN DIST
       # =========================================================
       - run: rm -rf dist && mkdir -p dist
 
       # =========================================================
-      # ⚡ JS BUILD
+      # 🟢 FAST PATH (DEFAULT)
       # =========================================================
-      - name: Build JS
+      - name: Fast build
+        if: steps.mode.outputs.heavy == 'false'
         run: |
-          mkdir -p dist/js
-          find js -name "*.js" -print0 | xargs -0 -P 4 -I {} sh -c '
-            esbuild "{}" --minify --outfile="dist/{}"
-          '
+          echo "FAST MODE (target < 1 min)"
 
-      # =========================================================
-      # ⚡ CSS BUILD
-      # =========================================================
-      - name: Build CSS
-        run: |
-          mkdir -p dist/css
-          find css -name "*.css" -print0 | xargs -0 -P 4 -I {} sh -c '
-            esbuild "{}" --minify --outfile="dist/{}"
-          '
-
-      # =========================================================
-      # ⚡ HTML COPY
-      # =========================================================
-      - name: Copy HTML
-        run: cp -f *.html dist/ || true
-
-      # =========================================================
-      # ⚡ GAMES
-      # =========================================================
-      - name: Sync games
-        run: |
-          rsync -a --delete --info=stats2 games/ dist/games/
-
-      # =========================================================
-      # ⚡ ASSETS
-      # =========================================================
-      - name: Sync assets
-        run: |
+          cp *.html dist/ || true
           rsync -a imgs/ dist/imgs/
           rsync -a fonts/ dist/fonts/
+
+      # =========================================================
+      # 🔴 HEAVY PATH (ONLY WHEN NEEDED)
+      # =========================================================
+      - name: Heavy build
+        if: steps.mode.outputs.heavy == 'true'
+        run: |
+          echo "HEAVY MODE (games/css/js changed)"
+
+          mkdir -p dist/js dist/css
+
+          esbuild js/*.js --minify --outdir=dist/js
+          esbuild css/*.css --minify --outdir=dist/css
+
+          cp *.html dist/ || true
+
+          rsync -a imgs/ dist/imgs/
+          rsync -a fonts/ dist/fonts/
+          rsync -a games/ dist/games/
 
       # =========================================================
       # ⚡ ROOT FILES
@@ -92,18 +89,15 @@ jobs:
       - run: cp 404.html dist/ 2>/dev/null || true
 
       # =========================================================
-      # ⚡ NO JEKYLL
+      # ⚡ STATIC OPTIMIZATION
       # =========================================================
       - run: touch dist/.nojekyll
 
       # =========================================================
-      # ⚡ ARTIFACT UPLOAD
+      # ⚡ DEPLOY
       # =========================================================
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      # =========================================================
-      # ⚡ DEPLOY
-      # =========================================================
       - uses: actions/deploy-pages@v4
