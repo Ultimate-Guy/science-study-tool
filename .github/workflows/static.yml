@@ -19,109 +19,86 @@ jobs:
 
     steps:
       # =========================================================
-      # ⚡ ULTRA FAST CHECKOUT
+      # ⚡ ULTRA MINIMAL CHECKOUT (FASTEST POSSIBLE)
       # =========================================================
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
       # =========================================================
-      # ⚡ NODE (ONLY FOR BUILD IF NEEDED)
+      # ⚡ NODE + ESBUILD (ONLY IF NEEDED)
       # =========================================================
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Install esbuild (cached by runner layer)
+      - name: Install esbuild
         run: npm install -g esbuild
 
       # =========================================================
-      # ⚡ CACHE (REAL EDGE SPEED BOOST)
-      # =========================================================
-      - name: Restore build cache
-        uses: actions/cache@v4
-        with:
-          path: .edge-cache
-          key: edge-${{ runner.os }}-${{ hashFiles('js/**','css/**') }}
-          restore-keys: |
-            edge-${{ runner.os }}-
-
-      # =========================================================
-      # ⚡ PREP OUTPUT
-      # =========================================================
-      - name: Prepare dist
-        run: |
-          rm -rf dist
-          mkdir -p dist/js dist/css dist/imgs dist/fonts dist/games
-          mkdir -p .edge-cache
-
-      # =========================================================
-      # ⚡ SMART CHANGE DETECTION (FAST GIT DIFF)
+      # ⚡ FAST CHANGE DETECTION (NO FILE HASHING)
       # =========================================================
       - name: Detect changes
         id: changes
         run: |
           git diff --name-only HEAD^ HEAD > changes.txt || true
 
-          if grep -q '^js/\|^css/' changes.txt; then
+          if grep -qE '^js/|^css/' changes.txt; then
             echo "frontend=true" >> $GITHUB_OUTPUT
           else
             echo "frontend=false" >> $GITHUB_OUTPUT
           fi
 
-          if grep -q '^games/' changes.txt; then
-            echo "games=true" >> $GITHUB_OUTPUT
-          else
-            echo "games=false" >> $GITHUB_OUTPUT
-          fi
-
       # =========================================================
-      # ⚡ JS (CACHED + SKIP WHEN POSSIBLE)
+      # ⚡ PREP DIST (FAST CLEAN)
       # =========================================================
-      - name: JS build or restore
+      - name: Prepare dist
         run: |
-          if [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
-            echo "JS rebuild"
-            esbuild js/*.js --minify --outdir=dist/js
-            rm -rf .edge-cache/js
-            cp -r dist/js .edge-cache/
-          else
-            echo "JS cache reuse"
-            cp -r .edge-cache/js dist/ || true
-          fi
+          rm -rf dist
+          mkdir -p dist/js dist/css dist/imgs dist/fonts dist/games
 
       # =========================================================
-      # ⚡ CSS (CACHED + SKIP WHEN POSSIBLE)
+      # ⚡ JS (ONLY IF CHANGED)
       # =========================================================
-      - name: CSS build or restore
+      - name: Build JS
+        if: steps.changes.outputs.frontend == 'true'
         run: |
-          if [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
-            echo "CSS rebuild"
-            esbuild css/*.css --minify --outdir=dist/css
-            rm -rf .edge-cache/css
-            cp -r dist/css .edge-cache/
-          else
-            echo "CSS cache reuse"
-            cp -r .edge-cache/css dist/ || true
-          fi
+          esbuild js/*.js --minify --outdir=dist/js
+
+      - name: Restore JS (skip build)
+        if: steps.changes.outputs.frontend != 'true'
+        run: |
+          echo "JS unchanged → copying raw files"
+          cp -r js/* dist/js/ 2>/dev/null || true
 
       # =========================================================
-      # ⚡ HTML (INSTANT)
+      # ⚡ CSS (ONLY IF CHANGED)
       # =========================================================
-      - name: HTML copy
+      - name: Build CSS
+        if: steps.changes.outputs.frontend == 'true'
+        run: |
+          esbuild css/*.css --minify --outdir=dist/css
+
+      - name: Restore CSS (skip build)
+        if: steps.changes.outputs.frontend != 'true'
+        run: |
+          cp -r css/* dist/css/ 2>/dev/null || true
+
+      # =========================================================
+      # ⚡ HTML (ALWAYS FAST COPY)
+      # =========================================================
+      - name: Copy HTML
         run: |
           cp *.html dist/ 2>/dev/null || true
 
       # =========================================================
-      # 🎮 GAMES (FIXED — ALWAYS SAFE, NEVER BREAK SITE)
+      # 🎮 GAMES (CRITICAL FIX: ALWAYS SAFE, NO SKIP LOGIC)
       # =========================================================
-      - name: Games sync
+      - name: Games sync (SAFE FAST COPY)
         run: |
           if [ -d "games" ]; then
-            echo "Syncing games folder"
             rsync -a games/ dist/games/
           else
-            echo "No games folder found, creating empty directory"
             mkdir -p dist/games
           fi
 
@@ -134,7 +111,7 @@ jobs:
           rsync -a fonts/ dist/fonts/ 2>/dev/null || true
 
       # =========================================================
-      # ⚡ FINALIZE
+      # ⚡ FINALIZE (STATIC OPTIMIZED)
       # =========================================================
       - name: Finalize
         run: |
@@ -142,14 +119,14 @@ jobs:
           touch dist/.nojekyll
 
       # =========================================================
-      # 🧪 VALIDATION (SAFETY NET)
+      # 🧪 VALIDATION (FAST FAILSAFE)
       # =========================================================
       - name: Validate
         run: |
           test -f dist/index.html || (echo "Missing index.html" && exit 1)
 
       # =========================================================
-      # 📦 FIXED GITHUB PAGES ARTIFACT (NO MORE ERRORS)
+      # 📦 FIXED GITHUB PAGES ARTIFACT (STABLE DEPLOY)
       # =========================================================
       - uses: actions/upload-pages-artifact@v3
         with:
