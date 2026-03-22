@@ -9,19 +9,28 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: "preview-${{ github.head_ref }}"
+  cancel-in-progress: true
+
 jobs:
   preview:
+    uses: ./.github/workflows/build.yml
+
+  deploy:
+    needs: preview
     runs-on: ubuntu-latest
 
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - uses: actions/checkout@v4
-
-      - run: touch .nojekyll
-
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
-      - uses: actions/deploy-pages@v4
+      - id: deployment
+        uses: actions/deploy-pages@v4
         with:
           preview: true
