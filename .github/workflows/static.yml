@@ -23,23 +23,20 @@ jobs:
       # -----------------------------
       # Checkout
       # -----------------------------
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
       # -----------------------------
-      # Detect changed files
+      # Detect changes
       # -----------------------------
       - name: Detect changes
-        id: changes
         run: |
           git diff --name-only HEAD^ HEAD > changed.txt
-          echo "Changed files:"
           cat changed.txt
 
       # -----------------------------
-      # Restore previous build (HUGE SPEED BOOST)
+      # Restore previous dist
       # -----------------------------
       - name: Restore dist cache
         uses: actions/cache@v4
@@ -52,90 +49,104 @@ jobs:
       # -----------------------------
       # Setup Node
       # -----------------------------
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
       # -----------------------------
-      # Install tools globally (FAST)
+      # Install esbuild (FAST AF)
       # -----------------------------
-      - name: Install tools
-        run: npm install -g html-minifier-terser terser clean-css-cli
+      - name: Install esbuild
+        run: npm install -g esbuild
 
       # -----------------------------
-      # Ensure dist exists
+      # Prepare dist
       # -----------------------------
-      - name: Prepare dist
-        run: mkdir -p dist/css dist/js
+      - run: mkdir -p dist/css dist/js
 
       # =========================================================
-      # 🛡️ ALWAYS COPY GAMES (NO PROCESSING)
+      # 🧠 REMOVE DELETED FILES FROM DIST
       # =========================================================
-      - name: Copy games
-        run: rsync -a --delete games dist/
-
-      # =========================================================
-      # HTML (ONLY changed)
-      # =========================================================
-      - name: Minify HTML (incremental)
+      - name: Remove deleted files
         run: |
-          set -e
-          grep '\.html$' changed.txt | while read file; do
-            echo "Processing $file"
-            html-minifier-terser \
-              --collapse-whitespace \
-              --remove-comments \
-              --minify-css true \
-              --minify-js true \
-              -o "dist/$file" "$file"
+          git diff --name-only --diff-filter=D HEAD^ HEAD | while read file; do
+            echo "Deleting dist/$file"
+            rm -f "dist/$file"
           done || true
 
       # =========================================================
-      # CSS (ONLY changed, parallel)
+      # 🎮 GAMES (ONLY IF CHANGED)
       # =========================================================
-      - name: Minify CSS
+      - name: Sync games (smart)
         run: |
-          grep '^css/.*\.css$' changed.txt | \
-          xargs -r -P 4 -I {} sh -c 'mkdir -p dist/$(dirname {}); cleancss -o dist/{} {}'
+          if grep -q '^games/' changed.txt; then
+            echo "Updating games folder..."
+            rsync -a --delete games/ dist/games/
+          else
+            echo "Games unchanged — skipping"
+          fi
 
       # =========================================================
-      # JS (ONLY changed, parallel)
+      # ⚡ JS (SUPER FAST)
       # =========================================================
-      - name: Minify JS
+      - name: Build JS
         run: |
-          grep '^js/.*\.js$' changed.txt | \
-          xargs -r -P 4 -I {} sh -c 'mkdir -p dist/$(dirname {}); terser {} -c -m -o dist/{}'
+          grep '^js/.*\.js$' changed.txt | while read file; do
+            echo "Building $file"
+            mkdir -p dist/$(dirname $file)
+            esbuild "$file" --minify --outfile="dist/$file"
+          done || true
+
+      # =========================================================
+      # ⚡ CSS (SUPER FAST)
+      # =========================================================
+      - name: Build CSS
+        run: |
+          grep '^css/.*\.css$' changed.txt | while read file; do
+            echo "Building $file"
+            mkdir -p dist/$(dirname $file)
+            esbuild "$file" --minify --outfile="dist/$file"
+          done || true
+
+      # =========================================================
+      # HTML (lightweight minify)
+      # =========================================================
+      - name: Build HTML
+        run: |
+          grep '\.html$' changed.txt | while read file; do
+            echo "Processing $file"
+            mkdir -p dist/$(dirname $file)
+            sed '/<!--.*-->/d' "$file" | tr -d '\n' > "dist/$file"
+          done || true
 
       # -----------------------------
-      # Copy assets if changed
+      # Assets (smart copy)
       # -----------------------------
       - name: Copy assets
         run: |
           if grep -q '^imgs/' changed.txt || grep -q '^fonts/' changed.txt; then
-            echo "Updating assets"
-            rsync -a imgs fonts dist/
+            rsync -a imgs/ dist/imgs/
+            rsync -a fonts/ dist/fonts/
           fi
 
       # -----------------------------
-      # Root files (safe copy)
+      # Root files
       # -----------------------------
-      - name: Copy root files
+      - name: Copy root
         run: |
-          cp favicon.ico dist/ 2>/dev/null || true
-          cp 404.html dist/ 2>/dev/null || true
           cp index.html dist/ 2>/dev/null || true
+          cp 404.html dist/ 2>/dev/null || true
+          cp favicon.ico dist/ 2>/dev/null || true
 
       # -----------------------------
       # Disable Jekyll
       # -----------------------------
-      - name: Disable Jekyll
-        run: touch dist/.nojekyll
+      - run: touch dist/.nojekyll
 
       # -----------------------------
-      # Sitemap (fast)
+      # Sitemap
       # -----------------------------
-      - name: Generate sitemap
+      - name: Sitemap
         run: |
           SITE="https://XHunter75.github.io/ExistenceGG75"
 
@@ -150,24 +161,18 @@ jobs:
           echo '</urlset>' >> dist/sitemap.xml
 
       # -----------------------------
-      # Save cache (updated dist)
+      # Save cache
       # -----------------------------
-      - name: Save dist cache
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: dist
           key: dist-${{ github.sha }}
 
       # -----------------------------
-      # Upload artifact
+      # Upload + Deploy
       # -----------------------------
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      # -----------------------------
-      # Deploy
-      # -----------------------------
-      - name: Deploy
-        uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v4
