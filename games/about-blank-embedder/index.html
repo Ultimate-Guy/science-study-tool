@@ -11,72 +11,52 @@
         header { padding: 12px 20px; background: var(--header); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
         .logo { font-weight: 600; color: var(--accent); font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
         
-        /* Proxy Status Indicator */
-        .proxy-status { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: bold; padding: 6px 12px; border-radius: 20px; background: rgba(0,0,0,0.2); }
-        .status-light { width: 10px; height: 10px; border-radius: 50%; background: #666; transition: 0.3s; }
-        .online { background: #10b981; box-shadow: 0 0 8px #10b981; }
-        .offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
-
         .setup-area { display: none; flex-direction: column; gap: 10px; padding: 20px; background: rgba(0,0,0,0.05); border-bottom: 1px solid var(--border); color: var(--card-text); }
         .setup-area.visible { display: flex; }
         
         .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 5px; align-items: center; }
-        input, select, textarea { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: #000; font-size: 13px; }
+        input, select { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: #000; font-size: 13px; }
         
-        button { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; background: var(--accent); color: white; font-weight: bold; transition: 0.2s; font-size: 13px; }
+        button { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; background: var(--accent); color: white; font-weight: bold; transition: 0.2s; }
         .edit-toggle { background: transparent; border: 1px solid var(--accent); color: var(--accent); font-size: 18px; padding: 4px 10px; }
 
-        .category-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 0 20px; margin: 25px 0 10px; }
+        .category-header { border-bottom: 1px solid var(--border); padding: 0 20px; margin: 25px 0 10px; display: flex; align-items: center; justify-content: space-between; }
         .category-title { font-size: 0.85rem; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
 
-        .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; padding: 0 20px; }
-        .app-card { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 12px; color: var(--card-text); position: relative; }
-        .app-icon { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; }
-        .delete-btn { font-size: 18px; color: #ff4d4d; cursor: pointer; padding: 5px; display: none; margin-left: auto; }
-        .editing .delete-btn { display: flex; }
+        .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; padding: 0 20px; }
+        .app-card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--card-text); transition: 0.3s; position: relative; }
+        .app-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .app-icon { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
+        .delete-btn { position: absolute; top: 5px; right: 5px; color: #ff4d4d; font-size: 18px; display: none; }
+        .editing .delete-btn { display: block; }
     </style>
 </head>
 <body data-theme="canvas">
 
 <header>
     <div class="logo"><img src="/ExistenceGG75/imgs/canvas.png" width="24"> <span>Dashboard</span></div>
-    
-    <div class="proxy-status">
-        <div id="proxyLight" class="status-light"></div>
-        <span id="proxyText">Proxy: Offline</span>
-        <button onclick="checkProxyStatus()" style="background:none; border:1px solid #fff; font-size:10px; padding:2px 5px; margin-left:5px;">Check</button>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <select id="cloakSelect" onchange="applyTheme(this.value)">
+            <option value="canvas">Theme: Canvas</option>
+            <option value="dark">Theme: Dark</option>
+        </select>
+        <button class="edit-toggle" onclick="toggleEditMode()">⚙️</button>
     </div>
-
-    <button class="edit-toggle" onclick="toggleEditMode()">⚙️</button>
 </header>
 
 <div id="setupArea" class="setup-area">
     <div class="row">
         <input type="text" id="appName" placeholder="App Name">
-        <input type="text" id="appUrl" placeholder="URL (example.com)">
+        <input type="text" id="appUrl" placeholder="URL (google.com)">
         <input type="text" id="appCat" placeholder="Category">
-        <select id="proxyEngine">
-            <option value="auto">Auto-Detect Engine</option>
-            <option value="uv">Ultraviolet</option>
-            <option value="sj">Scramjet</option>
-            <option value="rh">Rammerhead</option>
-            <option value="none">No Proxy</option>
-        </select>
-    </div>
-    <div class="row">
-        <label style="font-size: 11px;">Custom Icon: <input type="file" id="appIconFile" accept="image/*"></label>
         <button onclick="addApp()">+ Add App</button>
     </div>
     <div class="row">
-        <input type="text" id="proxyUrlInput" placeholder="Your Codespace URL" style="width: 350px;" oninput="saveProxyUrl()">
+        <input type="text" id="proxyBaseUrl" placeholder="https://xhunter75.github.io" style="width: 450px;" oninput="saveProxyBase()">
         <select id="cloakType">
             <option value="blank">Cloak: about:blank</option>
             <option value="blob">Cloak: Blob URL</option>
         </select>
-    </div>
-    <div class="row" style="font-size: 0.8rem; opacity: 0.8;">
-        <span>Panic Key: <input type="text" id="panicKey" placeholder="-" style="width:30px; text-align:center;" oninput="savePanic()"></span>
-        <span>Redirect: <input type="text" id="panicLink" placeholder="google.com" oninput="savePanic()"></span>
     </div>
 </div>
 
@@ -84,6 +64,7 @@
 
 <script>
     let apps = JSON.parse(localStorage.getItem("workspaceApps")) || [];
+    let recentApps = JSON.parse(localStorage.getItem("recentApps")) || [];
     let isEditing = false;
 
     function toggleEditMode() {
@@ -92,49 +73,17 @@
         document.body.classList.toggle("editing", isEditing);
     }
 
-    function saveProxyUrl() {
-        localStorage.setItem("customProxyUrl", document.getElementById("proxyUrlInput").value);
-        checkProxyStatus();
+    function uvEncode(str) {
+        if (!str) return str;
+        return encodeURIComponent(str.split('').map((char, i) => i % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char).join(''));
     }
 
-    async function checkProxyStatus() {
-        const url = localStorage.getItem("customProxyUrl");
-        if (!url) return;
-        try {
-            await fetch(url, { mode: 'no-cors' });
-            document.getElementById("proxyLight").className = "status-light online";
-            document.getElementById("proxyText").innerText = "Proxy: Online";
-        } catch (e) {
-            document.getElementById("proxyLight").className = "status-light offline";
-            document.getElementById("proxyText").innerText = "Proxy: Offline";
-        }
-    }
-
-    async function addApp() {
+    function addApp() {
         const name = document.getElementById("appName").value, urlInput = document.getElementById("appUrl").value;
-        const category = document.getElementById("appCat").value || "General", iconFile = document.getElementById("appIconFile").files;
-        let engine = document.getElementById("proxyEngine").value;
-
+        const category = document.getElementById("appCat").value || "General";
         if (!name || !urlInput) return;
         let url = urlInput.startsWith("http") ? urlInput : "https://" + urlInput;
-
-        let iconData = null;
-        if (iconFile.length > 0) {
-            iconData = await new Promise(resolve => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.readAsDataURL(iconFile[0]);
-            });
-        }
-
-        if (engine === "auto") {
-            try {
-                const res = await fetch(`https://corsproxy.io{encodeURIComponent(url)}`, { method: 'HEAD' });
-                engine = (res.headers.get("X-Frame-Options")) ? "uv" : "none";
-            } catch (e) { engine = "uv"; }
-        }
-
-        apps.push({ name, url, category, proxy: engine, icon: iconData || `https://www.google.com{url}&sz=64` });
+        apps.push({ name, url, category, icon: `https://www.google.com{url}&sz=64` });
         localStorage.setItem("workspaceApps", JSON.stringify(apps));
         renderApps();
     }
@@ -142,6 +91,20 @@
     function renderApps() {
         const container = document.getElementById("categories-container");
         container.innerHTML = "";
+
+        // Render Recently Used (Top 4)
+        if (recentApps.length > 0) {
+            const rHeader = document.createElement("div");
+            rHeader.className = "category-header";
+            rHeader.innerHTML = `<div class="category-title" style="color:#888;">Recently Used</div>`;
+            const rGrid = document.createElement("div");
+            rGrid.className = "apps";
+            recentApps.forEach(app => rGrid.appendChild(createCard(app)));
+            container.appendChild(rHeader);
+            container.appendChild(rGrid);
+        }
+
+        // Render Categories
         const groups = apps.reduce((acc, app) => {
             const cat = app.category || "General";
             if (!acc[cat]) acc[cat] = [];
@@ -155,28 +118,39 @@
             header.innerHTML = `<div class="category-title">${cat}</div>`;
             const grid = document.createElement("div");
             grid.className = "apps";
-            groups[cat].forEach(app => {
-                const card = document.createElement("div");
-                card.className = "app-card";
-                card.onclick = () => openApp(app);
-                card.innerHTML = `<img src="${app.icon}" class="app-icon"><strong>${app.name}</strong><span class="delete-btn" onclick="event.stopPropagation(); removeApp('${app.name}')">&times;</span>`;
-                grid.appendChild(card);
-            });
+            groups[cat].forEach(app => grid.appendChild(createCard(app)));
             container.appendChild(header);
             container.appendChild(grid);
         });
     }
 
+    function createCard(app) {
+        const card = document.createElement("div");
+        card.className = "app-card";
+        card.onclick = () => openApp(app);
+        card.innerHTML = `
+            <img src="${app.icon}" class="app-icon">
+            <div style="font-weight:600;font-size:0.9rem;">${app.name}</div>
+            <span class="delete-btn" onclick="event.stopPropagation(); removeApp('${app.name}')">&times;</span>
+        `;
+        return card;
+    }
+
     function openApp(app) {
-        const proxyBase = localStorage.getItem("customProxyUrl");
+        // Track Recent
+        recentApps = [app, ...recentApps.filter(a => a.name !== app.name)].slice(0, 4);
+        localStorage.setItem("recentApps", JSON.stringify(recentApps));
+        renderApps();
+
+        const base = localStorage.getItem("uvBaseUrl");
         const cloak = document.getElementById("cloakType").value;
         const icon = "/ExistenceGG75/imgs/canvas.png";
-        let finalUrl = app.url;
+        
+        if (!base) return alert("Please set your UV-Static URL!");
 
-        if (app.proxy !== "none" && proxyBase) {
-            const enginePath = app.proxy === 'uv' ? '/service/' : (app.proxy === 'sj' ? '/main/' : '/proxy/');
-            finalUrl = proxyBase.replace(/\/$/, "") + enginePath + btoa(app.url).replace(/=/g, "");
-        }
+        const encoded = uvEncode(app.url);
+        // Matching the new /Ultraviolet-Static/ prefix
+        const finalUrl = base.replace(/\/$/, "") + "/uv/service/" + encoded;
 
         const html = `<html><head><title>Dashboard</title><link rel="icon" href="${icon}"><style>body,html{margin:0;padding:0;height:100%;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${finalUrl}"></iframe></body></html>`;
 
@@ -191,17 +165,18 @@
 
     function removeApp(name) {
         apps = apps.filter(a => a.name !== name);
+        recentApps = recentApps.filter(a => a.name !== name);
         localStorage.setItem("workspaceApps", JSON.stringify(apps));
+        localStorage.setItem("recentApps", JSON.stringify(recentApps));
         renderApps();
     }
 
-    function savePanic() { localStorage.setItem("panicKey", document.getElementById("panicKey").value); localStorage.setItem("panicLink", document.getElementById("panicLink").value); }
+    function saveProxyBase() { localStorage.setItem("uvBaseUrl", document.getElementById("proxyBaseUrl").value); }
+    function applyTheme(type) { document.body.setAttribute("data-theme", type); localStorage.setItem("preferredTheme", type); }
 
-    document.getElementById("panicKey").value = localStorage.getItem("panicKey") || "-";
-    document.getElementById("panicLink").value = localStorage.getItem("panicLink") || "google.com";
-    document.getElementById("proxyUrlInput").value = localStorage.getItem("customProxyUrl") || "";
+    document.getElementById("proxyBaseUrl").value = localStorage.getItem("uvBaseUrl") || "";
+    applyTheme(localStorage.getItem("preferredTheme") || "canvas");
     renderApps();
-    checkProxyStatus();
 </script>
 </body>
 </html>
