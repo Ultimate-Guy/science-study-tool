@@ -10,35 +10,23 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages-${{ github.ref }}"
+  group: "pages-main2"
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       # =========================================================
-      # ⚡ ULTRA FAST CHECKOUT
+      # ⚡ CHECKOUT
       # =========================================================
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 2
 
       # =========================================================
-      # ⚡ DETECT HEAVY CHANGE (KEY OPTIMIZATION)
-      # =========================================================
-      - name: Detect heavy changes
-        id: mode
-        run: |
-          if git diff --name-only HEAD^ HEAD | grep -qE '^games/|^css/|^js/'; then
-            echo "heavy=true" >> $GITHUB_OUTPUT
-          else
-            echo "heavy=false" >> $GITHUB_OUTPUT
-          fi
-
-      # =========================================================
-      # ⚡ NODE + ESBUILD
+      # ⚡ NODE TOOLING
       # =========================================================
       - uses: actions/setup-node@v4
         with:
@@ -47,57 +35,105 @@ jobs:
       - run: npm install -g esbuild
 
       # =========================================================
-      # ⚡ CLEAN DIST
+      # ⚡ CHANGE DETECTION
+      # =========================================================
+      - name: Detect changes
+        id: changes
+        run: |
+          set +e
+          git diff --name-only HEAD^ HEAD > changes.txt
+
+          if [ $? -ne 0 ]; then
+            echo "full=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if grep -qE '^games/' changes.txt; then
+            echo "games=true" >> $GITHUB_OUTPUT
+          else
+            echo "games=false" >> $GITHUB_OUTPUT
+          fi
+
+          if grep -qE '^css/|^js/|^index.html|^.*\.html$' changes.txt; then
+            echo "core=true" >> $GITHUB_OUTPUT
+          else
+            echo "core=false" >> $GITHUB_OUTPUT
+          fi
+
+      # =========================================================
+      # ⚡ CLEAN BUILD
       # =========================================================
       - run: rm -rf dist && mkdir -p dist
 
       # =========================================================
-      # 🟢 FAST PATH (DEFAULT)
+      # 🧱 FULL FALLBACK
       # =========================================================
-      - name: Fast build
-        if: steps.mode.outputs.heavy == 'false'
+      - name: Full build fallback
+        if: steps.changes.outputs.full == 'true'
         run: |
-          echo "FAST MODE (target < 1 min)"
+          echo "FULL BUILD (safe fallback)"
+
+          mkdir -p dist/js dist/css dist/games dist/imgs dist/fonts
+
+          esbuild js/*.js --minify --outdir=dist/js || true
+          esbuild css/*.css --minify --outdir=dist/css || true
 
           cp *.html dist/ || true
-          rsync -a imgs/ dist/imgs/
-          rsync -a fonts/ dist/fonts/
+          rsync -a games/ dist/games/ || true
+          rsync -a imgs/ dist/imgs/ || true
+          rsync -a fonts/ dist/fonts/ || true
 
       # =========================================================
-      # 🔴 HEAVY PATH (ONLY WHEN NEEDED)
+      # ⚡ CORE ONLY
       # =========================================================
-      - name: Heavy build
-        if: steps.mode.outputs.heavy == 'true'
+      - name: Core build
+        if: steps.changes.outputs.full != 'true'
         run: |
-          echo "HEAVY MODE (games/css/js changed)"
+          mkdir -p dist
 
-          mkdir -p dist/js dist/css
+          if [ "${{ steps.changes.outputs.core }}" = "true" ]; then
+            echo "CORE UPDATED"
+            esbuild js/*.js --minify --outdir=dist/js || true
+            esbuild css/*.css --minify --outdir=dist/css || true
+            cp *.html dist/ || true
+          fi
 
-          esbuild js/*.js --minify --outdir=dist/js
-          esbuild css/*.css --minify --outdir=dist/css
-
-          cp *.html dist/ || true
-
-          rsync -a imgs/ dist/imgs/
-          rsync -a fonts/ dist/fonts/
+      # =========================================================
+      # 🎮 GAMES
+      # =========================================================
+      - name: Games sync
+        if: steps.changes.outputs.games == 'true' && steps.changes.outputs.full != 'true'
+        run: |
+          echo "GAMES UPDATED ONLY"
+          mkdir -p dist/games
           rsync -a games/ dist/games/
 
       # =========================================================
-      # ⚡ ROOT FILES
+      # ⚡ ALWAYS REQUIRED FILES
       # =========================================================
-      - run: cp favicon.ico dist/ 2>/dev/null || true
-      - run: cp 404.html dist/ 2>/dev/null || true
+      - name: Finalize
+        run: |
+          cp favicon.ico dist/ 2>/dev/null || true
+          cp 404.html dist/ 2>/dev/null || true
+          touch dist/.nojekyll
 
       # =========================================================
-      # ⚡ STATIC OPTIMIZATION
+      # ⚠️ HARD VALIDATION
       # =========================================================
-      - run: touch dist/.nojekyll
+      - name: Validate build
+        run: |
+          test -f dist/index.html || (echo "BROKEN BUILD: missing index.html" && exit 1)
 
       # =========================================================
-      # ⚡ DEPLOY
+      # ⚡ SINGLE ARTIFACT ONLY
       # =========================================================
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
       - uses: actions/deploy-pages@v4
