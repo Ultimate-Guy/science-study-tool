@@ -19,109 +19,97 @@ jobs:
 
     steps:
       # =========================================================
-      # ⚡ ULTRA FAST CHECKOUT
+      # ⚡ CHECKOUT (FAST)
       # =========================================================
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 2
 
       # =========================================================
-      # ⚡ NODE + ESBUILD
+      # ⚡ DETECT CHANGES (CORE OF HYBRID MODE)
+      # =========================================================
+      - name: Detect changes
+        id: changes
+        run: |
+          git diff --name-only HEAD^ HEAD > changed.txt
+          cat changed.txt
+
+          if grep -qE '^games/|^css/|^js/|^imgs/|^fonts/' changed.txt; then
+            echo "full=true" >> $GITHUB_OUTPUT
+          else
+            echo "full=false" >> $GITHUB_OUTPUT
+          fi
+
+      # =========================================================
+      # ⚡ NODE + ESBUILD (ONLY IF NEEDED)
       # =========================================================
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - run: npm install -g esbuild
+      - name: Install build tool
+        run: npm install -g esbuild
 
       # =========================================================
-      # ⚡ CLEAN BUILD
+      # ⚡ CLEAN BUILD FOLDER
       # =========================================================
       - run: rm -rf dist && mkdir -p dist
 
       # =========================================================
-      # ⚡ JS (PARALLEL)
+      # ⚡ FAST PATH (NO HEAVY FOLDERS CHANGED)
       # =========================================================
-      - name: Build JS
+      - name: Fast build (HTML only)
+        if: steps.changes.outputs.full == 'false'
         run: |
+          echo "FAST MODE"
+
+          find . -maxdepth 1 -name "*.html" | while read file; do
+            cp "$file" "dist/$(basename "$file")"
+          done
+
+          rsync -a imgs/ dist/imgs/
+          rsync -a fonts/ dist/fonts/
+          rsync -a games/ dist/games/
+          rsync -a css/ dist/css/
+          rsync -a js/ dist/js/
+
+      # =========================================================
+      # ⚡ FULL SAFE BUILD (WHEN HEAVY CHANGES DETECTED)
+      # =========================================================
+      - name: Full build (optimized)
+        if: steps.changes.outputs.full == 'true'
+        run: |
+          echo "FULL MODE (games/css/js changed)"
+
+          # JS
           mkdir -p dist/js
           find js -name "*.js" | xargs -P 4 -I {} sh -c '
             esbuild "{}" --minify --outfile="dist/{}"
           '
 
-      # =========================================================
-      # ⚡ CSS (PARALLEL)
-      # =========================================================
-      - name: Build CSS
-        run: |
+          # CSS
           mkdir -p dist/css
           find css -name "*.css" | xargs -P 4 -I {} sh -c '
             esbuild "{}" --minify --outfile="dist/{}"
           '
 
-      # =========================================================
-      # ⚡ HTML (ZERO PROCESSING)
-      # =========================================================
-      - name: Copy HTML
-        run: |
+          # HTML
           find . -maxdepth 1 -name "*.html" | while read file; do
             cp "$file" "dist/$(basename "$file")"
           done
 
-      # =========================================================
-      # ⚡ SMART GAME SYNC (KEY OPTIMIZATION)
-      # =========================================================
-      - name: Detect game changes
-        id: games
-        run: |
-          if git diff --name-only HEAD^ HEAD | grep '^games/'; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "changed=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Sync games (only if changed)
-        if: steps.games.outputs.changed == 'true'
-        run: rsync -a games/ dist/games/
-
-      # =========================================================
-      # ⚡ STATIC ASSETS
-      # =========================================================
-      - run: rsync -a imgs/ dist/imgs/
-      - run: rsync -a fonts/ dist/fonts/
+          # Assets
+          rsync -a imgs/ dist/imgs/
+          rsync -a fonts/ dist/fonts/
+          rsync -a games/ dist/games/
 
       # =========================================================
       # ⚡ ROOT FILES
       # =========================================================
-      - run: cp favicon.ico dist/ 2>/dev/null || true
-      - run: cp 404.html dist/ 2>/dev/null || true
-
-      # =========================================================
-      # ⚡ SPEED BOOST: SKIP SITEMAP WHEN UNCHANGED HTML
-      # =========================================================
-      - name: Detect HTML changes
-        id: html
+      - name: Copy root files
         run: |
-          if git diff --name-only HEAD^ HEAD | grep '\.html'; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "changed=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Sitemap
-        if: steps.html.outputs.changed == 'true'
-        run: |
-          SITE="https://XHunter75.github.io/ExistenceGG75"
-
-          echo '<?xml version="1.0" encoding="UTF-8"?>' > dist/sitemap.xml
-          echo '<urlset>' >> dist/sitemap.xml
-
-          find dist -name "*.html" | while read file; do
-            clean=${file#dist/}
-            echo "<url><loc>$SITE/$clean</loc></url>" >> dist/sitemap.xml
-          done
-
-          echo '</urlset>' >> dist/sitemap.xml
+          cp favicon.ico dist/ 2>/dev/null || true
+          cp 404.html dist/ 2>/dev/null || true
 
       # =========================================================
       # ⚡ DISABLE JEKYLL
