@@ -24,27 +24,6 @@ jobs:
       # Checkout
       # -----------------------------
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      # -----------------------------
-      # Detect changes
-      # -----------------------------
-      - name: Detect changes
-        run: |
-          git diff --name-only HEAD^ HEAD > changed.txt
-          cat changed.txt
-
-      # -----------------------------
-      # Restore previous dist
-      # -----------------------------
-      - name: Restore dist cache
-        uses: actions/cache@v4
-        with:
-          path: dist
-          key: dist-${{ github.ref }}
-          restore-keys: |
-            dist-
 
       # -----------------------------
       # Setup Node
@@ -54,87 +33,78 @@ jobs:
           node-version: 22
 
       # -----------------------------
-      # Install esbuild (FAST AF)
+      # Install esbuild
       # -----------------------------
-      - name: Install esbuild
-        run: npm install -g esbuild
+      - run: npm install -g esbuild
 
       # -----------------------------
       # Prepare dist
       # -----------------------------
-      - run: mkdir -p dist/css dist/js
+      - run: mkdir -p dist/assets
 
       # =========================================================
-      # 🧠 REMOVE DELETED FILES FROM DIST
+      # ⚡ BUILD JS + CSS WITH HASHING (IDENTICAL TO PREVIEW)
       # =========================================================
-      - name: Remove deleted files
+      - name: Build assets (hashed)
         run: |
-          git diff --name-only --diff-filter=D HEAD^ HEAD | while read file; do
-            echo "Deleting dist/$file"
-            rm -f "dist/$file"
-          done || true
+          rm -f manifest.txt
+
+          # JS
+          for file in js/*.js; do
+            name=$(basename "$file" .js)
+            hash=$(sha1sum "$file" | cut -c1-8)
+            out="dist/assets/${name}.${hash}.js"
+
+            esbuild "$file" --minify --outfile="$out"
+
+            echo "$file=$out" >> manifest.txt
+          done
+
+          # CSS
+          for file in css/*.css; do
+            name=$(basename "$file" .css)
+            hash=$(sha1sum "$file" | cut -c1-8)
+            out="dist/assets/${name}.${hash}.css"
+
+            esbuild "$file" --minify --outfile="$out"
+
+            echo "$file=$out" >> manifest.txt
+          done
 
       # =========================================================
-      # 🎮 GAMES (ONLY IF CHANGED)
-      # =========================================================
-      - name: Sync games (smart)
-        run: |
-          if grep -q '^games/' changed.txt; then
-            echo "Updating games folder..."
-            rsync -a --delete games/ dist/games/
-          else
-            echo "Games unchanged — skipping"
-          fi
-
-      # =========================================================
-      # ⚡ JS (SUPER FAST)
-      # =========================================================
-      - name: Build JS
-        run: |
-          grep '^js/.*\.js$' changed.txt | while read file; do
-            echo "Building $file"
-            mkdir -p dist/$(dirname $file)
-            esbuild "$file" --minify --outfile="dist/$file"
-          done || true
-
-      # =========================================================
-      # ⚡ CSS (SUPER FAST)
-      # =========================================================
-      - name: Build CSS
-        run: |
-          grep '^css/.*\.css$' changed.txt | while read file; do
-            echo "Building $file"
-            mkdir -p dist/$(dirname $file)
-            esbuild "$file" --minify --outfile="dist/$file"
-          done || true
-
-      # =========================================================
-      # HTML (lightweight minify)
+      # 🧠 HTML REWRITE (IDENTICAL TO PREVIEW)
       # =========================================================
       - name: Build HTML
         run: |
-          grep '\.html$' changed.txt | while read file; do
-            echo "Processing $file"
-            mkdir -p dist/$(dirname $file)
-            sed '/<!--.*-->/d' "$file" | tr -d '\n' > "dist/$file"
-          done || true
+          for file in *.html; do
+            out="dist/$file"
+            cp "$file" "$out"
+
+            while IFS="=" read -r src dest; do
+              clean=$(echo "$dest" | sed 's|dist/||')
+              sed -i "s|$src|$clean|g" "$out"
+            done < manifest.txt
+
+            # Remove comments
+            sed -i '/<!--.*-->/d' "$out"
+
+            # Compress
+            tr -d '\n' < "$out" > tmp && mv tmp "$out"
+
+            # HTML = NO CACHE
+            sed -i 's|<head>|<head><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">|' "$out"
+          done
 
       # -----------------------------
-      # Assets (smart copy)
+      # Static assets
       # -----------------------------
-      - name: Copy assets
-        run: |
-          if grep -q '^imgs/' changed.txt || grep -q '^fonts/' changed.txt; then
-            rsync -a imgs/ dist/imgs/
-            rsync -a fonts/ dist/fonts/
-          fi
+      - run: rsync -a imgs/ dist/imgs/
+      - run: rsync -a fonts/ dist/fonts/
 
       # -----------------------------
       # Root files
       # -----------------------------
-      - name: Copy root
-        run: |
-          cp index.html dist/ 2>/dev/null || true
+      - run: |
           cp 404.html dist/ 2>/dev/null || true
           cp favicon.ico dist/ 2>/dev/null || true
 
@@ -161,18 +131,13 @@ jobs:
           echo '</urlset>' >> dist/sitemap.xml
 
       # -----------------------------
-      # Save cache
-      # -----------------------------
-      - uses: actions/cache@v4
-        with:
-          path: dist
-          key: dist-${{ github.sha }}
-
-      # -----------------------------
-      # Upload + Deploy
+      # Upload
       # -----------------------------
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
+      # -----------------------------
+      # Deploy
+      # -----------------------------
       - uses: actions/deploy-pages@v4
