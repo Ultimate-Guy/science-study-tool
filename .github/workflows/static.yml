@@ -113,17 +113,17 @@ jobs:
           cp *.html dist/ 2>/dev/null || true
 
       # =========================================================
-      # 🎮 GAMES (ONLY WHEN CHANGED — BIG SPEED WIN)
+      # 🎮 GAMES (FIXED — ALWAYS SAFE, NEVER BREAK SITE)
       # =========================================================
       - name: Games sync
-        if: steps.changes.outputs.games == 'true'
         run: |
-          rsync -a games/ dist/games/
-
-      - name: Skip games sync
-        if: steps.changes.outputs.games == 'false'
-        run: |
-          echo "Games unchanged → skipping rsync (major speed boost)"
+          if [ -d "games" ]; then
+            echo "Syncing games folder"
+            rsync -a games/ dist/games/
+          else
+            echo "No games folder found, creating empty directory"
+            mkdir -p dist/games
+          fi
 
       # =========================================================
       # ⚡ ASSETS (FAST MIRROR COPY)
