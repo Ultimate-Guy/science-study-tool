@@ -3,12 +3,6 @@ name: Deploy static site
 on:
   push:
     branches: ["main2"]
-    paths:
-      - "**"
-      - "!*.md"
-      - "!LICENSE"
-      - "!package.json"
-      - "!package-lock.json"
 
   workflow_dispatch:
 
@@ -27,7 +21,7 @@ jobs:
 
     steps:
       # -----------------------------
-      # Checkout (fast shallow clone)
+      # Checkout
       # -----------------------------
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,115 +29,102 @@ jobs:
           fetch-depth: 2
 
       # -----------------------------
-      # Detect changes (optional speed gate)
+      # Detect changed files
       # -----------------------------
       - name: Detect changes
         id: changes
         run: |
-          if git diff --quiet HEAD^ HEAD -- \
-            '*.html' '*.css' '*.js' 'imgs/' 'fonts/' 'index.html' 'css/' 'js/'; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Stop if no changes
-        if: steps.changes.outputs.skip == 'true'
-        run: |
-          echo "No relevant changes — skipping deploy."
-          exit 0
+          git diff --name-only HEAD^ HEAD > changed.txt
+          echo "Changed files:"
+          cat changed.txt
 
       # -----------------------------
-      # Setup Pages
+      # Restore previous build (HUGE SPEED BOOST)
       # -----------------------------
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Restore dist cache
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: dist-${{ github.ref }}
+          restore-keys: |
+            dist-
 
       # -----------------------------
-      # Setup Node (latest stable)
+      # Setup Node
       # -----------------------------
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
 
       # -----------------------------
-      # Install tools
+      # Install tools globally (FAST)
       # -----------------------------
       - name: Install tools
-        run: npm install html-minifier-terser terser clean-css-cli
+        run: npm install -g html-minifier-terser terser clean-css-cli
 
       # -----------------------------
-      # Prepare build folder
+      # Ensure dist exists
       # -----------------------------
       - name: Prepare dist
-        run: mkdir -p dist
+        run: mkdir -p dist/css dist/js
 
       # =========================================================
-      # 🛡️ MICRO-IMPROVEMENT: GAMES SAFETY GUARD
+      # 🛡️ ALWAYS COPY GAMES (NO PROCESSING)
       # =========================================================
-      - name: Guard games folder (safety check)
+      - name: Copy games
+        run: rsync -a --delete games dist/
+
+      # =========================================================
+      # HTML (ONLY changed)
+      # =========================================================
+      - name: Minify HTML (incremental)
         run: |
-          echo "Ensuring games folder is never processed by build steps..."
-          if grep -r "games/" .github || grep -r "games/" js css; then
-            echo "Warning: games reference detected (this is OK if intentional)."
-          fi
-
-      # =========================================================
-      # COPY GAMES (UNCHANGED - CRITICAL)
-      # =========================================================
-      - name: Copy games (no processing)
-        run: |
-          rsync -av games dist/
-
-      # =========================================================
-      # CORE SITE BUILD ONLY
-      # =========================================================
-
-      # HTML
-      - name: Minify HTML
-        run: |
-          find . -maxdepth 1 -name "*.html" | while read file; do
-            npx html-minifier-terser \
+          set -e
+          grep '\.html$' changed.txt | while read file; do
+            echo "Processing $file"
+            html-minifier-terser \
               --collapse-whitespace \
               --remove-comments \
               --minify-css true \
               --minify-js true \
-              -o "dist/$(basename "$file")" "$file"
-          done
+              -o "dist/$file" "$file"
+          done || true
 
-      # CSS
+      # =========================================================
+      # CSS (ONLY changed, parallel)
+      # =========================================================
       - name: Minify CSS
         run: |
-          mkdir -p dist/css
-          find css -type f -name "*.css" | while read file; do
-            npx cleancss -o "dist/$file" "$file"
-          done
+          grep '^css/.*\.css$' changed.txt | \
+          xargs -r -P 4 -I {} sh -c 'mkdir -p dist/$(dirname {}); cleancss -o dist/{} {}'
 
-      # JS (core only)
+      # =========================================================
+      # JS (ONLY changed, parallel)
+      # =========================================================
       - name: Minify JS
         run: |
-          mkdir -p dist/js
-          find js -maxdepth 1 -name "*.js" | while read file; do
-            npx terser "$file" -c -m -o "dist/$file"
-          done
+          grep '^js/.*\.js$' changed.txt | \
+          xargs -r -P 4 -I {} sh -c 'mkdir -p dist/$(dirname {}); terser {} -c -m -o dist/{}'
 
       # -----------------------------
-      # Assets
+      # Copy assets if changed
       # -----------------------------
       - name: Copy assets
         run: |
-          rsync -a imgs fonts dist/
+          if grep -q '^imgs/' changed.txt || grep -q '^fonts/' changed.txt; then
+            echo "Updating assets"
+            rsync -a imgs fonts dist/
+          fi
 
       # -----------------------------
-      # Root files
+      # Root files (safe copy)
       # -----------------------------
       - name: Copy root files
         run: |
-          cp favicon.ico dist/ || true
-          cp 404.html dist/ || true
-          cp index.html dist/ || true
+          cp favicon.ico dist/ 2>/dev/null || true
+          cp 404.html dist/ 2>/dev/null || true
+          cp index.html dist/ 2>/dev/null || true
 
       # -----------------------------
       # Disable Jekyll
@@ -152,21 +133,30 @@ jobs:
         run: touch dist/.nojekyll
 
       # -----------------------------
-      # Sitemap (fast dist scan)
+      # Sitemap (fast)
       # -----------------------------
       - name: Generate sitemap
         run: |
           SITE="https://XHunter75.github.io/ExistenceGG75"
 
-          echo '<?xml version="1.0" encoding="UTF-8"?>' > sitemap.xml
-          echo '<urlset>' >> sitemap.xml
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > dist/sitemap.xml
+          echo '<urlset>' >> dist/sitemap.xml
 
           find dist -name "*.html" | while read file; do
             clean=${file#dist/}
-            echo "<url><loc>$SITE/$clean</loc></url>" >> sitemap.xml
+            echo "<url><loc>$SITE/$clean</loc></url>" >> dist/sitemap.xml
           done
 
-          echo '</urlset>' >> sitemap.xml
+          echo '</urlset>' >> dist/sitemap.xml
+
+      # -----------------------------
+      # Save cache (updated dist)
+      # -----------------------------
+      - name: Save dist cache
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: dist-${{ github.sha }}
 
       # -----------------------------
       # Upload artifact
