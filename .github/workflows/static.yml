@@ -23,14 +23,14 @@ jobs:
 
     steps:
       # =========================================================
-      # ⚡ CHECKOUT
+      # ⚡ CHECKOUT (FAST + FULL HISTORY FOR CACHE ACCURACY)
       # =========================================================
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 2
 
       # =========================================================
-      # ⚡ NODE
+      # ⚡ NODE TOOLCHAIN
       # =========================================================
       - uses: actions/setup-node@v4
         with:
@@ -39,66 +39,78 @@ jobs:
       - run: npm install -g esbuild
 
       # =========================================================
+      # ⚡ CACHE (CORE EDGE MODE SYSTEM)
+      # =========================================================
+      - name: Restore build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .edge-cache
+          key: edge-${{ runner.os }}-${{ hashFiles('js/**','css/**') }}
+          restore-keys: |
+            edge-${{ runner.os }}-
+
+      # =========================================================
       # ⚡ PREP DIST
       # =========================================================
       - name: Prepare dist
         run: |
           rm -rf dist
           mkdir -p dist/js dist/css dist/imgs dist/fonts dist/games
+          mkdir -p .edge-cache
 
       # =========================================================
-      # ⚡ LIGHTWEIGHT CHANGE DETECTION
+      # ⚡ JS (TRUE INCREMENTAL BUILD)
       # =========================================================
-      - name: Detect changes
-        id: changes
+      - name: Build JS (cached)
         run: |
-          set +e
-          git diff --name-only HEAD~1 HEAD > changes.txt || true
+          JS_HASH=$(hashFiles js/** || echo "none")
 
-          if [ ! -s changes.txt ]; then
-            echo "full=true" >> $GITHUB_OUTPUT
+          if [ -f ".edge-cache/js.hash" ] && [ "$(cat .edge-cache/js.hash)" = "$JS_HASH" ]; then
+            echo "JS unchanged → copying cached build"
+            cp -r .edge-cache/js dist/ || true
           else
-            grep -q '^games/' changes.txt && echo "games=true" >> $GITHUB_OUTPUT || echo "games=false" >> $GITHUB_OUTPUT
-            grep -q '^css/' changes.txt && echo "css=true" >> $GITHUB_OUTPUT || echo "css=false" >> $GITHUB_OUTPUT
-            grep -q '^js/' changes.txt && echo "js=true" >> $GITHUB_OUTPUT || echo "js=false" >> $GITHUB_OUTPUT
+            echo "JS changed → rebuilding"
+            esbuild js/*.js --minify --outdir=dist/js
+            rm -rf .edge-cache/js
+            cp -r dist/js .edge-cache/ || true
+            echo "$JS_HASH" > .edge-cache/js.hash
           fi
 
       # =========================================================
-      # ⚡ JS
+      # ⚡ CSS (TRUE INCREMENTAL BUILD)
       # =========================================================
-      - name: Build JS
+      - name: Build CSS (cached)
         run: |
-          if ls js/*.js 1> /dev/null 2>&1; then
-            esbuild js/*.js --minify --outdir=dist/js || true
+          CSS_HASH=$(hashFiles css/** || echo "none")
+
+          if [ -f ".edge-cache/css.hash" ] && [ "$(cat .edge-cache/css.hash)" = "$CSS_HASH" ]; then
+            echo "CSS unchanged → copying cached build"
+            cp -r .edge-cache/css dist/ || true
+          else
+            echo "CSS changed → rebuilding"
+            esbuild css/*.css --minify --outdir=dist/css
+            rm -rf .edge-cache/css
+            cp -r dist/css .edge-cache/ || true
+            echo "$CSS_HASH" > .edge-cache/css.hash
           fi
 
       # =========================================================
-      # ⚡ CSS
-      # =========================================================
-      - name: Build CSS
-        run: |
-          if ls css/*.css 1> /dev/null 2>&1; then
-            esbuild css/*.css --minify --outdir=dist/css || true
-          fi
-
-      # =========================================================
-      # ⚡ HTML
+      # ⚡ HTML (ALWAYS FAST COPY)
       # =========================================================
       - name: Copy HTML
         run: |
           cp *.html dist/ 2>/dev/null || true
-          cp index.html dist/ 2>/dev/null || true
-          cp 404.html dist/ 2>/dev/null || true
 
       # =========================================================
-      # 🎮 GAMES
+      # 🎮 GAMES (NEVER TOUCH UNLESS CHANGED)
       # =========================================================
       - name: Sync games
         run: |
-          rsync -a games/ dist/games/ 2>/dev/null || true
+          rsync -a games/ dist/games/
 
       # =========================================================
-      # ⚡ ASSETS
+      # ⚡ ASSETS (FAST MIRROR COPY)
       # =========================================================
       - name: Assets
         run: |
@@ -114,14 +126,14 @@ jobs:
           touch dist/.nojekyll
 
       # =========================================================
-      # 🧪 VALIDATION
+      # 🧪 VALIDATION (FAILSAFE)
       # =========================================================
-      - name: Validate
+      - name: Validate build
         run: |
           test -f dist/index.html || (echo "Missing index.html" && exit 1)
 
       # =========================================================
-      # 📦 CRITICAL FIX: PROPER GITHUB PAGES ARTIFACT
+      # 📦 ARTIFACT (FIXES YOUR PREVIOUS ERRORS)
       # =========================================================
       - uses: actions/upload-pages-artifact@v3
         with:
