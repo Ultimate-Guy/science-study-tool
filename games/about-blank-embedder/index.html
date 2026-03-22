@@ -2,17 +2,16 @@
 <html>
 <head>
     <title id="tab-title">Dashboard</title>
-    <link id="tab-icon" rel="icon" type="image/png" href="https://du11hjcvhe62z.cloudfront.net">
+    <link id="tab-icon" rel="icon" type="image/png" href="/ExistenceGG75/imgs/canvas.png">
     <style>
         :root { --bg: #f5f5f5; --header: #24292e; --text: #ffffff; --accent: #e00122; --card: #ffffff; --border: #d1d1d1; --card-text: #2d3b45; }
-        [data-theme="drive"] { --bg: #f7f9fc; --header: #ffffff; --text: #1f1f1f; --accent: #1a73e8; --card: #ffffff; --border: #e0e0e0; --card-text: #1f1f1f; }
         [data-theme="dark"] { --bg: #0f172a; --header: #111827; --text: #ffffff; --accent: #3b82f6; --card: #1e293b; --border: #334155; --card-text: #ffffff; }
 
         body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; min-height: 100vh; }
         header { padding: 12px 20px; background: var(--header); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
         .logo { font-weight: 600; color: var(--accent); font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
         
-        /* Main Proxy Status */
+        /* Proxy Status Indicator */
         .proxy-status { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: bold; padding: 6px 12px; border-radius: 20px; background: rgba(0,0,0,0.2); }
         .status-light { width: 10px; height: 10px; border-radius: 50%; background: #666; transition: 0.3s; }
         .online { background: #10b981; box-shadow: 0 0 8px #10b981; }
@@ -27,17 +26,11 @@
         button { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; background: var(--accent); color: white; font-weight: bold; transition: 0.2s; font-size: 13px; }
         .edit-toggle { background: transparent; border: 1px solid var(--accent); color: var(--accent); font-size: 18px; padding: 4px 10px; }
 
-        .category-header { border-bottom: 1px solid var(--border); padding: 0 20px; margin: 25px 0 10px; }
+        .category-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 0 20px; margin: 25px 0 10px; }
         .category-title { font-size: 0.85rem; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
 
         .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; padding: 0 20px; }
         .app-card { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 12px; color: var(--card-text); position: relative; }
-        
-        /* App Status Light */
-        .app-status-dot { width: 8px; height: 8px; border-radius: 50%; position: absolute; top: 12px; right: 12px; background: #999; }
-        .app-online { background: #10b981; }
-        .app-offline { background: #ef4444; }
-
         .app-icon { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; }
         .delete-btn { font-size: 18px; color: #ff4d4d; cursor: pointer; padding: 5px; display: none; margin-left: auto; }
         .editing .delete-btn { display: flex; }
@@ -46,21 +39,15 @@
 <body data-theme="canvas">
 
 <header>
-    <div class="logo"><img id="header-img" src="https://du11hjcvhe62z.cloudfront.net" width="24"> <span id="header-text">Canvas</span></div>
+    <div class="logo"><img src="/ExistenceGG75/imgs/canvas.png" width="24"> <span>Dashboard</span></div>
     
     <div class="proxy-status">
         <div id="proxyLight" class="status-light"></div>
         <span id="proxyText">Proxy: Offline</span>
+        <button onclick="checkProxyStatus()" style="background:none; border:1px solid #fff; font-size:10px; padding:2px 5px; margin-left:5px;">Check</button>
     </div>
 
-    <div style="display: flex; gap: 10px; align-items: center;">
-        <select id="cloakSelect" onchange="applyTheme(this.value)">
-            <option value="canvas">Cloak: Canvas</option>
-            <option value="drive">Cloak: Google Drive</option>
-            <option value="dark">Cloak: Dark Mode</option>
-        </select>
-        <button class="edit-toggle" onclick="toggleEditMode()">⚙️</button>
-    </div>
+    <button class="edit-toggle" onclick="toggleEditMode()">⚙️</button>
 </header>
 
 <div id="setupArea" class="setup-area">
@@ -69,22 +56,22 @@
         <input type="text" id="appUrl" placeholder="URL (example.com)">
         <input type="text" id="appCat" placeholder="Category">
         <select id="proxyEngine">
-            <option value="auto">Auto-Detect</option>
-            <option value="none">No Proxy</option>
+            <option value="auto">Auto-Detect Engine</option>
             <option value="uv">Ultraviolet</option>
             <option value="sj">Scramjet</option>
+            <option value="rh">Rammerhead</option>
+            <option value="none">No Proxy</option>
         </select>
     </div>
     <div class="row">
         <label style="font-size: 11px;">Custom Icon: <input type="file" id="appIconFile" accept="image/*"></label>
         <button onclick="addApp()">+ Add App</button>
     </div>
-
     <div class="row">
-        <input type="text" id="proxyUrl" placeholder="Your Codespace URL" style="width: 350px;" oninput="saveProxyUrl()">
-        <select id="openMethod">
-            <option value="blank">Open: about:blank</option>
-            <option value="blob">Open: Blob URL</option>
+        <input type="text" id="proxyUrlInput" placeholder="Your Codespace URL" style="width: 350px;" oninput="saveProxyUrl()">
+        <select id="cloakType">
+            <option value="blank">Cloak: about:blank</option>
+            <option value="blob">Cloak: Blob URL</option>
         </select>
     </div>
     <div class="row" style="font-size: 0.8rem; opacity: 0.8;">
@@ -105,6 +92,11 @@
         document.body.classList.toggle("editing", isEditing);
     }
 
+    function saveProxyUrl() {
+        localStorage.setItem("customProxyUrl", document.getElementById("proxyUrlInput").value);
+        checkProxyStatus();
+    }
+
     async function checkProxyStatus() {
         const url = localStorage.getItem("customProxyUrl");
         if (!url) return;
@@ -118,22 +110,10 @@
         }
     }
 
-    async function checkAppStatus(url, elementId) {
-        const dot = document.getElementById(elementId);
-        try {
-            await fetch(`https://corsproxy.io{encodeURIComponent(url)}`, { method: 'HEAD', mode: 'no-cors' });
-            dot.className = "app-status-dot app-online";
-        } catch (e) {
-            dot.className = "app-status-dot app-offline";
-        }
-    }
-
     async function addApp() {
-        const name = document.getElementById("appName").value;
-        const urlInput = document.getElementById("appUrl").value;
-        const cat = document.getElementById("appCat").value || "General";
-        let eng = document.getElementById("proxyEngine").value;
-        const iconFile = document.getElementById("appIconFile").files;
+        const name = document.getElementById("appName").value, urlInput = document.getElementById("appUrl").value;
+        const category = document.getElementById("appCat").value || "General", iconFile = document.getElementById("appIconFile").files;
+        let engine = document.getElementById("proxyEngine").value;
 
         if (!name || !urlInput) return;
         let url = urlInput.startsWith("http") ? urlInput : "https://" + urlInput;
@@ -147,16 +127,14 @@
             });
         }
 
-        if (eng === "auto") {
+        if (engine === "auto") {
             try {
                 const res = await fetch(`https://corsproxy.io{encodeURIComponent(url)}`, { method: 'HEAD' });
-                const blocked = res.headers.get("X-Frame-Options") || res.headers.get("Content-Security-Policy");
-                eng = blocked ? "uv" : "none";
-            } catch (e) { eng = "uv"; }
+                engine = (res.headers.get("X-Frame-Options")) ? "uv" : "none";
+            } catch (e) { engine = "uv"; }
         }
 
-        const icon = iconData || `https://www.google.com{url}&sz=64`;
-        apps.push({ name, url, category: cat, proxy: eng, icon });
+        apps.push({ name, url, category, proxy: engine, icon: iconData || `https://www.google.com{url}&sz=64` });
         localStorage.setItem("workspaceApps", JSON.stringify(apps));
         renderApps();
     }
@@ -177,19 +155,12 @@
             header.innerHTML = `<div class="category-title">${cat}</div>`;
             const grid = document.createElement("div");
             grid.className = "apps";
-            groups[cat].forEach((app, idx) => {
-                const statusId = `status-${cat}-${idx}`;
+            groups[cat].forEach(app => {
                 const card = document.createElement("div");
                 card.className = "app-card";
                 card.onclick = () => openApp(app);
-                card.innerHTML = `
-                    <div id="${statusId}" class="app-status-dot"></div>
-                    <img src="${app.icon}" class="app-icon">
-                    <span style="font-weight:600;">${app.name}</span>
-                    <span class="delete-btn" onclick="event.stopPropagation(); removeApp('${app.name}')">&times;</span>
-                `;
+                card.innerHTML = `<img src="${app.icon}" class="app-icon"><strong>${app.name}</strong><span class="delete-btn" onclick="event.stopPropagation(); removeApp('${app.name}')">&times;</span>`;
                 grid.appendChild(card);
-                checkAppStatus(app.url, statusId);
             });
             container.appendChild(header);
             container.appendChild(grid);
@@ -198,17 +169,18 @@
 
     function openApp(app) {
         const proxyBase = localStorage.getItem("customProxyUrl");
-        const method = document.getElementById("openMethod").value;
+        const cloak = document.getElementById("cloakType").value;
+        const icon = "/ExistenceGG75/imgs/canvas.png";
         let finalUrl = app.url;
 
         if (app.proxy !== "none" && proxyBase) {
-            // Ultraviolet standard path
-            const enginePath = app.proxy === 'uv' ? '/service/' : '/main/';
+            const enginePath = app.proxy === 'uv' ? '/service/' : (app.proxy === 'sj' ? '/main/' : '/proxy/');
             finalUrl = proxyBase.replace(/\/$/, "") + enginePath + btoa(app.url).replace(/=/g, "");
         }
 
-        const html = `<html><body style="margin:0;"><iframe src="${finalUrl}" style="width:100%;height:100vh;border:none;"></iframe></body></html>`;
-        if (method === "blob") {
+        const html = `<html><head><title>Dashboard</title><link rel="icon" href="${icon}"><style>body,html{margin:0;padding:0;height:100%;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${finalUrl}"></iframe></body></html>`;
+
+        if (cloak === "blob") {
             window.open(URL.createObjectURL(new Blob([html], { type: "text/html" })), "_blank");
         } else {
             const win = window.open("about:blank", "_blank");
@@ -223,14 +195,13 @@
         renderApps();
     }
 
-    function saveProxyUrl() { localStorage.setItem("customProxyUrl", document.getElementById("proxyUrl").value); checkProxyStatus(); }
     function savePanic() { localStorage.setItem("panicKey", document.getElementById("panicKey").value); localStorage.setItem("panicLink", document.getElementById("panicLink").value); }
-    function applyTheme(type) { document.body.setAttribute("data-theme", type); localStorage.setItem("preferredTheme", type); }
 
-    applyTheme(localStorage.getItem("preferredTheme") || "canvas");
+    document.getElementById("panicKey").value = localStorage.getItem("panicKey") || "-";
+    document.getElementById("panicLink").value = localStorage.getItem("panicLink") || "google.com";
+    document.getElementById("proxyUrlInput").value = localStorage.getItem("customProxyUrl") || "";
     renderApps();
     checkProxyStatus();
-    setInterval(checkProxyStatus, 60000);
 </script>
 </body>
 </html>
