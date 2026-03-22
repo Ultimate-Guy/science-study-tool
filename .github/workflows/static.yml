@@ -23,14 +23,14 @@ jobs:
 
     steps:
       # =========================================================
-      # ⚡ CHECKOUT
+      # ⚡ FAST CHECKOUT
       # =========================================================
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
       # =========================================================
-      # ⚡ NODE TOOLING
+      # ⚡ NODE
       # =========================================================
       - uses: actions/setup-node@v4
         with:
@@ -39,7 +39,7 @@ jobs:
       - run: npm install -g esbuild
 
       # =========================================================
-      # ⚡ INIT BUILD
+      # ⚡ CLEAN DIST
       # =========================================================
       - name: Prepare dist
         run: |
@@ -47,90 +47,68 @@ jobs:
           mkdir -p dist/js dist/css dist/imgs dist/fonts dist/games
 
       # =========================================================
-      # 🧠 HASH SYSTEM
+      # ⚡ LIGHTWEIGHT CHANGE DETECTION
       # =========================================================
-      - name: Generate folder hashes
-        id: hash
+      - name: Detect changes (FAST MODE)
+        id: changes
         run: |
-          mkdir -p .cache
+          set +e
+          git diff --name-only HEAD~1 HEAD > changes.txt || true
 
-          hash_folder () {
-            find "$1" -type f -exec sha1sum {} \; 2>/dev/null | sha1sum | cut -d' ' -f1
-          }
+          if [ ! -s changes.txt ]; then
+            echo "full=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
-          JS_HASH=$(hash_folder js)
-          CSS_HASH=$(hash_folder css)
-          GAMES_HASH=$(hash_folder games)
-
-          echo "js=$JS_HASH" >> $GITHUB_OUTPUT
-          echo "css=$CSS_HASH" >> $GITHUB_OUTPUT
-          echo "games=$GAMES_HASH" >> $GITHUB_OUTPUT
-
-          echo "$JS_HASH" > .cache/js.hash
-          echo "$CSS_HASH" > .cache/css.hash
-          echo "$GAMES_HASH" > .cache/games.hash
+          grep -q '^games/' changes.txt && echo "games=true" >> $GITHUB_OUTPUT || echo "games=false" >> $GITHUB_OUTPUT
+          grep -q '^css/' changes.txt && echo "css=true" >> $GITHUB_OUTPUT || echo "css=false" >> $GITHUB_OUTPUT
+          grep -q '^js/' changes.txt && echo "js=true" >> $GITHUB_OUTPUT || echo "js=false" >> $GITHUB_OUTPUT
+          grep -q '\.html$' changes.txt && echo "html=true" >> $GITHUB_OUTPUT || echo "html=false" >> $GITHUB_OUTPUT
 
       # =========================================================
       # ⚡ JS BUILD
       # =========================================================
-      - name: Build JS (incremental)
+      - name: JS build
+        if: steps.changes.outputs.js == 'true' || steps.changes.outputs.full == 'true'
         run: |
-          OLD=$(cat .cache/js.hash 2>/dev/null || echo "")
-          NEW="${{ steps.hash.outputs.js }}"
-
-          if [ "$OLD" != "$NEW" ]; then
-            echo "JS changed → building"
+          echo "Building JS"
+          if ls js/*.js 1> /dev/null 2>&1; then
             esbuild js/*.js --minify --outdir=dist/js || true
-          else
-            echo "JS unchanged → skipping"
-            cp -r js/* dist/js/ 2>/dev/null || true
           fi
 
       # =========================================================
       # ⚡ CSS BUILD
       # =========================================================
-      - name: Build CSS (incremental)
+      - name: CSS build
+        if: steps.changes.outputs.css == 'true' || steps.changes.outputs.full == 'true'
         run: |
-          OLD=$(cat .cache/css.hash 2>/dev/null || echo "")
-          NEW="${{ steps.hash.outputs.css }}"
-
-          if [ "$OLD" != "$NEW" ]; then
-            echo "CSS changed → building"
+          echo "Building CSS"
+          if ls css/*.css 1> /dev/null 2>&1; then
             esbuild css/*.css --minify --outdir=dist/css || true
-          else
-            echo "CSS unchanged → skipping"
-            cp -r css/* dist/css/ 2>/dev/null || true
           fi
 
       # =========================================================
-      # ⚡ GAMES
+      # ⚡ HTML COPY
       # =========================================================
-      - name: Games sync (incremental safe)
-        run: |
-          OLD=$(cat .cache/games.hash 2>/dev/null || echo "")
-          NEW="${{ steps.hash.outputs.games }}"
-
-          if [ "$OLD" != "$NEW" ]; then
-            echo "Games changed → syncing"
-            rsync -a games/ dist/games/ || true
-          else
-            echo "Games unchanged → skipping heavy sync"
-            rsync -a games/ dist/games/ || true
-          fi
-
-      # =========================================================
-      # ⚡ CORE FILES
-      # =========================================================
-      - name: Copy HTML
+      - name: HTML
         run: |
           cp *.html dist/ 2>/dev/null || true
           cp index.html dist/ 2>/dev/null || true
           cp 404.html dist/ 2>/dev/null || true
 
       # =========================================================
+      # 🎮 GAMES
+      # =========================================================
+      - name: Games sync
+        if: steps.changes.outputs.games == 'true' || steps.changes.outputs.full == 'true'
+        run: |
+          echo "Syncing games"
+          rsync -a --delete games/ dist/games/ || true
+
+      # =========================================================
       # ⚡ ASSETS
       # =========================================================
-      - name: Copy assets
+      - name: Assets
         run: |
           rsync -a imgs/ dist/imgs/ 2>/dev/null || true
           rsync -a fonts/ dist/fonts/ 2>/dev/null || true
@@ -138,15 +116,15 @@ jobs:
       # =========================================================
       # ⚡ FINALIZE
       # =========================================================
-      - name: Finalize build
+      - name: Finalize
         run: |
           cp favicon.ico dist/ 2>/dev/null || true
           touch dist/.nojekyll
 
       # =========================================================
-      # 🧪 VALIDATION
+      # 🧪 SAFE VALIDATION
       # =========================================================
-      - name: Validate build
+      - name: Validate
         run: |
           test -f dist/index.html || (echo "Missing index.html" && exit 1)
 
