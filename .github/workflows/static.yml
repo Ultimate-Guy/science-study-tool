@@ -14,16 +14,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.filter.outputs.deploy }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect relevant changes
+        id: filter
+        run: |
+          git diff --name-only HEAD~1 HEAD > changes.txt || true
+
+          if grep -qE '^js/|^css/|^imgs/|^fonts/|^games/|\.html$|^favicon\.ico$' changes.txt; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy=false" >> $GITHUB_OUTPUT
+          fi
+
   build:
+    needs: check
+    if: needs.check.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
 
     steps:
       # =========================================================
-      # ⚡ SPARSE CHECKOUT (HUGE SPEED BOOST FOR 3.8GB REPO)
+      # ⚡ ULTRA FAST CHECKOUT (BIGGEST SPEED BOOST)
       # =========================================================
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          filter: blob:none
           sparse-checkout: |
             *.html
             js
@@ -32,15 +56,15 @@ jobs:
             fonts
             games
             favicon.ico
-          sparse-checkout-cone-mode: true
+          sparse-checkout-cone-mode: false
 
       # =========================================================
-      # ⚡ CHANGE DETECTION (SUPER LIGHT)
+      # ⚡ DETECT FRONTEND CHANGES
       # =========================================================
-      - name: Detect changes
+      - name: Detect frontend changes
         id: changes
         run: |
-          git diff --name-only HEAD^ HEAD > changes.txt || true
+          git diff --name-only HEAD~1 HEAD > changes.txt || true
 
           if grep -qE '^js/|^css/' changes.txt; then
             echo "frontend=true" >> $GITHUB_OUTPUT
@@ -56,71 +80,77 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install esbuild
+      - name: Install esbuild (fast)
         if: steps.changes.outputs.frontend == 'true'
         run: npm install -g esbuild
 
       # =========================================================
-      # ⚡ PREP DIST
+      # ⚡ CLEAN DIST
       # =========================================================
       - name: Prepare dist
         run: |
           rm -rf dist
-          mkdir -p dist
+          mkdir dist
 
       # =========================================================
       # ⚡ JS
       # =========================================================
-      - name: Build JS
-        if: steps.changes.outputs.frontend == 'true'
-        run: esbuild js/*.js --minify --outdir=dist/js
-
-      - name: Copy JS
-        if: steps.changes.outputs.frontend != 'true'
-        run: rsync -a js/ dist/js/ 2>/dev/null || true
+      - name: JS
+        run: |
+          if [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
+            esbuild js/*.js --minify --outdir=dist/js
+          else
+            rsync -a --delete js/ dist/js/
+          fi
 
       # =========================================================
       # ⚡ CSS
       # =========================================================
-      - name: Build CSS
-        if: steps.changes.outputs.frontend == 'true'
-        run: esbuild css/*.css --minify --outdir=dist/css
-
-      - name: Copy CSS
-        if: steps.changes.outputs.frontend != 'true'
-        run: rsync -a css/ dist/css/ 2>/dev/null || true
+      - name: CSS
+        run: |
+          if [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
+            esbuild css/*.css --minify --outdir=dist/css
+          else
+            rsync -a --delete css/ dist/css/
+          fi
 
       # =========================================================
-      # ⚡ STATIC FILES (FAST RSYNC)
+      # ⚡ STATIC FILES
       # =========================================================
-      - name: Copy HTML
+      - name: HTML
         run: rsync -a *.html dist/ 2>/dev/null || true
 
-      - name: Games
-        run: rsync -a --delete games/ dist/games/ 2>/dev/null || true
+      - name: Games (OPTIMIZED COPY)
+        run: |
+          if [ -d "games" ]; then
+            rsync -a --delete --exclude='*.psd' --exclude='*.zip' games/ dist/games/
+          fi
 
       - name: Assets
         run: |
-          rsync -a imgs/ dist/imgs/ 2>/dev/null || true
-          rsync -a fonts/ dist/fonts/ 2>/dev/null || true
+          rsync -a --delete imgs/ dist/imgs/ 2>/dev/null || true
+          rsync -a --delete fonts/ dist/fonts/ 2>/dev/null || true
 
       # =========================================================
-      # ⚡ FINALIZE
+      # ⚡ FINAL CLEAN (REDUCE ARTIFACT SIZE)
       # =========================================================
+      - name: Remove junk files
+        run: |
+          find dist -type f \( -name "*.map" -o -name "*.log" -o -name "*.tmp" \) -delete
+
       - name: Finalize
         run: |
           cp favicon.ico dist/ 2>/dev/null || true
           touch dist/.nojekyll
 
       # =========================================================
-      # 🧪 VALIDATION
+      # 🧪 VALIDATE
       # =========================================================
       - name: Validate
-        run: |
-          test -f dist/index.html || (echo "Missing index.html" && exit 1)
+        run: test -f dist/index.html || exit 1
 
       # =========================================================
-      # 📦 UPLOAD
+      # 📦 UPLOAD (FASTER BECAUSE SMALLER)
       # =========================================================
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -128,6 +158,7 @@ jobs:
 
   deploy:
     needs: build
+    if: needs.check.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
 
     steps:
