@@ -19,24 +19,23 @@ jobs:
 
     steps:
       # =========================================================
-      # ⚡ ULTRA MINIMAL CHECKOUT (FASTEST POSSIBLE)
+      # ⚡ SPARSE CHECKOUT (HUGE SPEED BOOST FOR 3.8GB REPO)
       # =========================================================
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          sparse-checkout: |
+            *.html
+            js
+            css
+            imgs
+            fonts
+            games
+            favicon.ico
+          sparse-checkout-cone-mode: true
 
       # =========================================================
-      # ⚡ NODE + ESBUILD (ONLY IF NEEDED)
-      # =========================================================
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install esbuild
-        run: npm install -g esbuild
-
-      # =========================================================
-      # ⚡ FAST CHANGE DETECTION (NO FILE HASHING)
+      # ⚡ CHANGE DETECTION (SUPER LIGHT)
       # =========================================================
       - name: Detect changes
         id: changes
@@ -50,68 +49,63 @@ jobs:
           fi
 
       # =========================================================
-      # ⚡ PREP DIST (FAST CLEAN)
+      # ⚡ NODE ONLY IF NEEDED
+      # =========================================================
+      - uses: actions/setup-node@v4
+        if: steps.changes.outputs.frontend == 'true'
+        with:
+          node-version: 22
+
+      - name: Install esbuild
+        if: steps.changes.outputs.frontend == 'true'
+        run: npm install -g esbuild
+
+      # =========================================================
+      # ⚡ PREP DIST
       # =========================================================
       - name: Prepare dist
         run: |
           rm -rf dist
-          mkdir -p dist/js dist/css dist/imgs dist/fonts dist/games
+          mkdir -p dist
 
       # =========================================================
-      # ⚡ JS (ONLY IF CHANGED)
+      # ⚡ JS
       # =========================================================
       - name: Build JS
         if: steps.changes.outputs.frontend == 'true'
-        run: |
-          esbuild js/*.js --minify --outdir=dist/js
+        run: esbuild js/*.js --minify --outdir=dist/js
 
-      - name: Restore JS (skip build)
+      - name: Copy JS
         if: steps.changes.outputs.frontend != 'true'
-        run: |
-          echo "JS unchanged → copying raw files"
-          cp -r js/* dist/js/ 2>/dev/null || true
+        run: rsync -a js/ dist/js/ 2>/dev/null || true
 
       # =========================================================
-      # ⚡ CSS (ONLY IF CHANGED)
+      # ⚡ CSS
       # =========================================================
       - name: Build CSS
         if: steps.changes.outputs.frontend == 'true'
-        run: |
-          esbuild css/*.css --minify --outdir=dist/css
+        run: esbuild css/*.css --minify --outdir=dist/css
 
-      - name: Restore CSS (skip build)
+      - name: Copy CSS
         if: steps.changes.outputs.frontend != 'true'
-        run: |
-          cp -r css/* dist/css/ 2>/dev/null || true
+        run: rsync -a css/ dist/css/ 2>/dev/null || true
 
       # =========================================================
-      # ⚡ HTML (ALWAYS FAST COPY)
+      # ⚡ STATIC FILES (FAST RSYNC)
       # =========================================================
       - name: Copy HTML
-        run: |
-          cp *.html dist/ 2>/dev/null || true
+        run: rsync -a *.html dist/ 2>/dev/null || true
 
-      # =========================================================
-      # 🎮 GAMES (CRITICAL FIX: ALWAYS SAFE, NO SKIP LOGIC)
-      # =========================================================
-      - name: Games sync (SAFE FAST COPY)
-        run: |
-          if [ -d "games" ]; then
-            rsync -a games/ dist/games/
-          else
-            mkdir -p dist/games
-          fi
+      - name: Games
+        run: rsync -a --delete games/ dist/games/ 2>/dev/null || true
 
-      # =========================================================
-      # ⚡ ASSETS (FAST MIRROR COPY)
-      # =========================================================
       - name: Assets
         run: |
           rsync -a imgs/ dist/imgs/ 2>/dev/null || true
           rsync -a fonts/ dist/fonts/ 2>/dev/null || true
 
       # =========================================================
-      # ⚡ FINALIZE (STATIC OPTIMIZED)
+      # ⚡ FINALIZE
       # =========================================================
       - name: Finalize
         run: |
@@ -119,14 +113,14 @@ jobs:
           touch dist/.nojekyll
 
       # =========================================================
-      # 🧪 VALIDATION (FAST FAILSAFE)
+      # 🧪 VALIDATION
       # =========================================================
       - name: Validate
         run: |
           test -f dist/index.html || (echo "Missing index.html" && exit 1)
 
       # =========================================================
-      # 📦 FIXED GITHUB PAGES ARTIFACT (STABLE DEPLOY)
+      # 📦 UPLOAD
       # =========================================================
       - uses: actions/upload-pages-artifact@v3
         with:
