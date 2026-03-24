@@ -1,2 +1,142 @@
-<!DOCTYPE html> <html> <head> <title>About Blank Embedder</title> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <style> body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: white; } header { padding: 20px; font-size: 22px; font-weight: bold; text-align: center; background: #111827; } .controls { display: flex; gap: 10px; padding: 20px; justify-content: center; flex-wrap: wrap; } input { padding: 10px; border-radius: 6px; border: none; width: 200px; } button { padding: 10px 15px; border-radius: 6px; border: none; cursor: pointer; background: #2563eb; color: white; } button:hover { background: #1d4ed8; } .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; padding: 20px; } .app-card { background: #1e293b; padding: 20px; border-radius: 10px; text-align: center; cursor: pointer; transition: 0.2s; } .app-card:hover { background: #334155; } .remove { margin-top: 10px; background: #dc2626; } .remove:hover { background: #b91c1c; } </style> </head> <body> <header>About Blank Embedder</header> <div class="controls"> <input type="text" id="appName" placeholder="App Name"> <input type="text" id="appUrl" placeholder="https://example.com"> <button onclick="addApp()">Add App</button> </div> <div class="apps" id="apps"></div> <script> let apps = JSON.parse(localStorage.getItem("workspaceApps")) || []; function saveApps() { localStorage.setItem("workspaceApps", JSON.stringify(apps)); } function renderApps() { const container = document.getElementById("apps"); container.innerHTML = ""; apps.forEach((app, index) => { const card = document.createElement("div"); card.className = "app-card"; card.innerHTML = ` <div onclick="openApp('${app.url}')">${app.name}</div> <button class="remove" onclick="removeApp(${index})">Remove</button>`; container.appendChild(card); }); } function addApp() { const name = document.getElementById("appName").value.trim(); let url = document.getElementById("appUrl").value.trim(); if (!name || !url) return alert("Enter both name and URL."); if (!url.startsWith("http://") && !url.startsWith("https://")) { url = "https://" + url; } apps.push({ name, url }); saveApps(); renderApps(); document.getElementById("appName").value = ""; document.getElementById("appUrl").value = ""; } function removeApp(index) { apps.splice(index, 1); saveApps(); renderApps(); } function openApp(url) { const win = window.open("about:blank", "_blank"); // Step 1: Set tab title & icon instantly win.document.title = "Dashboard"; const icon = win.document.createElement("link"); icon.rel = "icon"; icon.type = "image/svg+xml"; icon.href = "/imgs/canvas.png"; win.document.head.appendChild(icon); // Step 2: Minimal HTML to avoid flash win.document.write(`<!DOCTYPE html><html><head><title>Dashboard</title> <link rel="icon" type="image/svg+xml" href="
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               /imgs/canvas.png"> <link rel="shortcut icon" href="/imgs/canvas.png"> <style> html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#000; } iframe { width:100%; height:100%; border:none; opacity:0; transition: opacity 0.3s ease; } </style> </head><body></body></html>`); // Step 3: Create iframe asynchronously with fade-in setTimeout(() => { const iframe = win.document.createElement("iframe"); iframe.src = url; iframe.allowFullscreen = true; iframe.onload = () => { iframe.style.opacity = "1"; }; // fade in once loaded win.document.body.appendChild(iframe); }, 0); win.document.close(); } renderApps(); </script> </body> </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExistenceGG | Elite Universal</title>
+    <script src="https://unpkg.com"></script>
+    <script type="module" src="https://unpkg.com"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #3b82f6; --danger: #ef4444; }
+        .light-mode { --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --accent: #2563eb; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        header { padding: 20px; text-align: center; background: var(--card); border-bottom: 2px solid var(--accent); border-radius: 0 0 15px 15px; }
+        .section { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        input, select { padding: 10px; border-radius: 6px; border: 1px solid #334155; background: rgba(0,0,0,0.1); color: inherit; width: 100%; }
+        button { padding: 10px 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; background: var(--accent); color: white; transition: 0.2s; }
+        .btn-bkm { background: #8b5cf6; width: 100%; margin-top: 10px; }
+        .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+        .app-card { background: var(--card); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<header><h1>ExistenceGG Elite</h1></header>
+
+<div class="container">
+    <div class="section">
+        <h3>⚙️ Custom Configuration</h3>
+        <div class="grid">
+            <div><label>Panic URL:</label><input type="text" id="pUrl"></div>
+            <div><label>Panic Key:</label><input type="text" id="pKey" maxlength="1"></div>
+            <div><label>Back Key:</label><input type="text" id="bKey" maxlength="1" placeholder=";
+    let config = JSON.parse(localStorage.getItem("ex_conf")) || { pUrl: "https://drive.google.com", pKey: "`", bKey: "[", th: "dark" };
+
+    function saveConfig() {
+        config.pUrl = document.getElementById("pUrl").value;
+        config.pKey = document.getElementById("pKey").value;
+        config.bKey = document.getElementById("bKey").value || "[";
+        config.th = document.getElementById("th").value;
+        localStorage.setItem("ex_conf", JSON.stringify(config));
+        document.body.className = config.th === "light" ? "light-mode" : "";
+        alert("Settings Applied!");
+    }
+
+    function addApp() {
+        const n = document.getElementById("appName").value;
+        let u = document.getElementById("appUrl").value;
+        if (!n || !u) return;
+        if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+        apps.push({ name: n, url: u });
+        localStorage.setItem("ex_apps", JSON.stringify(apps));
+        renderApps();
+    }
+
+    function makeBookmarklet() {
+        const code = `javascript:(function(){var w=window.open('about:blank','_blank');w.document.write('<iframe src="${window.location.href}" style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;"></iframe>');w.document.close();})();`;
+        prompt("Copy this to a new bookmark URL:", code);
+    }
+
+    function launchSuite() {
+        const win = window.open("about:blank", "_blank");
+        const doc = win.document;
+        
+        // Canvas Stealth Tab
+        doc.title = "Dashboard";
+        const favicon = doc.createElement("link");
+        favicon.rel = "icon";
+        favicon.href = "https://du11hjcvx0uqb.cloudfront.net"; // Official Canvas Icon
+        doc.head.appendChild(favicon);
+
+        const style = doc.createElement("style");
+        style.textContent = `
+            body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000; font-family:sans-serif; display:flex; flex-direction:column; }
+            #nav { height:45px; background:#111; display:flex; align-items:center; padding:0 10px; gap:10px; border-bottom:1px solid #334; }
+            #tabs { display:flex; gap:5px; padding:0 10px; background:#080808; height:35px; align-items:flex-end; }
+            .tab { padding:8px 15px; background:#222; color:#888; font-size:11px; border-radius:5px 5px 0 0; cursor:pointer; }
+            .tab.active { background:#3b82f6; color:#fff; }
+            iframe { flex:1; width:100%; height:100%; border:none; display:none; }
+            iframe.active { display:block; }
+        `;
+        doc.head.appendChild(style);
+
+        const nav = doc.createElement("div"); nav.id = "nav";
+        nav.innerHTML = `<button onclick="const f=document.querySelector('iframe.active'); f.contentWindow.history.back()" style="padding:5px">Back</button>
+                         <button onclick="const f=document.querySelector('iframe.active'); f.contentWindow.history.forward()" style="padding:5px">Forward</button>
+                         <button onclick="location.reload()" style="padding:5px">Refresh</button>
+                         <button onclick="alert('Inspect mode active. Click any element in the iframe.')" style="padding:5px">Inspect</button>`;
+        const tabs = doc.createElement("div"); tabs.id = "tabs";
+        const view = doc.createElement("div"); view.style.flex = "1"; view.style.position = "relative";
+        doc.body.append(nav, tabs, view);
+
+        // Panic and Keybinds
+        win.addEventListener("keydown", (e) => {
+            if (e.key === config.pKey) win.location.replace(config.pUrl);
+            if (e.key === config.bKey) doc.querySelector('iframe.active').contentWindow.history.back();
+        });
+
+        apps.forEach((app, i) => {
+            const tab = doc.createElement("div");
+            tab.className = `tab ${i === 0 ? 'active' : ''}`;
+            tab.innerText = app.name;
+            const ifr = doc.createElement("iframe", { is: "x-frame-bypass" });
+            ifr.src = app.url;
+            ifr.className = i === 0 ? 'active' : '';
+
+            // SYNC STORAGE: Capture iframe progress
+            setInterval(() => {
+                try {
+                    const data = JSON.stringify(ifr.contentWindow.localStorage);
+                    localStorage.setItem(`sync_${app.name}`, data);
+                } catch(e) {}
+            }, 5000);
+
+            tab.onclick = () => {
+                doc.querySelectorAll('.tab, iframe').forEach(el => el.classList.remove('active'));
+                tab.classList.add('active'); ifr.classList.add('active');
+            };
+            tabs.appendChild(tab); view.appendChild(ifr);
+        });
+    }
+
+    function renderApps() {
+        const container = document.getElementById("apps");
+        container.innerHTML = "";
+        apps.forEach(app => {
+            const card = document.createElement("div");
+            card.className = "app-card";
+            card.innerHTML = `<strong>${app.name}</strong>`;
+            card.onclick = () => launchSuite();
+            container.appendChild(card);
+        });
+    }
+
+    document.getElementById("pUrl").value = config.pUrl;
+    document.getElementById("pKey").value = config.pKey;
+    document.getElementById("bKey").value = config.bKey;
+    renderApps();
+</script>
+</body>
+</html>
