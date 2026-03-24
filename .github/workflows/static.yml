@@ -14,152 +14,72 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  build-deploy:
     runs-on: ubuntu-latest
-    outputs:
-      should_deploy: ${{ steps.filter.outputs.deploy }}
 
     steps:
+      # ⚡ FAST CHECKOUT
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-
-      - name: Detect relevant changes
-        id: filter
-        run: |
-          git diff --name-only HEAD~1 HEAD > changes.txt || true
-
-          if grep -qE '^js/|^css/|^imgs/|^fonts/|^games/|\.html$|^favicon\.ico$' changes.txt; then
-            echo "deploy=true" >> $GITHUB_OUTPUT
-          else
-            echo "deploy=false" >> $GITHUB_OUTPUT
-          fi
-
-  build:
-    needs: check
-    if: needs.check.outputs.should_deploy == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      # =========================================================
-      # ⚡ ULTRA FAST CHECKOUT (BIGGEST SPEED BOOST)
-      # =========================================================
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
           filter: blob:none
-          sparse-checkout: |
-            *.html
-            js
-            css
-            imgs
-            fonts
-            games
-            favicon.ico
-          sparse-checkout-cone-mode: false
 
-      # =========================================================
-      # ⚡ DETECT FRONTEND CHANGES
-      # =========================================================
-      - name: Detect frontend changes
+      # ⚡ DETECT CHANGES
+      - name: Detect changes
         id: changes
         run: |
           git diff --name-only HEAD~1 HEAD > changes.txt || true
 
-          if grep -qE '^js/|^css/' changes.txt; then
-            echo "frontend=true" >> $GITHUB_OUTPUT
-          else
-            echo "frontend=false" >> $GITHUB_OUTPUT
-          fi
+          grep -qE '^js/|^css/' changes.txt && echo "frontend=true" >> $GITHUB_OUTPUT || echo "frontend=false" >> $GITHUB_OUTPUT
+          grep -qE '^js/|^css/|^imgs/|^fonts/|^games/|\.html$|^favicon\.ico$' changes.txt && echo "deploy=true" >> $GITHUB_OUTPUT || echo "deploy=false" >> $GITHUB_OUTPUT
 
-      # =========================================================
-      # ⚡ NODE ONLY IF NEEDED
-      # =========================================================
-      - uses: actions/setup-node@v4
-        if: steps.changes.outputs.frontend == 'true'
-        with:
-          node-version: 22
+      # ✅ SKIP IF NOTHING CHANGED
+      - name: Stop if no changes
+        if: steps.changes.outputs.deploy != 'true'
+        run: echo "No relevant changes. Skipping."
 
-      - name: Install esbuild (fast)
-        if: steps.changes.outputs.frontend == 'true'
-        run: npm install -g esbuild
-
-      # =========================================================
-      # ⚡ CLEAN DIST
-      # =========================================================
-      - name: Prepare dist
+      # ⚡ BUILD (combined + parallelized)
+      - name: Build site
+        if: steps.changes.outputs.deploy == 'true'
         run: |
           rm -rf dist
-          mkdir dist
+          mkdir -p dist/js dist/css
 
-      # =========================================================
-      # ⚡ JS
-      # =========================================================
-      - name: JS
-        run: |
+          # JS + CSS in parallel
           if [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
-            esbuild js/*.js --minify --outdir=dist/js
+            npx esbuild js/*.js --minify --outdir=dist/js &
+            npx esbuild css/*.css --minify --outdir=dist/css &
+            wait
           else
-            rsync -a --delete js/ dist/js/
+            cp -r js dist/js &
+            cp -r css dist/css &
+            wait
           fi
 
-      # =========================================================
-      # ⚡ CSS
-      # =========================================================
-      - name: CSS
-        run: |
-          if [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
-            esbuild css/*.css --minify --outdir=dist/css
-          else
-            rsync -a --delete css/ dist/css/
-          fi
+          # Static files (fast copy)
+          cp *.html dist/ 2>/dev/null || true
+          cp favicon.ico dist/ 2>/dev/null || true
 
-      # =========================================================
-      # ⚡ STATIC FILES
-      # =========================================================
-      - name: HTML
-        run: rsync -a *.html dist/ 2>/dev/null || true
+          # Large folders (safe full copy)
+          cp -r games dist/games 2>/dev/null || true
+          cp -r imgs dist/imgs 2>/dev/null || true
+          cp -r fonts dist/fonts 2>/dev/null || true
 
-      - name: Games (OPTIMIZED COPY)
-        run: |
-          if [ -d "games" ]; then
-            rsync -a --delete --exclude='*.psd' --exclude='*.zip' games/ dist/games/
-          fi
-
-      - name: Assets
-        run: |
-          rsync -a --delete imgs/ dist/imgs/ 2>/dev/null || true
-          rsync -a --delete fonts/ dist/fonts/ 2>/dev/null || true
-
-      # =========================================================
-      # ⚡ FINAL CLEAN (REDUCE ARTIFACT SIZE)
-      # =========================================================
-      - name: Remove junk files
-        run: |
+          # Cleanup
           find dist -type f \( -name "*.map" -o -name "*.log" -o -name "*.tmp" \) -delete
 
-      - name: Finalize
-        run: |
-          cp favicon.ico dist/ 2>/dev/null || true
           touch dist/.nojekyll
 
-      # =========================================================
       # 🧪 VALIDATE
-      # =========================================================
       - name: Validate
+        if: steps.changes.outputs.deploy == 'true'
         run: test -f dist/index.html || exit 1
 
-      # =========================================================
-      # 📦 UPLOAD (FASTER BECAUSE SMALLER)
-      # =========================================================
+      # 📦 DEPLOY
       - uses: actions/upload-pages-artifact@v3
+        if: steps.changes.outputs.deploy == 'true'
         with:
           path: dist
 
-  deploy:
-    needs: build
-    if: needs.check.outputs.should_deploy == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
       - uses: actions/deploy-pages@v4
+        if: steps.changes.outputs.deploy == 'true'
