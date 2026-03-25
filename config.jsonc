@@ -119,6 +119,11 @@
             "path": "babel-tower",
             "aliases": [],
             "categories": []
+       },
+        "Bad Time Simulator": {
+            "path": "babel-tower",
+            "aliases": [],
+            "categories": []
         },
         "Balatro": {
             "path": "balatro",
