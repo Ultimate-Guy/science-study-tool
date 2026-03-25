@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>FCS | Login</title>
+<link rel="icon" href="https://launchpad.classlink.com">
 
 <style>
 :root {
@@ -16,11 +17,18 @@
   --success: #10b981;
 }
 
+.light-mode {
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #0f172a;
+  --accent: #2563eb;
+}
+
 body, html {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
@@ -43,7 +51,7 @@ body, html {
   flex-direction: column;
 }
 
-/* CLASSLINK STYLE */
+/* 🔥 CLASSLINK STYLE */
 .fcs-wrapper { padding: 25px 30px; }
 
 .fcs-row { margin-bottom: 30px; }
@@ -56,8 +64,8 @@ body, html {
 
 .fcs-grid {
   display: flex;
-  gap: 18px;
   flex-wrap: wrap;
+  gap: 18px;
 }
 
 .fcs-app {
@@ -85,7 +93,7 @@ body, html {
 
 .fcs-icon:hover { transform: scale(1.07); }
 
-/* DASHBOARD */
+/* DASHBOARD + ORIGINAL STYLES KEPT */
 #dashboard { display: none; height: 100vh; overflow-y: auto; }
 
 .dash-header {
@@ -113,9 +121,10 @@ body, html {
 <!-- LOGIN -->
 <div id="login-page">
   <div style="width:300px;text-align:center;">
+    <img src="https://launchpad.classlink.com" style="width:60px;">
     <h2>Fulton County Schools</h2>
-    <input placeholder="Username"><br><br>
-    <input placeholder="Password" type="password"><br><br>
+    <input type="text" placeholder="Username"><br><br>
+    <input type="password" placeholder="Password"><br><br>
     <button onclick="fakeLogin()">Sign In</button>
   </div>
 </div>
@@ -132,10 +141,10 @@ body, html {
   <div class="fcs-wrapper" id="decoy-grid"></div>
 </div>
 
-<!-- DASHBOARD -->
+<!-- DASHBOARD (UNCHANGED LOGIC) -->
 <div id="dashboard">
   <div class="dash-header">
-    <div>Embedder</div>
+    <div>ExistenceGG</div>
   </div>
 
   <div class="container">
@@ -148,30 +157,36 @@ body, html {
 </div>
 
 <script>
-let apps = JSON.parse(localStorage.getItem("apps")) || [];
+let apps = JSON.parse(localStorage.getItem("ex_v11_apps")) || [];
+let config = JSON.parse(localStorage.getItem("ex_v11_conf")) || {
+  pUrl: "https://drive.google.com",
+  pKey: "`",
+  th: "dark"
+};
 
 function fakeLogin() {
   document.getElementById("login-page").style.display = "none";
   document.getElementById("facade").style.display = "flex";
+  document.title = "FCS | Dashboard";
   renderDecoy();
 }
 
-/* CLASSLINK LAYOUT */
+/* 🔥 CLASSLINK LAYOUT */
 function renderDecoy() {
   const layout = [
     {
       title: "Main Apps",
       apps: [
-        { name: "Infinite Campus", icon: "https://img.icons8.com/color/96/school.png" },
+        { name: "Infinite Campus", icon: "https://upload.wikimedia.org/wikipedia/commons/3/3b/Infinite_Campus_logo.png" },
         { name: "Google Drive", icon: "https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" },
-        { name: "Microsoft 365", icon: "https://img.icons8.com/color/96/microsoft.png" },
-        { name: "OneDrive", icon: "https://img.icons8.com/color/96/onedrive.png" }
+        { name: "Microsoft 365", icon: "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" },
+        { name: "OneDrive", icon: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Microsoft_Office_OneDrive_%282019–present%29.svg" }
       ]
     },
     {
       title: "Learning",
       apps: [
-        { name: "Canvas", icon: "https://img.icons8.com/color/96/classroom.png" },
+        { name: "Canvas", icon: "https://du11hjcvx0uqb.cloudfront.net/dist/images/favicon-e10d657a73.ico" },
         { name: "Science", icon: "https://img.icons8.com/color/96/test-tube.png" },
         { name: "Math", icon: "https://img.icons8.com/color/96/calculator.png" },
         { name: "ELA", icon: "https://img.icons8.com/color/96/book.png" }
@@ -204,7 +219,9 @@ function renderDecoy() {
       }
 
       div.innerHTML = `
-        <div class="fcs-icon"><img src="${app.icon}" style="width:55%"></div>
+        <div class="fcs-icon">
+          <img src="${app.icon}" style="width:55%;">
+        </div>
         <div>${app.name}</div>
       `;
 
@@ -216,14 +233,14 @@ function renderDecoy() {
   });
 }
 
-/* APPS */
+/* ORIGINAL APP SYSTEM */
 function addApp() {
   const n = appName.value;
   let u = appUrl.value;
   if (!n || !u) return;
   if (!u.startsWith("http")) u = "https://" + u;
-  apps.push({name:n,url:u});
-  localStorage.setItem("apps", JSON.stringify(apps));
+  apps.push({ name: n, url: u });
+  localStorage.setItem("ex_v11_apps", JSON.stringify(apps));
   renderApps();
 }
 
@@ -240,7 +257,7 @@ function renderApps() {
   });
 }
 
-/* 🔥 PROXY UPDATED HERE */
+/* 🔥 PROXY PATCH ONLY */
 function openApp(i) {
   const app = apps[i];
   const win = window.open("about:blank");
