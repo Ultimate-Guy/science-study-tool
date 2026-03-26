@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,116 +6,71 @@
     <meta name="robots" content="noindex, nofollow">
     <title>FCS | Login</title>
     <link rel="icon" href="https://launchpad.classlink.com">
-    <script src="https://unpkg.com"></script>
-    <script type="module" src="https://unpkg.com"></script>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #3b82f6; --danger: #ef4444; --success: #10b981; }
         .light-mode { --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --accent: #2563eb; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Inter', 'Segoe UI', sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
 
-        /* --- DECOY STAGES --- */
+        /* --- STAGE 1: LOGIN --- */
         #login-page { height: 100vh; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; position: relative; }
-        #facade { display: none; height: 100vh; background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%); flex-direction: column; z-index: 999; }
-        
-        /* --- MAIN DASHBOARD --- */
-        #dashboard { display: none; height: 100vh; padding: 0; overflow-y: auto; box-sizing: border-box; }
+
+        /* --- STAGE 2: REALISTIC CLASSLINK FACADE --- */
+        #facade { 
+            display: none; 
+            height: 100vh; 
+            background: linear-gradient(135deg, #00c6fb 0%, #005bea 100%); /* Blue gradient from image */
+            flex-direction: column; 
+            z-index: 999; 
+        }
+        .fcs-top-bar { height: 50px; background: rgba(0, 77, 153, 0.8); display: flex; align-items: center; padding: 0 20px; color: white; backdrop-filter: blur(10px); }
+        .fcs-grid { 
+            flex: 1; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); 
+            gap: 20px; 
+            padding: 40px; 
+            overflow-y: auto;
+        }
+        .fcs-app { text-align: center; cursor: pointer; color: white; font-size: 12px; font-weight: 500; transition: transform 0.1s; }
+        .fcs-app:active { transform: scale(0.95); }
+        .fcs-icon { 
+            width: 85px; height: 85px; 
+            background: rgba(255, 255, 255, 0.15); 
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 18px; 
+            margin: 0 auto 10px; 
+            display: flex; align-items: center; justify-content: center; 
+            backdrop-filter: blur(8px); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .fcs-icon img { width: 55px; height: 55px; object-fit: contain; }
+
+        /* --- STAGE 3: DASHBOARD --- */
+        #dashboard { display: none; height: 100vh; overflow-y: auto; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: var(--card); border-bottom: 2px solid var(--accent); }
         .settings-trigger { cursor: pointer; font-size: 24px; opacity: 0.7; transition: 0.2s; }
         .settings-trigger:hover { opacity: 1; transform: rotate(45deg); }
-
         .container { max-width: 900px; margin: 40px auto; padding: 0 20px; text-align: center; }
         .input-group { background: var(--card); padding: 25px; border-radius: 15px; display: flex; gap: 10px; margin-bottom: 40px; border: 1px solid rgba(255,255,255,0.1); }
         input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: rgba(0,0,0,0.2); color: inherit; outline: none; }
-        
-        /* --- APP GRID --- */
         .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
         .app-card { background: var(--card); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; }
-        .app-card:hover { transform: translateY(-5px); border-color: var(--accent); }
         .app-card img { width: 48px; height: 48px; border-radius: 10px; margin-bottom: 12px; }
         .card-btns { display: flex; gap: 8px; margin-top: 15px; }
         .card-btns button { flex: 1; padding: 8px; font-size: 12px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
         .btn-open { background: var(--accent); color: white; }
         .btn-rem { background: var(--danger); color: white; }
 
-        /* --- SETTINGS OVERLAY --- */
+        /* --- SETTINGS & OVERLAYS --- */
         #settings-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2000; align-items: center; justify-content: center; }
         .settings-box { background: var(--card); width: 90%; max-width: 600px; padding: 30px; border-radius: 20px; border: 1px solid var(--accent); position: relative; }
         .close-settings { position: absolute; top: 20px; right: 20px; cursor: pointer; font-weight: bold; }
         .settings-section { margin-bottom: 25px; text-align: left; }
         .settings-section label { display: block; font-size: 12px; margin-bottom: 5px; opacity: 0.7; }
-
-        /* --- UTILS --- */
-        .fcs-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 25px; padding: 40px; }
-        .fcs-app { text-align: center; cursor: pointer; color: white; font-size: 11px; font-weight: 600; }
-        .fcs-icon { width: 70px; height: 70px; background: rgba(255,255,255,0.2); border-radius: 12px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; color: white; }
+        button:hover { opacity: 0.8; }
     </style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 </head>
-
 <body>
 
 <!-- STAGE 1: LOGIN -->
@@ -124,76 +78,59 @@
     <div style="width: 300px; text-align: center;">
         <img src="https://launchpad.classlink.com" style="width:60px;">
         <h2 style="font-weight: 400; color: #444;">Fulton County Schools</h2>
-        <input type="text" placeholder="Username" style="width:100%; margin: 10px 0; padding:12px; border:1px solid #ccc; border-radius:4px;">
-        <input type="password" placeholder="Password" style="width:100%; margin: 10px 0; padding:12px; border:1px solid #ccc; border-radius:4px;">
-        <button onclick="fakeLogin()" style="width:100%; padding:12px; background:#004d99; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">Sign In</button>
+        <input type="text" placeholder="Username" style="width:100%; margin: 10px 0; border:1px solid #ccc; color: #000;">
+        <input type="password" placeholder="Password" style="width:100%; margin: 10px 0; border:1px solid #ccc; color: #000;">
+        <button onclick="fakeLogin()" style="width:100%; background:#004d99;">Sign In</button>
     </div>
 </div>
 
-<!-- STAGE 2: FCS DASHBOARD -->
+<!-- STAGE 2: FACADE -->
 <div id="facade">
-    <div style="height:50px; background: rgba(0, 77, 153, 0.9); display:flex; align-items:center; padding:0 20px; color:white;">
-        <div style="font-weight:900;">FCS</div>
-        <div style="flex:1; text-align:center;"><input type="text" placeholder="Search" style="width:40%; background:rgba(255,255,255,0.2); border:none; padding:5px 15px; border-radius:20px; color:white;"></div>
-
+    <div class="fcs-top-bar">
+        <div style="font-weight:900; font-size: 1.2rem;">FCS</div>
+        <div style="flex:1; text-align:center;">
+            <input type="text" placeholder="Search" style="width:40%; background:rgba(255,255,255,0.2); border:none; padding:8px 20px; border-radius:20px; color:white;">
+        </div>
     </div>
     <div class="fcs-grid" id="decoy-grid"></div>
-
-
-
 </div>
 
-<!-- STAGE 3: ABOUT BLANK EMBEDDER -->
+<!-- STAGE 3: DASHBOARD -->
 <div id="dashboard">
     <div class="dash-header">
         <div style="font-weight: 800; font-size: 20px;">ExistenceGG</div>
         <div class="settings-trigger" onclick="toggleSettings(true)">⚙️</div>
     </div>
-
     <div class="container">
-        <h1 style="font-size: 2.5rem; margin-bottom: 10px;">About Blank Embedder</h1>
-        <p style="opacity: 0.6; margin-bottom: 30px;">Add your apps below to launch them in cloaked tabs.</p>
-
+        <h1>About Blank Embedder</h1>
+        <p style="opacity: 0.6;">Add your apps below to launch them in cloaked tabs.</p>
         <div class="input-group">
-            <input type="text" id="appName" placeholder="App Name (e.g. Discord)">
+            <input type="text" id="appName" placeholder="App Name">
             <input type="text" id="appUrl" placeholder="URL (https://...)">
-            <button onclick="addApp()" style="background: var(--accent); color:white; border:none; padding:0 25px; border-radius:8px; cursor:pointer; font-weight:bold;">+ Add App</button>
+            <button onclick="addApp()" style="background: var(--accent);">+ Add App</button>
         </div>
-
         <div class="apps-grid" id="apps"></div>
     </div>
 </div>
 
-<!-- SETTINGS OVERLAY -->
+<!-- SETTINGS -->
 <div id="settings-overlay">
     <div class="settings-box">
         <div class="close-settings" onclick="toggleSettings(false)">✕</div>
-        <h2 style="margin-top:0; border-bottom: 1px solid var(--accent); padding-bottom: 10px;">Settings</h2>
-        
+        <h2>Settings</h2>
         <div class="settings-section">
             <label>Panic Redirect URL</label>
             <input type="text" id="pUrl">
         </div>
-
         <div class="settings-section">
             <label>Panic Key (Trigger)</label>
             <input type="text" id="pKey" maxlength="1">
         </div>
-
         <div class="settings-section">
-            <label>Interface Theme</label>
-            <select id="th" onchange="applyTheme()" style="width:100%; padding:10px; background:#000; color:#fff; border:1px solid #334; border-radius:5px;">
-                <option value="dark">Dark Mode</option>
-                <option value="light">Light Mode</option>
-            </select>
+            <button onclick="floodHistory()" style="background:var(--danger); width:100%; margin-bottom:10px;">🌊 Flood History (School Tabs)</button>
+            <button onclick="cloudSync()" style="background:var(--success); width:100%;">☁️ Cloud Sync System</button>
         </div>
-
-        <div class="settings-section">
-            <button onclick="floodHistory()" style="background:var(--danger); width:100%; margin-bottom:10px;">🌊 Flood History (6 School Tabs)</button>
-            <button onclick="cloudSync()" style="background:var(--success); width:100%;">☁️ Generate Cloud Sync Key</button>
-        </div>
-
-        <button onclick="toggleSettings(false)" style="width:100%; background:#475569; margin-top:10px;">Go Back to Homepage</button>
+        <button onclick="toggleSettings(false)" style="width:100%; background:#475569;">Back to Home</button>
     </div>
 </div>
 
@@ -201,56 +138,20 @@
     let apps = JSON.parse(localStorage.getItem("ex_v11_apps")) || [];
     let config = JSON.parse(localStorage.getItem("ex_v11_conf")) || { pUrl: "https://drive.google.com", pKey: "`", th: "dark" };
 
-    // --- DECOY & FLOW ---
     function fakeLogin() {
         document.getElementById("login-page").style.display = "none";
         document.getElementById("facade").style.display = "flex";
         document.title = "FCS | Dashboard";
         renderDecoy();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     }
 
     function toggleSettings(show) {
         document.getElementById("settings-overlay").style.display = show ? "flex" : "none";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        if(!show) {
+            config.pUrl = document.getElementById("pUrl").value;
+            config.pKey = document.getElementById("pKey").value;
+            localStorage.setItem("ex_v11_conf", JSON.stringify(config));
+        }
     }
 
     window.onkeydown = (e) => {
@@ -263,7 +164,6 @@
         }
     };
 
-    // --- CORE DASHBOARD ---
     function addApp() {
         const n = document.getElementById("appName").value;
         let u = document.getElementById("appUrl").value;
@@ -287,9 +187,10 @@
         grid.innerHTML = "";
         apps.forEach((app, i) => {
             const domain = new URL(app.url).hostname;
+            const icon = `https://www.google.com{domain}&sz=128`;
             grid.innerHTML += `
                 <div class="app-card">
-                    <img src="https://www.google.com{domain}&sz=128">
+                    <img src="${icon}">
                     <div style="font-weight:bold;">${app.name}</div>
                     <div class="card-btns">
                         <button class="btn-open" onclick="openApp(${i})">Open</button>
@@ -302,53 +203,72 @@
     function openApp(i) {
         const app = apps[i];
         const win = window.open("about:blank", "_blank");
+        if (!win) return alert("Popup blocked!");
         const doc = win.document;
         doc.title = "FCS | Dashboard";
         const fav = doc.createElement("link"); fav.rel="icon"; fav.href="https://launchpad.classlink.com";
         doc.head.appendChild(fav);
+        
+        doc.body.style.margin = "0";
+        doc.body.style.height = "100vh";
+        doc.body.style.display = "flex";
+        doc.body.style.flexDirection = "column";
+        doc.body.style.background = "#000";
+        
         doc.body.innerHTML = `
-            <div style="height:100vh;display:flex;flex-direction:column;background:#000;">
-                <div style="height:40px;background:#111;display:flex;align-items:center;padding:0 10px;justify-content:space-between;">
-                    <span style="color:#666;font-size:12px;">Cloaked Session: ${app.name}</span>
-                    <button onclick="window.location.replace('${config.pUrl}')" style="background:#ef4444;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">Panic</button>
-                </div>
-                <iframe src="${app.url}" style="flex:1;border:none;"></iframe>
-            </div>`;
+            <div style="height:40px;background:#111;display:flex;align-items:center;padding:0 15px;justify-content:space-between;border-bottom:1px solid #333;color:#888;font-family:sans-serif;">
+                <span style="font-size:12px;">Cloaked: ${app.name}</span>
+                <button onclick="window.location.replace('${config.pUrl}')" style="background:#ef4444;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">Panic</button>
+            </div>
+            <iframe src="${app.url}" style="flex:1;border:none;width:100%;" allowfullscreen></iframe>`;
+            
         win.addEventListener("keydown", (e) => { if(e.key === config.pKey) win.location.replace(config.pUrl); });
     }
 
-    // --- SETTINGS LOGIC ---
-    function applyTheme() {
-        config.th = document.getElementById("th").value;
-        document.body.className = config.th === "light" ? "light-mode" : "";
-        localStorage.setItem("ex_v11_conf", JSON.stringify(config));
+    function cloudSync() {
+        const key = btoa(JSON.stringify({apps, config}));
+        const input = prompt("SYNC SYSTEM\n\nYour Key (Copy to save):\n" + key + "\n\nPaste a key below to load:");
+        if (input && input !== key) {
+            try {
+                const data = JSON.parse(atob(input));
+                apps = data.apps; config = data.config;
+                localStorage.setItem("ex_v11_apps", JSON.stringify(apps));
+                localStorage.setItem("ex_v11_conf", JSON.stringify(config));
+                location.reload();
+            } catch(e) { alert("Invalid Key!"); }
+        }
     }
 
     function floodHistory() {
-        const links = ["https://myapps.classlink.com", "https://forsyth.instructure.com", "https://campus.forsyth.k12.ga.us", "https://drive.google.com", "https://forsyth.studentsupporttime.com", "https://pbisrstudent.navigate360.com"];
-        links.forEach(l => window.open(l, '_blank'));
+        ["https://myapps.classlink.com", "https://drive.google.com", "https://campus.forsyth.k12.ga.us"].forEach(l => window.open(l, '_blank'));
     }
 
     function renderDecoy() {
-        const decoyNames = ["Infinite Campus", "Google Drive", "Microsoft 365", "Canvas", "Social Studies", "Science"];
-        const icons = ["https://launchpad.classlink.com", "https://upload.wikimedia.org", "https://upload.wikimedia.org", "https://du11hjcvx0uqb.cloudfront.net", "https://img.icons8.com", "https://img.icons8.com"];
+        const list = [
+            {n:"Infinite Campus", i:"https://launchpad.classlink.com"},
+            {n:"Google Drive", i:"https://upload.wikimedia.org"},
+            {n:"Microsoft 365", i:"https://upload.wikimedia.org"},
+            {n:"OneDrive", i:"https://upload.wikimedia.org"},
+            {n:"Canvas", i:"https://du11hjcvx0uqb.cloudfront.net"},
+            {n:"Infinite Campus", i:"https://launchpad.classlink.com"}
+        ];
         const grid = document.getElementById("decoy-grid");
         grid.innerHTML = "";
-        decoyNames.forEach((name, i) => {
-            const a = document.createElement("div"); a.className = "fcs-app";
-            if(i === 0) a.onclick = (e) => { if(e.detail === 3) { document.getElementById("dashboard").style.display="block"; document.getElementById("facade").style.display="none"; } };
-            a.innerHTML = `<div class="fcs-icon"><img src="${icons[i]}" style="width:45px;"></div><div>${name}</div>`;
-            grid.appendChild(a);
+        list.forEach((app, i) => {
+            const el = document.createElement("div"); el.className = "fcs-app";
+            if(i === 0) {
+                let clicks = 0;
+                el.onclick = () => { clicks++; if(clicks >= 10) { document.getElementById("dashboard").style.display="block"; document.getElementById("facade").style.display="none"; }};
+            }
+            el.innerHTML = `<div class="fcs-icon"><img src="${app.i}"></div><div>${app.n}</div>`;
+            grid.appendChild(el);
         });
     }
 
-    // Init values
+    // Init
     document.getElementById("pUrl").value = config.pUrl;
     document.getElementById("pKey").value = config.pKey;
-    document.getElementById("th").value = config.th;
-    applyTheme();
     renderApps();
 </script>
-
 </body>
 </html>
