@@ -6,50 +6,52 @@
     <title>Dashboard</title>
     <link rel="icon" href="https://instructure-uploads.s3.amazonaws.com">
     <style>
-        :root {
-            --bg: #1a1a1a; --card: #252525; --text: #ffffff; --primary: #4facfe; --danger: #ff4d4d;
-        }
-        body.light-mode {
-            --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025;
-        }
+        :root { --bg: #1a1a1a; --card: #252525; --text: #ffffff; --primary: #4facfe; --danger: #ff4d4d; --fcs-blue: #004d99; --canvas-dark: #243342; }
+        body.light-mode { --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
 
-        /* --- NEW EMBEDDER UI --- */
+        /* --- PIXEL-PERFECT LINEWIZE SNAPSHOT MASK --- */
+        #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; flex-direction: row; }
+        .cv-sidebar { width: 84px; background: var(--canvas-dark); display: flex; flex-direction: column; align-items: center; padding: 10px 0; }
+        .cv-main { flex: 1; padding: 25px 40px; background: white; color: #2D3B45; text-align: left; }
+        .cv-header { font-size: 28px; border-bottom: 1px solid #E1E1E1; padding-bottom: 12px; margin-bottom: 25px; font-weight: 300; }
+
+        /* --- EMBEDDER UI --- */
         #dashboard { display: flex; flex-direction: column; height: 100vh; }
         .nav { height: 60px; background: rgba(0,0,0,0.2); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .nav-links span { margin-left: 20px; cursor: pointer; font-weight: 600; opacity: 0.8; }
-        .nav-links span:hover { opacity: 1; }
-
-        .main-content { flex: 1; padding: 30px; overflow-y: auto; display: block; }
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; }
         .section { display: none; max-width: 900px; margin: 0 auto; }
         .section.active { display: block; }
 
-        /* App Creator Bar */
-        .app-creator { display: flex; gap: 10px; margin-bottom: 30px; background: var(--card); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .app-creator { display: flex; gap: 10px; margin-bottom: 30px; background: var(--card); padding: 15px; border-radius: 8px; }
         .app-creator input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #333; color: white; }
         .app-creator button { padding: 10px 20px; background: var(--primary); border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
-        /* App Grid */
         .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05); }
-        .app-info { display: flex; align-items: center; gap: 12px; }
-        .app-icon { width: 35px; height: 35px; border-radius: 6px; }
-        .app-actions button { padding: 5px 10px; font-size: 12px; margin-left: 5px; border-radius: 4px; cursor: pointer; border: none; font-weight: bold; }
-        .btn-cloak { background: var(--primary); color: white; }
-        .btn-remove { background: var(--danger); color: white; }
+        .btn-cloak { background: var(--primary); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-remove { background: var(--danger); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; margin-left: 5px; }
 
-        /* Settings Styles */
         .settings-card { background: var(--card); padding: 25px; border-radius: 10px; }
         .setting-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
-        .setting-item label { font-size: 14px; font-weight: bold; opacity: 0.8; }
-        .setting-item input, .setting-item select { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; max-width: 300px; }
+        .setting-item input, .setting-item select { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; }
     </style>
 </head>
 <body class="dark-mode">
 
+<!-- SNAPSHOT MASK -->
+<div id="snapshot-mask">
+    <div class="cv-sidebar"><div style="width:45px; height:45px; background:#EAAA00; border-radius:50%; margin-top:20px;"></div></div>
+    <div class="cv-main">
+        <div class="cv-header">Dashboard</div>
+        <div style="font-size:14px; color:#556572;">2025/2026 - Piney Grove Middle School</div>
+    </div>
+</div>
+
 <div id="dashboard">
     <div class="nav">
-        <div style="font-size: 20px; font-weight: 800; letter-spacing: 1px;">About Blank Embedder</div>
+        <div style="font-size: 18px; font-weight: 800;">About Blank Embedder</div>
         <div class="nav-links">
             <span onclick="showSection('apps-sec')">Apps</span>
             <span onclick="showSection('settings-sec')">Settings</span>
@@ -57,89 +59,47 @@
     </div>
 
     <div class="main-content">
-        <!-- APPS SECTION -->
         <div id="apps-sec" class="section active">
             <div class="app-creator">
                 <input type="text" id="new-name" placeholder="App Name">
-                <input type="text" id="new-url" placeholder="https://example.com">
+                <input type="text" id="new-url" placeholder="example.com">
                 <button onclick="addApp()">Add App</button>
             </div>
             <div class="apps-grid" id="apps"></div>
         </div>
 
-        <!-- SETTINGS SECTION -->
         <div id="settings-sec" class="section">
             <div class="settings-card">
                 <h2>Settings</h2>
-                
-                <div class="setting-item">
-                    <label>Panic Key</label>
-                    <input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)">
-                </div>
-
-                <div class="setting-item">
-                    <label>Panic Redirect URL</label>
-                    <input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)">
-                </div>
-
-                <div class="setting-item">
-                    <label>Cloaking Method</label>
-                    <select id="cloak-method" onchange="updateSetting('method', this.value)">
-                        <option value="about">about:blank</option>
-                        <option value="blob">Blob URL</option>
-                    </select>
-                </div>
-
-                <div class="setting-item">
-                    <label>Appearance</label>
-                    <select id="theme-select" onchange="toggleTheme(this.value)">
-                        <option value="dark">Dark Mode</option>
-                        <option value="light">Light Mode</option>
-                    </select>
-                </div>
-
-                <div class="setting-item" style="flex-direction: row; gap: 10px; margin-top: 20px;">
-                    <button onclick="floodHistory()" style="background:#444; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">Flood History</button>
-                    <button onclick="cloudSync()" style="background:var(--primary); color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">Cloud Sync / Login</button>
-                </div>
+                <div class="setting-item"><label>Panic Key</label><input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)"></div>
+                <div class="setting-item"><label>Panic URL</label><input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)"></div>
+                <div class="setting-item"><label>Cloaking</label><select id="cloak-method" onchange="updateSetting('method', this.value)"><option value="about">about:blank</option><option value="blob">Blob URL</option></select></div>
+                <div class="setting-item"><label>Theme</label><select id="theme-select" onchange="toggleTheme(this.value)"><option value="dark">Dark Mode</option><option value="light">Light Mode</option></select></div>
+                <button onclick="floodHistory()" style="padding:10px; cursor:pointer;">Flood History</button>
+                <button onclick="cloudSync()" style="padding:10px; cursor:pointer;">Cloud Sync</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    let config = JSON.parse(localStorage.getItem("ex_config")) || {
-        apps: [],
-        pKey: "]",
-        panicUrl: "https://forsyth.instructure.com",
-        method: "about",
-        theme: "dark"
+    let config = JSON.parse(localStorage.getItem("ex_v75")) || {
+        apps: [], pKey: "]", panicUrl: "https://forsyth.instructure.com", method: "about", theme: "dark"
     };
 
-    function save() { localStorage.setItem("ex_config", JSON.stringify(config)); }
+    function save() { localStorage.setItem("ex_v75", JSON.stringify(config)); }
 
-    function showSection(id) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-    }
+    // Linewize Blur Protection
+    window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'flex'; });
+    window.addEventListener('focus', () => { setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; }, 200); });
 
-    function toggleTheme(mode) {
-        config.theme = mode;
-        document.body.className = mode + "-mode";
-        save();
-    }
-
-    function updateSetting(key, val) { config[key] = val; save(); }
+    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+    function toggleTheme(m) { config.theme = m; document.body.className = m + "-mode"; save(); }
+    function updateSetting(k, v) { config[k] = v; save(); }
 
     function addApp() {
-        const n = document.getElementById("new-name").value;
-        const u = document.getElementById("new-url").value;
-        if(n && u) {
-            config.apps.push({name: n, url: u.startsWith('http') ? u : 'https://' + u});
-            document.getElementById("new-name").value = "";
-            document.getElementById("new-url").value = "";
-            save(); renderApps();
-        }
+        const n = document.getElementById("new-name").value, u = document.getElementById("new-url").value;
+        if(n && u) { config.apps.push({name: n, url: u.startsWith('http') ? u : 'https://' + u}); save(); renderApps(); }
     }
 
     function removeApp(i) { config.apps.splice(i, 1); save(); renderApps(); }
@@ -148,56 +108,36 @@
         const grid = document.getElementById("apps"); grid.innerHTML = "";
         config.apps.forEach((app, i) => {
             const div = document.createElement("div"); div.className = "app-item";
-            const domain = new URL(app.url).hostname;
-            div.innerHTML = `
-                <div class="app-info">
-                    <img class="app-icon" src="https://www.google.com{domain}&sz=128">
-                    <div style="font-weight:600;">${app.name}</div>
-                </div>
-                <div class="app-actions">
-                    <button class="btn-cloak" onclick="openApp(${i})">Cloak</button>
-                    <button class="btn-remove" onclick="removeApp(${i})">Remove</button>
-                </div>
-            `;
+            div.innerHTML = `<b>${app.name}</b><div><button class="btn-cloak" onclick="launch(${i})">Cloak</button><button class="btn-remove" onclick="removeApp(${i})">Remove</button></div>`;
             grid.appendChild(div);
         });
     }
 
-    function openApp(i) {
-        const url = config.apps[i].url;
+    async function launch(i) {
+        const raw = config.apps[i].url;
+        let final = raw;
+        // SMART BOT DETECTOR
+        try {
+            const c = new AbortController(); setTimeout(() => c.abort(), 1500);
+            await fetch(raw, { mode: 'no-cors', signal: c.signal });
+        } catch (e) {
+            final = `https://proxy.ikunbeautiful.workers.dev{encodeURIComponent(raw)}`;
+        }
+
         const win = window.open("about:blank", "_blank");
-        if (!win) return alert("Pop-up blocked!");
-
-        const content = `<html><head><title>Dashboard</title><link rel="icon" href="https://instructure-uploads.s3.amazonaws.com"><style>body,html,iframe{margin:0;padding:0;height:100%;width:100%;overflow:hidden;border:none;background:#fff;}</style></head>
-            <body><iframe src="${url}" style="width:100%;height:100%;border:none;"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}")window.location.replace("${config.panicUrl}")};<\/script></body></html>`;
+        const doc = `<html><head><title>Dashboard</title><style>body,html,iframe{margin:0;padding:0;height:100%;width:100%;overflow:hidden;border:none;}</style></head>
+            <body><iframe src="${final}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}")window.location.replace("${config.panicUrl}")};<\/script></body></html>`;
         
-        if (config.method === "blob") {
-            win.location.href = URL.createObjectURL(new Blob([content], { type: 'text/html' }));
-        } else {
-            win.document.write(content);
-        }
+        if (config.method === "blob") win.location.href = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
+        else { win.document.write(doc); win.document.close(); }
     }
 
-    function floodHistory() {
-        for (let i = 0; i < 50; i++) {
-            history.pushState({}, '', window.location.href + "#" + i);
-        }
-        alert("History Flooded!");
-    }
+    function floodHistory() { for (let i = 0; i < 50; i++) history.pushState({}, '', window.location.href + "#" + i); alert("Flooded!"); }
+    function cloudSync() { const id = prompt("Sync ID:"); if (id) alert("Syncing..."); }
 
-    function cloudSync() {
-        const user = prompt("Enter Sync ID / Username:");
-        if (user) alert("Syncing with ExistenceGG Cloud...");
-    }
-
-    // Initialize UI
     document.getElementById("panic-key-input").value = config.pKey;
     document.getElementById("panic-url-input").value = config.panicUrl;
-    document.getElementById("cloak-method").value = config.method;
-    document.getElementById("theme-select").value = config.theme;
-    toggleTheme(config.theme);
-    renderApps();
-
+    toggleTheme(config.theme); renderApps();
     window.onkeydown = (e) => { if(e.key === config.pKey) window.location.replace(config.panicUrl); };
 </script>
 </body>
