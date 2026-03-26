@@ -20,17 +20,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # Sparse checkout prevents downloading unnecessary 3.7GB bloat
           sparse-checkout: |
             index.html
-            js
+            404.html
+            favicon.ico
             css
-            imgs
             fonts
             games
-            favicon.ico
-          sparse-checkout-cone-mode: false # Keeps only exactly what you need
+            imgs
+            js
+          sparse-checkout-cone-mode: false 
 
-      - name: Setup Node & Build
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -38,21 +40,20 @@ jobs:
 
       - name: Fast Build and Sync
         run: |
-          mkdir -p staging
+          mkdir -p staging/js
           
-          # JS: Bundle & Minify (Fastest with esbuild)
-          if [ -d "js" ]; then
-            npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error || cp -r js staging/
-          fi
+          # Bundle only your core site JS files
+          # Using esbuild is significantly faster than standard copy/minify tools
+          npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
           
-          # HARD LINK SYNC: Much faster than copying for large assets
-          # This links files into staging without duplicating the 3.7GB of data on disk
-          find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -exec cp -rl {} staging/ \;
+          # Link all other static assets (instant move, zero extra disk usage)
+          # We skip 'js' because we bundled it above, and '.git' for safety
+          find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -not -path './package*' -exec cp -rl {} staging/ \;
 
       - name: Safety Check
         run: |
           if [ ! -s staging/index.html ] || ! grep -q "</body>" staging/index.html; then
-            echo "Critical Error: index.html missing or corrupted."
+            echo "Deployment Blocked: index.html is missing or incomplete."
             exit 1
           fi
 
