@@ -1,3 +1,24 @@
+<!-- 
+************************************************************************************************
+FORSYTH COUNTY SCHOOLS - SECURE STUDENT WORKSPACE v21.0.4
+STATION_ID: PGM-L402-SYNC
+FACILITY: Piney Grove Middle School
+SOURCE_AUTH: FCS TECHNOLOGY DEPARTMENT
+[RESTRICTED ACCESS: AUTHORIZED STUDENT USE ONLY]
+************************************************************************************************
+// INITIALIZING BOOT SEQUENCE...
+// [INFO] Checking Forsyth County DNS filters...
+// [INFO] Validating ClassLink Session...
+// [DEBUG] Handshaking with https://forsyth.instructure.com...
+// [DEBUG] LTI Connection Verified.
+// [TRACE] Loading Student Dashboard for Piney Grove Middle School...
+// [TRACE] Syncing Canvas Course Modules...
+// [WARN] Network Latency at 15ms. Optimizing Secure Tunnel...
+// [SUCCESS] Environment Ready. Rendering Piney Grove Canvas UI.
+
+... (I recommend pasting another 1000 lines of random "system logs" here in your actual file) ...
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,175 +27,121 @@
     <title>Dashboard</title>
     <link rel="icon" href="https://instructure-uploads.s3.amazonaws.com">
     <style>
-        :root { --fcs-blue: #004d99; --canvas-dark: #243342; --canvas-bg: #f5f5f5; --accent: #3b82f6; --danger: #ef4444; }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; overflow: hidden; }
+        :root { --fcs-blue: #004d99; --canvas-dark: #243342; --canvas-bg: #ffffff; --text-main: #2D3B45; --text-sub: #556572; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: "Lato", "Segoe UI", sans-serif; overflow: hidden; background: #f5f5f5; }
 
-        /* --- PIXEL-PERFECT CANVAS SNAPSHOT MASK --- */
-        #snapshot-mask { display: none; position: fixed; inset: 0; background: var(--canvas-bg); z-index: 9999; display: flex; color: #2d3b45; text-align: left; }
-        .cv-sidebar { width: 84px; background: var(--canvas-dark); display: flex; flex-direction: column; align-items: center; padding-top: 10px; flex-shrink: 0; }
-        .fcs-logo-circle { width: 45px; height: 45px; background: #e0aa3e; border-radius: 50%; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #004d99; font-size: 14px; border: 2px solid white; }
-        .cv-sidebar div { margin-bottom: 18px; font-size: 10px; color: white; text-align: center; opacity: 0.8; position: relative; width: 100%; }
-        .notif-badge { position: absolute; top: -5px; right: 15px; background: #ff7043; color: white; border-radius: 10px; padding: 1px 5px; font-size: 9px; font-weight: bold; }
+        /* --- PIXEL-PERFECT FORSYTH CANVAS MASK --- */
+        #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; display: flex; text-align: left; }
+        .cv-sidebar { width: 84px; background: var(--canvas-dark); display: flex; flex-direction: column; align-items: center; padding: 10px 0; flex-shrink: 0; }
+        .fcs-logo { width: 45px; height: 45px; background: #EAAA00; border-radius: 50%; border: 2px solid #fff; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--fcs-blue); font-size: 13px; }
+        .cv-sidebar div { margin-bottom: 20px; font-size: 11px; color: white; text-align: center; opacity: 0.8; width: 100%; position: relative; cursor: default; }
+        .cv-sidebar .active { opacity: 1; border-left: 4px solid #fff; background: rgba(255,255,255,0.1); padding: 5px 0; }
+        .notif { position: absolute; top: -5px; right: 12px; background: #ff7043; color: white; border-radius: 10px; padding: 1px 5px; font-size: 9px; font-weight: bold; }
         
-        .cv-main { flex: 1; padding: 25px; overflow-y: auto; }
-        .cv-header { font-size: 26px; border-bottom: 1px solid #e1e1e1; padding-bottom: 12px; margin-bottom: 25px; color: #333; font-weight: 500; }
-        .cv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
-        .cv-card { background: white; border: 1px solid #d1d1d1; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .cv-card-top { height: 145px; position: relative; }
-        .cv-card-body { padding: 15px; font-size: 14px; font-weight: bold; color: #004d99; }
-        .cv-card-sub { font-size: 11px; color: #666; font-weight: normal; margin-top: 5px; }
-        .cv-todo { width: 280px; padding: 20px; background: white; border-left: 1px solid #e1e1e1; flex-shrink: 0; }
+        .cv-main { flex: 1; padding: 25px 40px; overflow-y: auto; }
+        .cv-header { font-size: 28px; font-weight: 300; border-bottom: 1px solid #E1E1E1; padding-bottom: 12px; margin-bottom: 25px; color: var(--text-main); }
+        .cv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(265px, 1fr)); gap: 24px; }
+        .cv-card { background: white; border: 1px solid #C7CDD1; border-radius: 4px; overflow: hidden; height: 235px; }
+        .card-top { height: 145px; display: flex; align-items: center; justify-content: center; font-size: 35px; color: rgba(255,255,255,0.4); font-weight: bold; text-align: center; }
+        .card-body { padding: 14px; }
+        .card-title { font-size: 14px; font-weight: bold; color: #00609D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-sub { font-size: 11.5px; color: var(--text-sub); margin-top: 4px; }
 
-        /* --- DASHBOARD UI --- */
-        .fcs-header { height: 55px; background: var(--fcs-blue); display: flex; align-items: center; padding: 0 25px; justify-content: space-between; }
-        #dashboard { display: none; flex-direction: column; height: 100vh; }
-        .apps-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 30px; padding: 40px; overflow-y: auto; }
-        .app-folder { text-align: center; cursor: pointer; transition: 0.2s; }
+        /* --- EMBEDDER UI --- */
+        #dashboard { display: none; flex-direction: column; height: 100vh; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .apps-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 30px; padding: 40px; overflow-y: auto; }
+        .app-folder { text-align: center; cursor: default; transition: 0.2s; opacity: 0.6; }
+        .app-folder.ready { cursor: pointer; opacity: 1; transform: scale(1.05); }
         .icon-box { width: 78px; height: 78px; background: rgba(255,255,255,0.25); border-radius: 12px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); position: relative; }
         .icon-box::before { content: ''; position: absolute; top: -8px; left: 8px; width: 32px; height: 10px; background: rgba(255,255,255,0.22); border-radius: 4px 4px 0 0; }
-        .icon-box img { width: 50px; height: 50px; object-fit: contain; }
-
-        /* --- SETTINGS --- */
-        #settings-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2000; align-items: center; justify-content: center; }
-        .settings-box { background: #1e293b; width: 420px; padding: 30px; border-radius: 15px; border: 1px solid var(--accent); }
-        .btn { width: 100%; padding: 12px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; }
     </style>
 </head>
 <body oncontextmenu="return false;">
 
-<!-- CANVAS SNAPSHOT MASK (Piney Grove Context) -->
+<!-- SNAPSHOT MASK: PIXEL PERFECT PINEY GROVE -->
 <div id="snapshot-mask">
     <div class="cv-sidebar">
-        <div class="fcs-logo-circle">FCS</div>
-        <div>Account</div>
-        <div style="opacity:1; border-left: 3px solid white;">Dashboard</div>
+        <div class="fcs-logo">FCS</div>
+        <div>Account</div><div class="active">Dashboard</div>
         <div>Courses</div><div>Groups</div><div>Calendar</div>
-        <div>Inbox <span class="notif-badge">40</span></div>
-        <div>History</div><div>Help <span class="notif-badge">2</span></div>
+        <div>Inbox<span class="notif">40</span></div><div>History</div><div>Studio</div>
+        <div>Help<span class="notif" style="background:#EAAA00; color:#000;">2</span></div>
+        <div style="margin-top:auto; opacity:0.5; font-size:18px;">←</div>
     </div>
     <div class="cv-main">
         <div class="cv-header">Dashboard</div>
         <div class="cv-grid">
-            <div class="cv-card"><div class="cv-card-top" style="background:#ad62a1;"></div><div class="cv-card-body">Advanced Language Arts<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="cv-card-top" style="background:#517e5a; background-image: url('https://images.unsplash.com'); background-size:cover;"></div><div class="cv-card-body">Advanced Science - Ms. Cain<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="cv-card-top" style="background:#d19d59;"></div><div class="cv-card-body">Accelerated Mathematics<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="cv-card-top" style="background:#d16c4d;"></div><div class="cv-card-body">Advanced Social Studies<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="cv-card-top" style="background:#517e5a;"></div><div class="cv-card-body">Interdisciplinary Studies<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="cv-card-top" style="background:#ad62a1;"></div><div class="cv-card-body">6th Grade PE - Jackson<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="card-top" style="background:#ad62a1;">🐾</div><div class="card-body"><div class="card-title">Advanced Language Arts - Reformado</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="card-top" style="background:#517e5a; background-image: url('https://images.unsplash.com'); background-size:cover;">🌲</div><div class="card-body"><div class="card-title">Advanced Science - Ms. Cain</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="card-top" style="background:#d19d59;">📐</div><div class="card-body"><div class="card-title">Accelerated Mathematics - Mr. Chesser</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="card-top" style="background:#d16c4d;">🌍</div><div class="card-body"><div class="card-title">Advanced Social Studies - 6430y</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="card-top" style="background:#517e5a;">🐾</div><div class="card-body"><div class="card-title">Interdisciplinary Studies - Reformado</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="card-top" style="background:#ad62a1;">🏀</div><div class="card-body"><div class="card-title">6th Grade PE - Jackson</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
         </div>
     </div>
-    <div class="cv-todo">
-        <div style="font-weight:bold; border-bottom:1px solid #ddd; padding-bottom:8px; display:flex; justify-content:space-between; font-size: 13px;">To Do <span>✕</span></div>
-        <div style="color:#666; font-style:italic; margin-top:20px; font-size:12px; text-align: center;">Nothing for now</div>
+    <div style="width: 280px; padding: 24px; border-left: 1px solid #E1E1E1; background:#fff; text-align: center;">
+        <div style="font-weight:bold; border-bottom:1px solid #ddd; padding-bottom:8px; display:flex; justify-content:space-between; font-size:14px; color:#2D3B45;">To Do <span>✕</span></div>
+        <div style="color:#666; font-style:italic; margin-top:30px; font-size:12px;">Nothing for now</div>
     </div>
 </div>
 
-<!-- STAGE 1: LOGIN -->
-<div id="login-page">
-    <div style="width: 300px; text-align: center; color: #444;">
-        <img src="https://launchpad.classlink.com" style="width:60px; margin-bottom:10px;">
-        <h2>Fulton County Schools</h2>
-        <input type="text" id="u" placeholder="Username" style="width:100%; padding:10px; margin:5px 0; border:1px solid #ccc;">
-        <input type="password" id="p" placeholder="Password" style="width:100%; padding:10px; margin:5px 0; border:1px solid #ccc;">
+<!-- STAGE 1: DECOY LOGIN -->
+<div id="login-page" style="height:100vh; background:#fff; display:flex; align-items:center; justify-content:center;">
+    <div style="width: 300px; text-align: center;">
+        <img src="https://launchpad.classlink.com" style="width:60px;">
+        <h2 style="font-weight:400; color:#444;">Fulton County Schools</h2>
+        <input type="text" id="u" placeholder="Username" style="width:100%; padding:10px; margin:5px 0; border:1px solid #ccc; border-radius:4px;">
+        <input type="password" id="p" placeholder="Password" style="width:100%; padding:10px; margin:5px 0; border:1px solid #ccc; border-radius:4px;">
         <button onclick="login()" style="width:100%; padding:12px; background:#004d99; color:white; border:none; margin-top:10px; cursor:pointer; font-weight:bold;">Sign In</button>
     </div>
 </div>
 
-<!-- STAGE 2: REAL DASHBOARD -->
+<!-- STAGE 3: DASHBOARD -->
 <div id="dashboard">
-    <div class="fcs-header">
-        <div style="font-weight:900;">ExistenceGG</div>
-        <div onclick="toggleSettings(true)" style="cursor:pointer; font-size: 20px;">⚙️</div>
-    </div>
-    <div style="padding: 15px 45px; background: rgba(0,0,0,0.15); display: flex; gap: 10px;">
-        <input type="text" id="appName" placeholder="App Name" style="background:rgba(255,255,255,0.1); border:none; color:white; padding:10px; border-radius:5px; flex:1;">
-        <input type="text" id="appUrl" placeholder="URL" style="background:rgba(255,255,255,0.1); border:none; color:white; padding:10px; border-radius:5px; flex:2;">
-        <button onclick="addApp()" style="background:var(--accent); border:none; color:white; padding:0 20px; border-radius:5px; cursor:pointer; font-weight:bold;">+ Add App</button>
+    <div style="height:55px; background:var(--fcs-blue); display:flex; align-items:center; padding:0 25px; justify-content:space-between;">
+        <div style="font-weight:900; font-size:18px;">ExistenceGG</div>
+        <div onclick="addApp()" style="cursor:pointer; font-size:20px;">⚙️</div>
     </div>
     <div class="apps-grid" id="apps"></div>
 </div>
 
-<!-- SETTINGS -->
-<div id="settings-overlay">
-    <div class="settings-box">
-        <h3 style="margin-top:0;">Stealth Controls</h3>
-        
-        <label style="font-size:12px; opacity:0.8;">Ghost Mode (Icon Opacity)</label>
-        <input type="range" id="ghostSlider" min="0.05" max="1" step="0.05" value="1" style="width:100%; margin:10px 0 25px 0;" oninput="updateGhost(this.value)">
-
-        <button onclick="floodHistory()" class="btn" style="background:var(--danger);">🌊 Flood History (School Sites)</button>
-        <button onclick="toggleSettings(false)" class="btn" style="background:#475569; margin-top:20px;">Close Settings</button>
-    </div>
-</div>
-
 <script>
-    let apps = JSON.parse(localStorage.getItem("ex_v11_apps")) || [];
-    let config = JSON.parse(localStorage.getItem("ex_v11_conf")) || { ghost: 1 };
-    const panicUrl = "https://forsyth.instructure.com/?login_success=1";
+    let apps = JSON.parse(localStorage.getItem("ex_v21")) || [];
+    const panicUrl = "https://forsyth.instructure.com";
     const pKey = "-";
-    let cloakTimer;
+    let hoverTimer;
 
-    // --- STEALTH LOGIC ---
+    // Snapshot protection for Linewize
     window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'flex'; });
-    window.addEventListener('focus', () => { setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; }, 250); });
+    window.addEventListener('focus', () => { setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; }, 200); });
 
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === 'hidden') {
-            cloakTimer = setTimeout(() => { window.location.replace(panicUrl); }, 30000);
-        } else { clearTimeout(cloakTimer); }
-    });
-
-    function updateGhost(val) {
-        config.ghost = val;
-        localStorage.setItem("ex_v11_conf", JSON.stringify(config));
-        document.querySelectorAll('.app-folder').forEach(el => el.style.opacity = val);
-    }
-
-    // --- HISTORY FLOODER (Your 6 specific sites) ---
-    function floodHistory() {
-        const sites = [
-            "https://forsyth.instructure.com/?login_success=1",
-            "https://forsyth.studentsupporttime.com/SHome#!/app/dashboard",
-            "https://drive.google.com/drive/",
-            "https://pbisrstudent.navigate360.com/student/student.php",
-            "https://campus.forsyth.k12.ga.us/campus/nav-wrapper/student/portal/student",
-            "https://myapps.classlink.com/home"
-        ];
-        alert("Burying history under school links...");
-        for(let i=0; i<30; i++) {
-            let win = window.open(sites[i % sites.length], '_blank');
-            if(win) setTimeout(() => win.close(), 250);
-        }
-    }
-
-    // --- CORE LOGIC ---
-    function login() { if(document.getElementById("u").value && document.getElementById("p").value) { document.getElementById("login-page").style.display="none"; document.getElementById("dashboard").style.display="flex"; renderApps(); renderDecoy(); } }
-
-    function renderDecoy() {
-        // Infinite Campus is the secret unlock key
-        const decoy = [{n:"Infinite Campus", i:"https://launchpad.classlink.com"}];
-        const grid = document.createElement("div"); // Internal decoy grid not visible yet
-        // In this version, we just render the real apps. Triple-click logic remains for your decoy stage if you re-add Stage 2.
-    }
+    function login() { if(document.getElementById("u").value && document.getElementById("p").value) { document.getElementById("login-page").style.display="none"; document.getElementById("dashboard").style.display="flex"; renderApps(); } }
 
     function addApp() {
-        let u = document.getElementById("appUrl").value; if(!u.startsWith("http")) u = "https://" + u;
-        apps.push({name: document.getElementById("appName").value, url: u});
-        localStorage.setItem("ex_v11_apps", JSON.stringify(apps)); renderApps();
+        const n = prompt("App Name:");
+        const u = prompt("URL:");
+        if(n && u) { apps.push({name: n, url: u.startsWith('http') ? u : 'https://' + u}); localStorage.setItem("ex_v21", JSON.stringify(apps)); renderApps(); }
     }
 
     function renderApps() {
         const grid = document.getElementById("apps"); grid.innerHTML = "";
         apps.forEach((app, i) => {
-            grid.innerHTML += `<div class="app-folder" onclick="openApp(${i})" style="opacity:${config.ghost}"><div class="icon-box"><img src="https://www.google.com{new URL(app.url).hostname}&sz=128"></div><div style="font-size:11px; font-weight:600;">${app.name}</div></div>`;
+            const div = document.createElement("div"); div.className = "app-folder";
+            div.innerHTML = `<div class="icon-box"><img src="https://www.google.com{new URL(app.url).hostname}&sz=128" style="width:45px;"></div><div style="font-weight:600; font-size:11px;">${app.name}</div>`;
+            // Anti-Clickjacking: Require 0.6s hover
+            div.onmouseenter = () => { hoverTimer = setTimeout(() => { div.classList.add("ready"); div.onclick = () => openApp(i); }, 600); };
+            div.onmouseleave = () => { clearTimeout(hoverTimer); div.classList.remove("ready"); div.onclick = null; };
+            grid.appendChild(div);
         });
     }
 
+    // BOT: Automatically detects if proxy is needed
     async function getSmartUrl(url) {
-        const blacklist = ['discord.com', 'youtube.com', 'roblox.com', 'google.com', 'github.com'];
+        const blacklist = ['discord.com', 'youtube.com', 'roblox.com', 'google.com', 'github.com', 'tiktok.com'];
         const domain = new URL(url).hostname.toLowerCase();
         if (blacklist.some(b => domain.includes(b))) return `http://proxy.ikunbeautiful.workers.dev{encodeURIComponent(url)}`;
-        try { await fetch(url, { mode: 'no-cors' }); return url; } catch (e) { return `http://proxy.ikunbeautiful.workers.dev{encodeURIComponent(url)}`; }
+        try { const controller = new AbortController(); setTimeout(() => controller.abort(), 2000); await fetch(url, { mode: 'no-cors', signal: controller.signal }); return url; } 
+        catch (e) { return `http://proxy.ikunbeautiful.workers.dev{encodeURIComponent(url)}`; }
     }
 
     async function openApp(i) {
@@ -182,18 +149,11 @@
         const finalUrl = await getSmartUrl(app.url);
         const win = window.open("about:blank", "_blank");
         const blobContent = `<html><head><title>Dashboard</title><link rel="icon" href="https://instructure-uploads.s3.amazonaws.com"><style>body,html,iframe{margin:0;padding:0;height:100%;width:100%;overflow:hidden;border:none;background:#fff;}</style></head>
-            <body><iframe src="${finalUrl}"></iframe><script>
-            window.onkeydown=(e)=>{if(e.key==="${pKey}")window.location.replace("${panicUrl}")};
-            document.addEventListener("visibilitychange",()=>{if(document.visibilityState==='hidden'){setTimeout(()=>{window.location.replace("${panicUrl}")},30000)}});
-            <\/script></body></html>`;
+            <body><iframe src="${finalUrl}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${pKey}")window.location.replace("${panicUrl}")};document.addEventListener("visibilitychange",()=>{if(document.visibilityState==='hidden'){setTimeout(()=>{window.location.replace("${panicUrl}")},30000)}});<\/script></body></html>`;
         win.location.href = URL.createObjectURL(new Blob([blobContent], { type: 'text/html' }));
     }
 
-    function toggleSettings(s) { document.getElementById("settings-overlay").style.display = s ? "flex" : "none"; }
     window.onkeydown = (e) => { if(e.key === pKey) window.location.replace(panicUrl); };
-    
-    // Init settings
-    document.getElementById("ghostSlider").value = config.ghost;
     renderApps();
 </script>
 </body>
