@@ -1,382 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-@@ -7,250 +6,152 @@
-    <meta name="robots" content="noindex, nofollow">
-    <title>FCS | Login</title>
-    <link rel="icon" href="https://launchpad.classlink.com">
-    <script src="https://unpkg.com"></script>
-    <script type="module" src="https://unpkg.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="icon" href="https://instructure-uploads.s3.amazonaws.com">
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #3b82f6; --danger: #ef4444; --success: #10b981; }
-        .light-mode { --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --accent: #2563eb; }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Inter', 'Segoe UI', sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
+        :root { --fcs-blue: #004d99; --canvas-dark: #243342; --canvas-bg: #f5f5f5; --accent: #3b82f6; --danger: #ef4444; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; overflow: hidden; }
 
-        /* --- DECOY STAGES --- */
-        #login-page { height: 100vh; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; position: relative; }
-        #facade { display: none; height: 100vh; background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%); flex-direction: column; z-index: 999; }
+        /* --- PIXEL-PERFECT CANVAS SNAPSHOT MASK --- */
+        #snapshot-mask { display: none; position: fixed; inset: 0; background: var(--canvas-bg); z-index: 9999; display: flex; color: #2d3b45; text-align: left; }
+        .cv-sidebar { width: 84px; background: var(--canvas-dark); display: flex; flex-direction: column; align-items: center; padding-top: 10px; flex-shrink: 0; }
+        .fcs-logo-circle { width: 45px; height: 45px; background: #e0aa3e; border-radius: 50%; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #004d99; font-size: 14px; border: 2px solid white; }
+        .cv-sidebar div { margin-bottom: 18px; font-size: 10px; color: white; text-align: center; opacity: 0.8; position: relative; width: 100%; }
+        .notif-badge { position: absolute; top: -5px; right: 15px; background: #ff7043; color: white; border-radius: 10px; padding: 1px 5px; font-size: 9px; font-weight: bold; }
         
-        /* --- MAIN DASHBOARD --- */
-        #dashboard { display: none; height: 100vh; padding: 0; overflow-y: auto; box-sizing: border-box; }
+        .cv-main { flex: 1; padding: 25px; overflow-y: auto; }
+        .cv-header { font-size: 26px; border-bottom: 1px solid #e1e1e1; padding-bottom: 12px; margin-bottom: 25px; color: #333; font-weight: 500; }
+        .cv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+        .cv-card { background: white; border: 1px solid #d1d1d1; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .cv-card-top { height: 145px; position: relative; }
+        .cv-card-body { padding: 15px; font-size: 14px; font-weight: bold; color: #004d99; }
+        .cv-card-sub { font-size: 11px; color: #666; font-weight: normal; margin-top: 5px; }
+        .cv-todo { width: 280px; padding: 20px; background: white; border-left: 1px solid #e1e1e1; flex-shrink: 0; }
 
+        /* --- DASHBOARD UI --- */
+        .fcs-header { height: 55px; background: var(--fcs-blue); display: flex; align-items: center; padding: 0 25px; justify-content: space-between; }
+        #dashboard { display: none; flex-direction: column; height: 100vh; }
+        .apps-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 30px; padding: 40px; overflow-y: auto; }
+        .app-folder { text-align: center; cursor: pointer; transition: 0.2s; }
+        .icon-box { width: 78px; height: 78px; background: rgba(255,255,255,0.25); border-radius: 12px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); position: relative; }
+        .icon-box::before { content: ''; position: absolute; top: -8px; left: 8px; width: 32px; height: 10px; background: rgba(255,255,255,0.22); border-radius: 4px 4px 0 0; }
+        .icon-box img { width: 50px; height: 50px; object-fit: contain; }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        .dash-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: var(--card); border-bottom: 2px solid var(--accent); }
-        .settings-trigger { cursor: pointer; font-size: 24px; opacity: 0.7; transition: 0.2s; }
-        .settings-trigger:hover { opacity: 1; transform: rotate(45deg); }
-
-        .container { max-width: 900px; margin: 40px auto; padding: 0 20px; text-align: center; }
-        .input-group { background: var(--card); padding: 25px; border-radius: 15px; display: flex; gap: 10px; margin-bottom: 40px; border: 1px solid rgba(255,255,255,0.1); }
-        input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: rgba(0,0,0,0.2); color: inherit; outline: none; }
-        
-        /* --- APP GRID --- */
-        .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-        .app-card { background: var(--card); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; }
-        .app-card:hover { transform: translateY(-5px); border-color: var(--accent); }
-        .app-card img { width: 48px; height: 48px; border-radius: 10px; margin-bottom: 12px; }
-        .card-btns { display: flex; gap: 8px; margin-top: 15px; }
-        .card-btns button { flex: 1; padding: 8px; font-size: 12px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-open { background: var(--accent); color: white; }
-        .btn-rem { background: var(--danger); color: white; }
-
-        /* --- SETTINGS OVERLAY --- */
-        #settings-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2000; align-items: center; justify-content: center; }
-        .settings-box { background: var(--card); width: 90%; max-width: 600px; padding: 30px; border-radius: 20px; border: 1px solid var(--accent); position: relative; }
-        .close-settings { position: absolute; top: 20px; right: 20px; cursor: pointer; font-weight: bold; }
-        .settings-section { margin-bottom: 25px; text-align: left; }
-        .settings-section label { display: block; font-size: 12px; margin-bottom: 5px; opacity: 0.7; }
-
-        /* --- UTILS --- */
-        .fcs-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 25px; padding: 40px; }
-        .fcs-app { text-align: center; cursor: pointer; color: white; font-size: 11px; font-weight: 600; }
-        .fcs-icon { width: 70px; height: 70px; background: rgba(255,255,255,0.2); border-radius: 12px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        /* --- SETTINGS --- */
+        #settings-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2000; align-items: center; justify-content: center; }
+        .settings-box { background: #1e293b; width: 420px; padding: 30px; border-radius: 15px; border: 1px solid var(--accent); }
+        .btn { width: 100%; padding: 12px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; }
     </style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 </head>
+<body oncontextmenu="return false;">
 
-<body>
+<!-- CANVAS SNAPSHOT MASK (Piney Grove Context) -->
+<div id="snapshot-mask">
+    <div class="cv-sidebar">
+        <div class="fcs-logo-circle">FCS</div>
+        <div>Account</div>
+        <div style="opacity:1; border-left: 3px solid white;">Dashboard</div>
+        <div>Courses</div><div>Groups</div><div>Calendar</div>
+        <div>Inbox <span class="notif-badge">40</span></div>
+        <div>History</div><div>Help <span class="notif-badge">2</span></div>
+    </div>
+    <div class="cv-main">
+        <div class="cv-header">Dashboard</div>
+        <div class="cv-grid">
+            <div class="cv-card"><div class="cv-card-top" style="background:#ad62a1;"></div><div class="cv-card-body">Advanced Language Arts<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="cv-card-top" style="background:#517e5a; background-image: url('https://images.unsplash.com'); background-size:cover;"></div><div class="cv-card-body">Advanced Science - Ms. Cain<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="cv-card-top" style="background:#d19d59;"></div><div class="cv-card-body">Accelerated Mathematics<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="cv-card-top" style="background:#d16c4d;"></div><div class="cv-card-body">Advanced Social Studies<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="cv-card-top" style="background:#517e5a;"></div><div class="cv-card-body">Interdisciplinary Studies<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+            <div class="cv-card"><div class="cv-card-top" style="background:#ad62a1;"></div><div class="cv-card-body">6th Grade PE - Jackson<div class="cv-card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+        </div>
+    </div>
+    <div class="cv-todo">
+        <div style="font-weight:bold; border-bottom:1px solid #ddd; padding-bottom:8px; display:flex; justify-content:space-between; font-size: 13px;">To Do <span>✕</span></div>
+        <div style="color:#666; font-style:italic; margin-top:20px; font-size:12px; text-align: center;">Nothing for now</div>
+    </div>
+</div>
 
 <!-- STAGE 1: LOGIN -->
 <div id="login-page">
-    <div style="width: 300px; text-align: center;">
-        <img src="https://launchpad.classlink.com" style="width:60px;">
-        <h2 style="font-weight: 400; color: #444;">Fulton County Schools</h2>
-        <input type="text" placeholder="Username" style="width:100%; margin: 10px 0; padding:12px; border:1px solid #ccc; border-radius:4px;">
-        <input type="password" placeholder="Password" style="width:100%; margin: 10px 0; padding:12px; border:1px solid #ccc; border-radius:4px;">
-        <button onclick="fakeLogin()" style="width:100%; padding:12px; background:#004d99; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">Sign In</button>
+    <div style="width: 300px; text-align: center; color: #444;">
+        <img src="https://launchpad.classlink.com" style="width:60px; margin-bottom:10px;">
+        <h2>Fulton County Schools</h2>
+        <input type="text" id="u" placeholder="Username" style="width:100%; padding:10px; margin:5px 0; border:1px solid #ccc;">
+        <input type="password" id="p" placeholder="Password" style="width:100%; padding:10px; margin:5px 0; border:1px solid #ccc;">
+        <button onclick="login()" style="width:100%; padding:12px; background:#004d99; color:white; border:none; margin-top:10px; cursor:pointer; font-weight:bold;">Sign In</button>
     </div>
 </div>
 
-<!-- STAGE 2: FCS DASHBOARD -->
-<div id="facade">
-    <div style="height:50px; background: rgba(0, 77, 153, 0.9); display:flex; align-items:center; padding:0 20px; color:white;">
-        <div style="font-weight:900;">FCS</div>
-        <div style="flex:1; text-align:center;"><input type="text" placeholder="Search" style="width:40%; background:rgba(255,255,255,0.2); border:none; padding:5px 15px; border-radius:20px; color:white;"></div>
-
-
-    </div>
-    <div class="fcs-grid" id="decoy-grid"></div>
-
-
-
-</div>
-
-<!-- STAGE 3: ABOUT BLANK EMBEDDER -->
+<!-- STAGE 2: REAL DASHBOARD -->
 <div id="dashboard">
-    <div class="dash-header">
-        <div style="font-weight: 800; font-size: 20px;">ExistenceGG</div>
-        <div class="settings-trigger" onclick="toggleSettings(true)">⚙️</div>
+    <div class="fcs-header">
+        <div style="font-weight:900;">ExistenceGG</div>
+        <div onclick="toggleSettings(true)" style="cursor:pointer; font-size: 20px;">⚙️</div>
     </div>
-
-    <div class="container">
-        <h1 style="font-size: 2.5rem; margin-bottom: 10px;">About Blank Embedder</h1>
-        <p style="opacity: 0.6; margin-bottom: 30px;">Add your apps below to launch them in cloaked tabs.</p>
-
-        <div class="input-group">
-            <input type="text" id="appName" placeholder="App Name (e.g. Discord)">
-            <input type="text" id="appUrl" placeholder="URL (https://...)">
-            <button onclick="addApp()" style="background: var(--accent); color:white; border:none; padding:0 25px; border-radius:8px; cursor:pointer; font-weight:bold;">+ Add App</button>
-        </div>
-
-        <div class="apps-grid" id="apps"></div>
+    <div style="padding: 15px 45px; background: rgba(0,0,0,0.15); display: flex; gap: 10px;">
+        <input type="text" id="appName" placeholder="App Name" style="background:rgba(255,255,255,0.1); border:none; color:white; padding:10px; border-radius:5px; flex:1;">
+        <input type="text" id="appUrl" placeholder="URL" style="background:rgba(255,255,255,0.1); border:none; color:white; padding:10px; border-radius:5px; flex:2;">
+        <button onclick="addApp()" style="background:var(--accent); border:none; color:white; padding:0 20px; border-radius:5px; cursor:pointer; font-weight:bold;">+ Add App</button>
     </div>
+    <div class="apps-grid" id="apps"></div>
 </div>
 
-<!-- SETTINGS OVERLAY -->
+<!-- SETTINGS -->
 <div id="settings-overlay">
     <div class="settings-box">
-        <div class="close-settings" onclick="toggleSettings(false)">✕</div>
-        <h2 style="margin-top:0; border-bottom: 1px solid var(--accent); padding-bottom: 10px;">Settings</h2>
+        <h3 style="margin-top:0;">Stealth Controls</h3>
         
-        <div class="settings-section">
-            <label>Panic Redirect URL</label>
-            <input type="text" id="pUrl">
-        </div>
+        <label style="font-size:12px; opacity:0.8;">Ghost Mode (Icon Opacity)</label>
+        <input type="range" id="ghostSlider" min="0.05" max="1" step="0.05" value="1" style="width:100%; margin:10px 0 25px 0;" oninput="updateGhost(this.value)">
 
-        <div class="settings-section">
-            <label>Panic Key (Trigger)</label>
-            <input type="text" id="pKey" maxlength="1">
-        </div>
-
-        <div class="settings-section">
-            <label>Interface Theme</label>
-            <select id="th" onchange="applyTheme()" style="width:100%; padding:10px; background:#000; color:#fff; border:1px solid #334; border-radius:5px;">
-                <option value="dark">Dark Mode</option>
-                <option value="light">Light Mode</option>
-            </select>
-        </div>
-
-        <div class="settings-section">
-            <button onclick="floodHistory()" style="background:var(--danger); width:100%; margin-bottom:10px;">🌊 Flood History (6 School Tabs)</button>
-            <button onclick="cloudSync()" style="background:var(--success); width:100%;">☁️ Generate Cloud Sync Key</button>
-        </div>
-
-        <button onclick="toggleSettings(false)" style="width:100%; background:#475569; margin-top:10px;">Go Back to Homepage</button>
+        <button onclick="floodHistory()" class="btn" style="background:var(--danger);">🌊 Flood History (School Sites)</button>
+        <button onclick="toggleSettings(false)" class="btn" style="background:#475569; margin-top:20px;">Close Settings</button>
     </div>
 </div>
 
 <script>
     let apps = JSON.parse(localStorage.getItem("ex_v11_apps")) || [];
-    let config = JSON.parse(localStorage.getItem("ex_v11_conf")) || { pUrl: "https://drive.google.com", pKey: "`", th: "dark" };
+    let config = JSON.parse(localStorage.getItem("ex_v11_conf")) || { ghost: 1 };
+    const panicUrl = "https://forsyth.instructure.com/?login_success=1";
+    const pKey = "-";
+    let cloakTimer;
 
-    // --- DECOY & FLOW ---
-    function fakeLogin() {
-        document.getElementById("login-page").style.display = "none";
-        document.getElementById("facade").style.display = "flex";
-        document.title = "FCS | Dashboard";
-        renderDecoy();
+    // --- STEALTH LOGIC ---
+    window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'flex'; });
+    window.addEventListener('focus', () => { setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; }, 250); });
 
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === 'hidden') {
+            cloakTimer = setTimeout(() => { window.location.replace(panicUrl); }, 30000);
+        } else { clearTimeout(cloakTimer); }
+    });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    }
-
-    function toggleSettings(show) {
-        document.getElementById("settings-overlay").style.display = show ? "flex" : "none";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    }
-
-    window.onkeydown = (e) => {
-@@ -263,7 +164,6 @@ <h2 style="margin-top:0; border-bottom: 1px solid var(--accent); padding-bottom:
-        }
-    };
-
-    // --- CORE DASHBOARD ---
-    function addApp() {
-        const n = document.getElementById("appName").value;
-        let u = document.getElementById("appUrl").value;
-@@ -287,9 +187,10 @@ <h2 style="margin-top:0; border-bottom: 1px solid var(--accent); padding-bottom:
-        grid.innerHTML = "";
-        apps.forEach((app, i) => {
-            const domain = new URL(app.url).hostname;
-
-            grid.innerHTML += `
-                <div class="app-card">
-                    <img src="https://www.google.com{domain}&sz=128">
-                    <div style="font-weight:bold;">${app.name}</div>
-                    <div class="card-btns">
-                        <button class="btn-open" onclick="openApp(${i})">Open</button>
-@@ -302,53 +203,72 @@ <h2 style="margin-top:0; border-bottom: 1px solid var(--accent); padding-bottom:
-    function openApp(i) {
-        const app = apps[i];
-        const win = window.open("about:blank", "_blank");
-
-        const doc = win.document;
-        doc.title = "FCS | Dashboard";
-        const fav = doc.createElement("link"); fav.rel="icon"; fav.href="https://launchpad.classlink.com";
-        doc.head.appendChild(fav);
-
-
-
-
-
-
-
-        doc.body.innerHTML = `
-            <div style="height:100vh;display:flex;flex-direction:column;background:#000;">
-                <div style="height:40px;background:#111;display:flex;align-items:center;padding:0 10px;justify-content:space-between;">
-                    <span style="color:#666;font-size:12px;">Cloaked Session: ${app.name}</span>
-                    <button onclick="window.location.replace('${config.pUrl}')" style="background:#ef4444;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">Panic</button>
-                </div>
-                <iframe src="${app.url}" style="flex:1;border:none;"></iframe>
-            </div>`;
-        win.addEventListener("keydown", (e) => { if(e.key === config.pKey) win.location.replace(config.pUrl); });
-    }
-
-    // --- SETTINGS LOGIC ---
-    function applyTheme() {
-        config.th = document.getElementById("th").value;
-        document.body.className = config.th === "light" ? "light-mode" : "";
+    function updateGhost(val) {
+        config.ghost = val;
         localStorage.setItem("ex_v11_conf", JSON.stringify(config));
-
-
-
-
-
-
-
+        document.querySelectorAll('.app-folder').forEach(el => el.style.opacity = val);
     }
 
+    // --- HISTORY FLOODER (Your 6 specific sites) ---
     function floodHistory() {
-        const links = ["https://myapps.classlink.com", "https://forsyth.instructure.com", "https://campus.forsyth.k12.ga.us", "https://drive.google.com", "https://forsyth.studentsupporttime.com", "https://pbisrstudent.navigate360.com"];
-        links.forEach(l => window.open(l, '_blank'));
+        const sites = [
+            "https://forsyth.instructure.com/?login_success=1",
+            "https://forsyth.studentsupporttime.com/SHome#!/app/dashboard",
+            "https://drive.google.com/drive/",
+            "https://pbisrstudent.navigate360.com/student/student.php",
+            "https://campus.forsyth.k12.ga.us/campus/nav-wrapper/student/portal/student",
+            "https://myapps.classlink.com/home"
+        ];
+        alert("Burying history under school links...");
+        for(let i=0; i<30; i++) {
+            let win = window.open(sites[i % sites.length], '_blank');
+            if(win) setTimeout(() => win.close(), 250);
+        }
     }
+
+    // --- CORE LOGIC ---
+    function login() { if(document.getElementById("u").value && document.getElementById("p").value) { document.getElementById("login-page").style.display="none"; document.getElementById("dashboard").style.display="flex"; renderApps(); renderDecoy(); } }
 
     function renderDecoy() {
-        const decoyNames = ["Infinite Campus", "Google Drive", "Microsoft 365", "Canvas", "Social Studies", "Science"];
-        const icons = ["https://launchpad.classlink.com", "https://upload.wikimedia.org", "https://upload.wikimedia.org", "https://du11hjcvx0uqb.cloudfront.net", "https://img.icons8.com", "https://img.icons8.com"];
+        // Infinite Campus is the secret unlock key
+        const decoy = [{n:"Infinite Campus", i:"https://launchpad.classlink.com"}];
+        const grid = document.createElement("div"); // Internal decoy grid not visible yet
+        // In this version, we just render the real apps. Triple-click logic remains for your decoy stage if you re-add Stage 2.
+    }
 
+    function addApp() {
+        let u = document.getElementById("appUrl").value; if(!u.startsWith("http")) u = "https://" + u;
+        apps.push({name: document.getElementById("appName").value, url: u});
+        localStorage.setItem("ex_v11_apps", JSON.stringify(apps)); renderApps();
+    }
 
-
-
-
-
-        const grid = document.getElementById("decoy-grid");
-        grid.innerHTML = "";
-        decoyNames.forEach((name, i) => {
-            const a = document.createElement("div"); a.className = "fcs-app";
-            if(i === 0) a.onclick = (e) => { if(e.detail === 3) { document.getElementById("dashboard").style.display="block"; document.getElementById("facade").style.display="none"; } };
-            a.innerHTML = `<div class="fcs-icon"><img src="${icons[i]}" style="width:45px;"></div><div>${name}</div>`;
-            grid.appendChild(a);
-
-
-
+    function renderApps() {
+        const grid = document.getElementById("apps"); grid.innerHTML = "";
+        apps.forEach((app, i) => {
+            grid.innerHTML += `<div class="app-folder" onclick="openApp(${i})" style="opacity:${config.ghost}"><div class="icon-box"><img src="https://www.google.com{new URL(app.url).hostname}&sz=128"></div><div style="font-size:11px; font-weight:600;">${app.name}</div></div>`;
         });
     }
 
-    // Init values
-    document.getElementById("pUrl").value = config.pUrl;
-    document.getElementById("pKey").value = config.pKey;
-    document.getElementById("th").value = config.th;
-    applyTheme();
+    async function getSmartUrl(url) {
+        const blacklist = ['discord.com', 'youtube.com', 'roblox.com', 'google.com', 'github.com'];
+        const domain = new URL(url).hostname.toLowerCase();
+        if (blacklist.some(b => domain.includes(b))) return `http://proxy.ikunbeautiful.workers.dev{encodeURIComponent(url)}`;
+        try { await fetch(url, { mode: 'no-cors' }); return url; } catch (e) { return `http://proxy.ikunbeautiful.workers.dev{encodeURIComponent(url)}`; }
+    }
+
+    async function openApp(i) {
+        const app = apps[i];
+        const finalUrl = await getSmartUrl(app.url);
+        const win = window.open("about:blank", "_blank");
+        const blobContent = `<html><head><title>Dashboard</title><link rel="icon" href="https://instructure-uploads.s3.amazonaws.com"><style>body,html,iframe{margin:0;padding:0;height:100%;width:100%;overflow:hidden;border:none;background:#fff;}</style></head>
+            <body><iframe src="${finalUrl}"></iframe><script>
+            window.onkeydown=(e)=>{if(e.key==="${pKey}")window.location.replace("${panicUrl}")};
+            document.addEventListener("visibilitychange",()=>{if(document.visibilityState==='hidden'){setTimeout(()=>{window.location.replace("${panicUrl}")},30000)}});
+            <\/script></body></html>`;
+        win.location.href = URL.createObjectURL(new Blob([blobContent], { type: 'text/html' }));
+    }
+
+    function toggleSettings(s) { document.getElementById("settings-overlay").style.display = s ? "flex" : "none"; }
+    window.onkeydown = (e) => { if(e.key === pKey) window.location.replace(panicUrl); };
+    
+    // Init settings
+    document.getElementById("ghostSlider").value = config.ghost;
     renderApps();
 </script>
-
 </body>
 </html>
