@@ -1121,6 +1121,11 @@
             "aliases": [],
             "categories": []
         },
+        "Wordle": {
+            "path": "wordle",
+            "aliases": [],
+            "categories": []
+        },
         "Ultimate Chess": {
             "path": "flash/?game=ultimate-chess",
             "aliases": [],
