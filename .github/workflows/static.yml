@@ -18,71 +18,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Fast Checkout (safe for large repos)
+      - name: Ultra-Fast Checkout
         uses: actions/checkout@v4
         with:
           filter: 'blob:none'
+          fetch-depth: 1          # Shallow clone → huge speed gain
           sparse-checkout: |
             index.html
             404.html
             favicon.ico
             css
-            fonts
-            games
-            imgs
             js
-          sparse-checkout-cone-mode: false
+            imgs
+          sparse-checkout-cone-mode: true  # Optimized for folders
 
-      - name: Build JS (never fails)
+      - name: Build JS (fast & safe)
         run: |
           set -euo pipefail
           mkdir -p staging/js
 
-          # Try fast build
-          if npx --yes esbuild js/*.js \
-            --bundle --minify \
-            --outdir=staging/js \
-            --log-level=error; then
-            echo "✅ JS built with esbuild"
+          # Attempt esbuild; fallback to raw JS if unavailable
+          if npx --yes esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error; then
+            echo "✅ JS built successfully"
           else
-            echo "⚠️ Build failed → using raw JS"
+            echo "⚠️ esbuild failed → copying raw JS"
             rm -rf staging/js
             cp -r js staging/
           fi
 
-      - name: Assemble site (fast, no repo scan)
+      - name: Assemble Site
         run: |
           set -euo pipefail
-
           mkdir -p staging
 
           cp index.html staging/
           cp 404.html staging/ || true
           cp favicon.ico staging/ || true
-
           cp -r css staging/ || true
-          cp -r fonts staging/ || true
-          cp -r games staging/ || true
+          cp -r js staging/ || true
           cp -r imgs staging/ || true
 
-          # If build didn't produce JS, ensure fallback exists
-          if [ ! -d staging/js ] || [ -z "$(ls -A staging/js)" ]; then
-            echo "⚠️ JS missing → copying fallback"
-            rm -rf staging/js
-            cp -r js staging/
-          fi
-
-      - name: Safety Check (prevents broken sites)
+      - name: Safety Check
         run: |
           set -euo pipefail
 
-          if [ ! -s staging/index.html ]; then
-            echo "❌ index.html missing"
-            exit 1
-          fi
-
-          if ! grep -q "</html>" staging/index.html; then
-            echo "❌ index.html malformed"
+          if [ ! -s staging/index.html ] || \
+             ! grep -q "</html>" staging/index.html; then
+            echo "❌ index.html missing or malformed"
             exit 1
           fi
 
@@ -91,7 +73,7 @@ jobs:
             exit 1
           fi
 
-      - name: Upload artifact
+      - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: staging
