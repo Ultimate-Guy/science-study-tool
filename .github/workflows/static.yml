@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Optimized Checkout
+      - name: Minimal Checkout (only what we need)
         uses: actions/checkout@v4
         with:
           filter: 'blob:none'
@@ -26,24 +26,28 @@ jobs:
             index.html
             404.html
             favicon.ico
-            package.json
-            package-lock.json
             css
             fonts
             games
             imgs
             js
-          sparse-checkout-cone-mode: false 
+            package.json
+            package-lock.json
+          sparse-checkout-cone-mode: false
 
+      # 🔍 Detect JS-related changes using GitHub event (FAST, no git diff)
       - name: Detect JS changes
         id: changes
         run: |
-          if git diff --name-only HEAD~1 | grep -E '^(js/|package-lock.json|package.json)'; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "changed=false" >> $GITHUB_OUTPUT
-          fi
+          echo "changed=false" >> $GITHUB_OUTPUT
+          for file in ${{ join(github.event.head_commit.modified, ' ') }}; do
+            if [[ "$file" == js/* || "$file" == package.json || "$file" == package-lock.json ]]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              break
+            fi
+          done
 
+      # ⚡ Only setup Node if needed
       - name: Setup Node
         if: steps.changes.outputs.changed == 'true'
         uses: actions/setup-node@v4
@@ -51,28 +55,45 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Install deps
         if: steps.changes.outputs.changed == 'true'
         run: npm ci
 
-      - name: Build and Sync
+      # 🚀 Build ONLY when needed
+      - name: Build JS
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p staging/js
+          ./node_modules/.bin/esbuild js/*.js \
+            --bundle --minify \
+            --outdir=staging/js \
+            --log-level=error
+
+      # ⚡ Copy ONLY required files (NO repo-wide scan)
+      - name: Assemble site (fast path)
         run: |
           set -euo pipefail
 
-          mkdir -p staging/js
+          mkdir -p staging
 
-          if [ "${{ steps.changes.outputs.changed }}" = "true" ]; then
-            ./node_modules/.bin/esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error &
+          # Copy core files (tiny cost)
+          cp index.html staging/
+          cp 404.html staging/ || true
+          cp favicon.ico staging/ || true
+
+          # Copy directories individually (no find/rsync over root!)
+          cp -r css staging/ || true
+          cp -r fonts staging/ || true
+          cp -r games staging/ || true
+          cp -r imgs staging/ || true
+
+          # If JS wasn't rebuilt, just copy it raw
+          if [ ! -d staging/js ]; then
+            cp -r js staging/
           fi
 
-          rsync -a --exclude=node_modules \
-                    --exclude=js \
-                    --exclude=staging \
-                    --exclude="package*" \
-                    ./ staging/
-
-          wait || true
-
+      # 🛡️ Strong safety check
       - name: Safety Check
         run: |
           set -euo pipefail
