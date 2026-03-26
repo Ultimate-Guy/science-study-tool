@@ -6,6 +6,11 @@
     <meta name="robots" content="noindex, nofollow">
     <title>FCS | Login</title>
     <link rel="icon" href="https://launchpad.classlink.com">
+    
+    <!-- ULTRAVIOLET SCRIPTS (Files must be in your /uv/ folder) -->
+    <script src="uv/uv.bundle.js"></script>
+    <script src="uv/uv.config.js"></script>
+
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #3b82f6; --danger: #ef4444; --success: #10b981; }
         .light-mode { --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --accent: #2563eb; }
@@ -14,34 +19,20 @@
         /* --- STAGE 1: LOGIN --- */
         #login-page { height: 100vh; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; position: relative; }
 
-        /* --- STAGE 2: REALISTIC CLASSLINK FACADE --- */
+        /* --- STAGE 2: BLUE CLASSLINK FACADE --- */
         #facade { 
-            display: none; 
-            height: 100vh; 
-            background: linear-gradient(135deg, #00c6fb 0%, #005bea 100%); /* Blue gradient from image */
-            flex-direction: column; 
-            z-index: 999; 
+            display: none; height: 100vh; 
+            background: linear-gradient(135deg, #00c6fb 0%, #005bea 100%); 
+            flex-direction: column; z-index: 999; 
         }
         .fcs-top-bar { height: 50px; background: rgba(0, 77, 153, 0.8); display: flex; align-items: center; padding: 0 20px; color: white; backdrop-filter: blur(10px); }
-        .fcs-grid { 
-            flex: 1; 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); 
-            gap: 20px; 
-            padding: 40px; 
-            overflow-y: auto;
-        }
-        .fcs-app { text-align: center; cursor: pointer; color: white; font-size: 12px; font-weight: 500; transition: transform 0.1s; }
-        .fcs-app:active { transform: scale(0.95); }
+        .fcs-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px; padding: 40px; overflow-y: auto; }
+        .fcs-app { text-align: center; cursor: pointer; color: white; font-size: 12px; font-weight: 500; }
         .fcs-icon { 
-            width: 85px; height: 85px; 
-            background: rgba(255, 255, 255, 0.15); 
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 18px; 
-            margin: 0 auto 10px; 
-            display: flex; align-items: center; justify-content: center; 
-            backdrop-filter: blur(8px); 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 85px; height: 85px; background: rgba(255, 255, 255, 0.15); 
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 18px; 
+            margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; 
+            backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         .fcs-icon img { width: 55px; height: 55px; object-fit: contain; }
 
@@ -49,7 +40,6 @@
         #dashboard { display: none; height: 100vh; overflow-y: auto; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: var(--card); border-bottom: 2px solid var(--accent); }
         .settings-trigger { cursor: pointer; font-size: 24px; opacity: 0.7; transition: 0.2s; }
-        .settings-trigger:hover { opacity: 1; transform: rotate(45deg); }
         .container { max-width: 900px; margin: 40px auto; padding: 0 20px; text-align: center; }
         .input-group { background: var(--card); padding: 25px; border-radius: 15px; display: flex; gap: 10px; margin-bottom: 40px; border: 1px solid rgba(255,255,255,0.1); }
         input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: rgba(0,0,0,0.2); color: inherit; outline: none; }
@@ -57,34 +47,30 @@
         .app-card { background: var(--card); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; }
         .app-card img { width: 48px; height: 48px; border-radius: 10px; margin-bottom: 12px; }
         .card-btns { display: flex; gap: 8px; margin-top: 15px; }
-        .card-btns button { flex: 1; padding: 8px; font-size: 12px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-open { background: var(--accent); color: white; }
-        .btn-rem { background: var(--danger); color: white; }
+        .card-btns button { flex: 1; padding: 8px; font-size: 12px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; color: white; }
+        .btn-open { background: var(--accent); }
+        .btn-rem { background: var(--danger); }
 
-        /* --- SETTINGS & OVERLAYS --- */
+        /* --- SETTINGS --- */
         #settings-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2000; align-items: center; justify-content: center; }
         .settings-box { background: var(--card); width: 90%; max-width: 600px; padding: 30px; border-radius: 20px; border: 1px solid var(--accent); position: relative; }
-        .close-settings { position: absolute; top: 20px; right: 20px; cursor: pointer; font-weight: bold; }
         .settings-section { margin-bottom: 25px; text-align: left; }
-        .settings-section label { display: block; font-size: 12px; margin-bottom: 5px; opacity: 0.7; }
-        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; color: white; }
-        button:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
 
-<!-- STAGE 1: LOGIN -->
+<!-- STAGE 1 -->
 <div id="login-page">
     <div style="width: 300px; text-align: center;">
         <img src="https://launchpad.classlink.com" style="width:60px;">
         <h2 style="font-weight: 400; color: #444;">Fulton County Schools</h2>
-        <input type="text" placeholder="Username" style="width:100%; margin: 10px 0; border:1px solid #ccc; color: #000;">
-        <input type="password" placeholder="Password" style="width:100%; margin: 10px 0; border:1px solid #ccc; color: #000;">
-        <button onclick="fakeLogin()" style="width:100%; background:#004d99;">Sign In</button>
+        <input type="text" placeholder="Username" style="width:100%; margin: 10px 0; border:1px solid #ccc; color:#000;">
+        <input type="password" placeholder="Password" style="width:100%; margin: 10px 0; border:1px solid #ccc; color:#000;">
+        <button onclick="fakeLogin()" style="width:100%; background:#004d99; padding:12px; color:white; border:none; border-radius:4px; cursor:pointer;">Sign In</button>
     </div>
 </div>
 
-<!-- STAGE 2: FACADE -->
+<!-- STAGE 2 -->
 <div id="facade">
     <div class="fcs-top-bar">
         <div style="font-weight:900; font-size: 1.2rem;">FCS</div>
@@ -95,7 +81,7 @@
     <div class="fcs-grid" id="decoy-grid"></div>
 </div>
 
-<!-- STAGE 3: DASHBOARD -->
+<!-- STAGE 3 -->
 <div id="dashboard">
     <div class="dash-header">
         <div style="font-weight: 800; font-size: 20px;">ExistenceGG</div>
@@ -103,11 +89,11 @@
     </div>
     <div class="container">
         <h1>About Blank Embedder</h1>
-        <p style="opacity: 0.6;">Add your apps below to launch them in cloaked tabs.</p>
+        <p style="opacity: 0.6;">Stealth Proxy via Render Service</p>
         <div class="input-group">
             <input type="text" id="appName" placeholder="App Name">
             <input type="text" id="appUrl" placeholder="URL (https://...)">
-            <button onclick="addApp()" style="background: var(--accent);">+ Add App</button>
+            <button onclick="addApp()" style="background: var(--accent); padding:0 20px; border:none; border-radius:8px; cursor:pointer; color:white; font-weight:bold;">+ Add App</button>
         </div>
         <div class="apps-grid" id="apps"></div>
     </div>
@@ -116,27 +102,31 @@
 <!-- SETTINGS -->
 <div id="settings-overlay">
     <div class="settings-box">
-        <div class="close-settings" onclick="toggleSettings(false)">✕</div>
+        <div onclick="toggleSettings(false)" style="position:absolute; top:20px; right:20px; cursor:pointer;">✕</div>
         <h2>Settings</h2>
         <div class="settings-section">
-            <label>Panic Redirect URL</label>
-            <input type="text" id="pUrl">
+            <label style="font-size:12px; opacity:0.7;">Panic Redirect URL</label>
+            <input type="text" id="pUrl" style="width:100%; margin-top:5px;">
         </div>
         <div class="settings-section">
-            <label>Panic Key (Trigger)</label>
-            <input type="text" id="pKey" maxlength="1">
+            <label style="font-size:12px; opacity:0.7;">Panic Key (Trigger)</label>
+            <input type="text" id="pKey" maxlength="1" style="width:100%; margin-top:5px;">
         </div>
-        <div class="settings-section">
-            <button onclick="floodHistory()" style="background:var(--danger); width:100%; margin-bottom:10px;">🌊 Flood History (School Tabs)</button>
-            <button onclick="cloudSync()" style="background:var(--success); width:100%;">☁️ Cloud Sync System</button>
-        </div>
-        <button onclick="toggleSettings(false)" style="width:100%; background:#475569;">Back to Home</button>
+        <button onclick="floodHistory()" style="background:var(--danger); width:100%; margin-bottom:10px; padding:12px; border-radius:8px; border:none; color:white; font-weight:bold; cursor:pointer;">🌊 Flood History</button>
+        <button onclick="cloudSync()" style="background:var(--success); width:100%; padding:12px; border-radius:8px; border:none; color:white; font-weight:bold; cursor:pointer;">☁️ Cloud Sync System</button>
     </div>
 </div>
 
 <script>
     let apps = JSON.parse(localStorage.getItem("ex_v11_apps")) || [];
     let config = JSON.parse(localStorage.getItem("ex_v11_conf")) || { pUrl: "https://drive.google.com", pKey: "`", th: "dark" };
+
+    // Register Service Worker via your Render URL
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./uv/uv.sw.js', { scope: __uv$config.prefix });
+        });
+    }
 
     function fakeLogin() {
         document.getElementById("login-page").style.display = "none";
@@ -148,8 +138,8 @@
     function toggleSettings(show) {
         document.getElementById("settings-overlay").style.display = show ? "flex" : "none";
         if(!show) {
-            config.pUrl = document.getElementById("pUrl").value;
-            config.pKey = document.getElementById("pKey").value;
+            config.pUrl = document.getElementById("pUrl").value || "https://google.com";
+            config.pKey = document.getElementById("pKey").value || "`";
             localStorage.setItem("ex_v11_conf", JSON.stringify(config));
         }
     }
@@ -204,6 +194,10 @@
         const app = apps[i];
         const win = window.open("about:blank", "_blank");
         if (!win) return alert("Popup blocked!");
+
+        // Use the Render-hosted Ultraviolet Service
+        const encodedUrl = __uv$config.prefix + __uv$config.encodeUrl(app.url);
+        
         const doc = win.document;
         doc.title = "FCS | Dashboard";
         const fav = doc.createElement("link"); fav.rel="icon"; fav.href="https://launchpad.classlink.com";
@@ -214,13 +208,14 @@
         doc.body.style.display = "flex";
         doc.body.style.flexDirection = "column";
         doc.body.style.background = "#000";
+        doc.body.style.overflow = "hidden";
         
         doc.body.innerHTML = `
             <div style="height:40px;background:#111;display:flex;align-items:center;padding:0 15px;justify-content:space-between;border-bottom:1px solid #333;color:#888;font-family:sans-serif;">
-                <span style="font-size:12px;">Cloaked: ${app.name}</span>
-                <button onclick="window.location.replace('${config.pUrl}')" style="background:#ef4444;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">Panic</button>
+                <span style="font-size:12px;">Cloaked Session: ${app.name}</span>
+                <button onclick="window.location.replace('${config.pUrl}')" style="background:#ef4444;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px;">Panic</button>
             </div>
-            <iframe src="${app.url}" style="flex:1;border:none;width:100%;" allowfullscreen></iframe>`;
+            <iframe src="${encodedUrl}" style="flex:1;border:none;width:100%;height:100%;" allowfullscreen></iframe>`;
             
         win.addEventListener("keydown", (e) => { if(e.key === config.pKey) win.location.replace(config.pUrl); });
     }
@@ -240,7 +235,8 @@
     }
 
     function floodHistory() {
-        ["https://myapps.classlink.com", "https://drive.google.com", "https://campus.forsyth.k12.ga.us"].forEach(l => window.open(l, '_blank'));
+        const links = ["https://myapps.classlink.com", "https://drive.google.com", "https://campus.forsyth.k12.ga.us"];
+        links.forEach(l => window.open(l, '_blank'));
     }
 
     function renderDecoy() {
@@ -250,7 +246,7 @@
             {n:"Microsoft 365", i:"https://upload.wikimedia.org"},
             {n:"OneDrive", i:"https://upload.wikimedia.org"},
             {n:"Canvas", i:"https://du11hjcvx0uqb.cloudfront.net"},
-            {n:"Infinite Campus", i:"https://launchpad.classlink.com"}
+            {n:"Outlook", i:"https://upload.wikimedia.org"}
         ];
         const grid = document.getElementById("decoy-grid");
         grid.innerHTML = "";
@@ -258,14 +254,20 @@
             const el = document.createElement("div"); el.className = "fcs-app";
             if(i === 0) {
                 let clicks = 0;
-                el.onclick = () => { clicks++; if(clicks >= 10) { document.getElementById("dashboard").style.display="block"; document.getElementById("facade").style.display="none"; }};
+                el.onclick = () => { 
+                    clicks++; 
+                    if(clicks >= 10) { 
+                        document.getElementById("dashboard").style.display="block"; 
+                        document.getElementById("facade").style.display="none"; 
+                    }
+                };
             }
             el.innerHTML = `<div class="fcs-icon"><img src="${app.i}"></div><div>${app.n}</div>`;
             grid.appendChild(el);
         });
     }
 
-    // Init
+    // Init values
     document.getElementById("pUrl").value = config.pUrl;
     document.getElementById("pKey").value = config.pKey;
     renderApps();
