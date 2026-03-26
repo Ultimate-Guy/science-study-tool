@@ -17,39 +17,42 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          sparse-checkout: |
+            index.html
+            js
+            css
+            imgs
+            fonts
+            games
+            favicon.ico
+          sparse-checkout-cone-mode: false # Keeps only exactly what you need
 
-      - name: Setup Node
+      - name: Setup Node & Build
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # Speeds up Node tools on every run
+          cache: 'npm'
 
-      - name: Build and Sync
+      - name: Fast Build and Sync
         run: |
-          mkdir -p staging/js
+          mkdir -p staging
           
-          # JS: Bundle & Minify only if folder exists
+          # JS: Bundle & Minify (Fastest with esbuild)
           if [ -d "js" ]; then
-            npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error || cp -r js/* staging/js/
+            npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error || cp -r js staging/
           fi
           
-          # FAST SYNC: Moves all assets into staging in one pass
-          rsync -am . staging/ --include='*.html' --include='css/***' --include='imgs/***' \
-          --include='fonts/***' --include='games/***' --include='favicon.ico' --exclude='*'
+          # HARD LINK SYNC: Much faster than copying for large assets
+          # This links files into staging without duplicating the 3.7GB of data on disk
+          find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -exec cp -rl {} staging/ \;
 
-      - name: Crash Protection Check
+      - name: Safety Check
         run: |
-          # 1. Check if index.html actually exists and has content
-          if [ ! -s staging/index.html ]; then
-            echo "ERROR: index.html is empty or missing! Blocking deploy."
-            exit 1
-          fi
-          # 2. Check for the closing body tag (ensures the file isn't cut off)
-          if ! grep -q "</body>" staging/index.html; then
-            echo "ERROR: index.html is incomplete/corrupted! Blocking deploy."
+          if [ ! -s staging/index.html ] || ! grep -q "</body>" staging/index.html; then
+            echo "Critical Error: index.html missing or corrupted."
             exit 1
           fi
 
@@ -61,5 +64,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/deploy-pages@v4
+      - id: deployment
+        uses: actions/deploy-pages@v4
