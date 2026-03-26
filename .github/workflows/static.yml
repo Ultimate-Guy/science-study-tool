@@ -25,39 +25,41 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # Official high-speed caching
+          cache: 'npm' # Speeds up subsequent runs by caching tools
 
-      - name: Build and Sync
+      - name: Build & Sync
         run: |
           mkdir -p staging/js
-          # Build JS if it exists; otherwise skip to keep it fast
+          # Build JS only if the folder exists to save time
           if [ -d "js" ]; then
             npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
           fi
           
-          # Use rsync for the fastest possible asset sync
+          # High-speed asset sync using rsync
           rsync -am . staging/ --include='*.html' --include='css/***' --include='imgs/***' \
           --include='fonts/***' --include='games/***' --include='favicon.ico' --exclude='*'
 
       # =========================
-      # 1. CRASH PREVENTION: Content Integrity Check
+      # 1. CRASH PROTECTION (Content Check)
       # =========================
-      - name: Content Integrity Check
+      - name: Verify Build Integrity
         run: |
-          # Fails if index.html is too small (e.g. empty/corrupted)
+          # 1. Ensure index.html isn't empty (must be > 100 bytes)
           if [ $(stat -c%s "staging/index.html") -lt 100 ]; then
-            echo "CRITICAL: index.html looks empty or broken!" && exit 1
+            echo "Error: index.html is too small or empty!" && exit 1
           fi
-          # Fails if critical tags like <body> are missing
-          grep -q "</body>" staging/index.html || (echo "CRITICAL: Missing closing body tag!" && exit 1)
+          # 2. Ensure page loaded properly (checks for essential closing tag)
+          grep -q "</body>" staging/index.html || (echo "Error: index.html is malformed/incomplete!" && exit 1)
 
       # =========================
-      # 2. BROKEN LINK CHECKER (High Speed)
+      # 2. FAST LINK CHECKER (Lychee)
       # =========================
       - name: Check for Broken Links
-        uses: untitaker/hyperlink-link-checker@v0.1.34
+        uses: lycheeverse/lychee-action@v2
         with:
-          args: staging/ --check-anchors --sources # Scans local files in milliseconds
+          # Checks all local HTML files in the staging folder
+          args: --offline staging/**/*.html
+          fail: true # This kills the build if a link is broken, preventing a bad deploy
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
