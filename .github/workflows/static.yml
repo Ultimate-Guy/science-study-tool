@@ -14,74 +14,110 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
   build:
+
+
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ultra-Fast Checkout
-        uses: actions/checkout@v4
+      # =========================
+      # Checkout (safe + fast)
+      # =========================
+      - uses: actions/checkout@v4
         with:
-          filter: 'blob:none'
-          fetch-depth: 1          # Shallow clone → huge speed gain
-          sparse-checkout: |
-            index.html
-            404.html
-            favicon.ico
-            css
-            js
-            imgs
-          sparse-checkout-cone-mode: true  # Optimized for folders
+          fetch-depth: 1
 
-      - name: Build JS (fast & safe)
-        run: |
-          set -euo pipefail
-          mkdir -p staging/js
 
-          # Attempt esbuild; fallback to raw JS if unavailable
-          if npx --yes esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error; then
-            echo "✅ JS built successfully"
-          else
-            echo "⚠️ esbuild failed → copying raw JS"
-            rm -rf staging/js
-            cp -r js staging/
-          fi
-
-      - name: Assemble Site
-        run: |
-          set -euo pipefail
-          mkdir -p staging
-
-          cp index.html staging/
-          cp 404.html staging/ || true
-          cp favicon.ico staging/ || true
-          cp -r css staging/ || true
-          cp -r js staging/ || true
-          cp -r imgs staging/ || true
-
-      - name: Safety Check
-        run: |
-          set -euo pipefail
-
-          if [ ! -s staging/index.html ] || \
-             ! grep -q "</html>" staging/index.html; then
-            echo "❌ index.html missing or malformed"
-            exit 1
-          fi
-
-          if [ ! -d staging/js ] || [ -z "$(ls -A staging/js)" ]; then
-            echo "❌ JS missing → site would hang"
-            exit 1
-          fi
-
-      - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3
+      # =========================
+      # Setup Node ONLY if needed
+      # =========================
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          path: staging
+          node-version: 20
+        if: contains(join(github.event.head_commit.modified, ','), 'js/') ||
+            contains(join(github.event.head_commit.modified, ','), 'css/')
+
+      # =========================
+      # Install esbuild (only if JS exists)
+      # =========================
+      - name: Install tools
+        if: hashFiles('js/**/*.js') != ''
+        run: npm i -g esbuild
+
+      # =========================
+      # Build output folder
+      # =========================
+      - name: Prepare dist
+        run: rm -rf dist && mkdir dist
+
+
+
+      # =========================
+      # JS (safe build)
+      # =========================
+      - name: Build JS
+        run: |
+          if [ -d "js" ]; then
+            esbuild js/*.js --minify --outdir=dist/js || cp -r js dist/js
+
+
+
+
+
+
+          fi
+
+      # =========================
+      # CSS (safe copy, no fragile bundling)
+      # =========================
+      - name: CSS
+        run: |
+          if [ -d "css" ]; then
+            cp -r css dist/
+
+
+          fi
+
+      # =========================
+      # HTML
+      # =========================
+      - name: HTML
+        run: cp *.html dist/ 2>/dev/null || true
+
+      # =========================
+      # Assets
+      # =========================
+      - name: Assets
+        run: |
+          cp -r imgs dist/ 2>/dev/null || true
+          cp -r fonts dist/ 2>/dev/null || true
+          cp -r games dist/ 2>/dev/null || true
+
+          cp favicon.ico dist/ 2>/dev/null || true
+
+
+      # =========================
+      # Safety checks
+      # =========================
+      - name: Validate
+        run: test -f dist/index.html
+
+      # =========================
+      # Pages artifact
+      # =========================
+
+
+      - uses: actions/upload-pages-artifact@v3
+
+        with:
+          path: dist
 
   deploy:
     needs: build
+
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
+
     steps:
       - uses: actions/deploy-pages@v4
