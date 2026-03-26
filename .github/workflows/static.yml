@@ -20,13 +20,15 @@ jobs:
       - name: Optimized Checkout
         uses: actions/checkout@v4
         with:
-          # Blobless clone: doesn't download file data until needed
+          # Blobless clone avoids downloading 3.7GB of history
           filter: 'blob:none'
-          # Sparse checkout: only brings in your specific folders
+          # Explicitly include lockfiles so "Setup Node" doesn't crash
           sparse-checkout: |
             index.html
             404.html
             favicon.ico
+            package.json
+            package-lock.json
             css
             fonts
             games
@@ -40,22 +42,26 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Install Dependencies
+        # Installs esbuild and your prompts fast from the lockfile
+        run: npm ci 
+
       - name: Fast Build and Sync
         run: |
           mkdir -p staging/js
           
-          # Bundle your core JS (super fast with esbuild)
+          # Bundle JS using the lightning-fast esbuild
           npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
           
-          # 'cp -rl' creates hard links (instant pointers) instead of copying bytes.
-          # This is the fastest way to move 3GB+ of game files.
-          find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -not -path './package*' -exec cp -rl {} staging/ \;
+          # Hard Linking: Instantly links 3.7GB of files into staging without 
+          # duplicating data on disk. Skips node_modules and config files.
+          find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -not -path './node_modules' -not -path './package*' -exec cp -rl {} staging/ \;
 
-      - name: Integrity Check
+      - name: Safety Check
         run: |
-          # Safe check: verifies the critical index.html isn't empty or cut off
+          # Blocks deploy if index.html is missing or corrupted
           if [ ! -s staging/index.html ] || ! grep -q "</body>" staging/index.html; then
-            echo "DEPLOY BLOCKED: index.html is missing or corrupted."
+            echo "Critical Error: index.html missing or corrupted."
             exit 1
           fi
 
