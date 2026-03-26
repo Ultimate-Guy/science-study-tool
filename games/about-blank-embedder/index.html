@@ -1,24 +1,3 @@
-<!-- 
-************************************************************************************************
-FORSYTH COUNTY SCHOOLS - SECURE STUDENT WORKSPACE v21.0.4
-STATION_ID: PGM-L402-SYNC
-FACILITY: Piney Grove Middle School
-SOURCE_AUTH: FCS TECHNOLOGY DEPARTMENT
-[RESTRICTED ACCESS: AUTHORIZED STUDENT USE ONLY]
-************************************************************************************************
-// INITIALIZING BOOT SEQUENCE...
-// [INFO] Checking Forsyth County DNS filters...
-// [INFO] Validating ClassLink Session...
-// [DEBUG] Handshaking with https://forsyth.instructure.com...
-// [DEBUG] LTI Connection Verified.
-// [TRACE] Loading Student Dashboard for Piney Grove Middle School...
-// [TRACE] Syncing Canvas Course Modules...
-// [WARN] Network Latency at 15ms. Optimizing Secure Tunnel...
-// [SUCCESS] Environment Ready. Rendering Piney Grove Canvas UI.
-
-... (I recommend pasting another 1000 lines of random "system logs" here in your actual file) ...
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,134 +6,199 @@ SOURCE_AUTH: FCS TECHNOLOGY DEPARTMENT
     <title>Dashboard</title>
     <link rel="icon" href="https://instructure-uploads.s3.amazonaws.com">
     <style>
-        :root { --fcs-blue: #004d99; --canvas-dark: #243342; --canvas-bg: #ffffff; --text-main: #2D3B45; --text-sub: #556572; }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: "Lato", "Segoe UI", sans-serif; overflow: hidden; background: #f5f5f5; }
+        :root {
+            --bg: #1a1a1a; --card: #252525; --text: #ffffff; --primary: #4facfe; --danger: #ff4d4d;
+        }
+        body.light-mode {
+            --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025;
+        }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
 
-        /* --- PIXEL-PERFECT FORSYTH CANVAS MASK --- */
-        #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; display: flex; text-align: left; }
-        .cv-sidebar { width: 84px; background: var(--canvas-dark); display: flex; flex-direction: column; align-items: center; padding: 10px 0; flex-shrink: 0; }
-        .fcs-logo { width: 45px; height: 45px; background: #EAAA00; border-radius: 50%; border: 2px solid #fff; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--fcs-blue); font-size: 13px; }
-        .cv-sidebar div { margin-bottom: 20px; font-size: 11px; color: white; text-align: center; opacity: 0.8; width: 100%; position: relative; cursor: default; }
-        .cv-sidebar .active { opacity: 1; border-left: 4px solid #fff; background: rgba(255,255,255,0.1); padding: 5px 0; }
-        .notif { position: absolute; top: -5px; right: 12px; background: #ff7043; color: white; border-radius: 10px; padding: 1px 5px; font-size: 9px; font-weight: bold; }
-        
-        .cv-main { flex: 1; padding: 25px 40px; overflow-y: auto; }
-        .cv-header { font-size: 28px; font-weight: 300; border-bottom: 1px solid #E1E1E1; padding-bottom: 12px; margin-bottom: 25px; color: var(--text-main); }
-        .cv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(265px, 1fr)); gap: 24px; }
-        .cv-card { background: white; border: 1px solid #C7CDD1; border-radius: 4px; overflow: hidden; height: 235px; }
-        .card-top { height: 145px; display: flex; align-items: center; justify-content: center; font-size: 35px; color: rgba(255,255,255,0.4); font-weight: bold; text-align: center; }
-        .card-body { padding: 14px; }
-        .card-title { font-size: 14px; font-weight: bold; color: #00609D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .card-sub { font-size: 11.5px; color: var(--text-sub); margin-top: 4px; }
+        /* --- NEW EMBEDDER UI --- */
+        #dashboard { display: flex; flex-direction: column; height: 100vh; }
+        .nav { height: 60px; background: rgba(0,0,0,0.2); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .nav-links span { margin-left: 20px; cursor: pointer; font-weight: 600; opacity: 0.8; }
+        .nav-links span:hover { opacity: 1; }
 
-        /* --- EMBEDDER UI --- */
-        #dashboard { display: none; flex-direction: column; height: 100vh; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .apps-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 30px; padding: 40px; overflow-y: auto; }
-        .app-folder { text-align: center; cursor: default; transition: 0.2s; opacity: 0.6; }
-        .app-folder.ready { cursor: pointer; opacity: 1; transform: scale(1.05); }
-        .icon-box { width: 78px; height: 78px; background: rgba(255,255,255,0.25); border-radius: 12px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); position: relative; }
-        .icon-box::before { content: ''; position: absolute; top: -8px; left: 8px; width: 32px; height: 10px; background: rgba(255,255,255,0.22); border-radius: 4px 4px 0 0; }
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; display: block; }
+        .section { display: none; max-width: 900px; margin: 0 auto; }
+        .section.active { display: block; }
+
+        /* App Creator Bar */
+        .app-creator { display: flex; gap: 10px; margin-bottom: 30px; background: var(--card); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .app-creator input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #333; color: white; }
+        .app-creator button { padding: 10px 20px; background: var(--primary); border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+        /* App Grid */
+        .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05); }
+        .app-info { display: flex; align-items: center; gap: 12px; }
+        .app-icon { width: 35px; height: 35px; border-radius: 6px; }
+        .app-actions button { padding: 5px 10px; font-size: 12px; margin-left: 5px; border-radius: 4px; cursor: pointer; border: none; font-weight: bold; }
+        .btn-cloak { background: var(--primary); color: white; }
+        .btn-remove { background: var(--danger); color: white; }
+
+        /* Settings Styles */
+        .settings-card { background: var(--card); padding: 25px; border-radius: 10px; }
+        .setting-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+        .setting-item label { font-size: 14px; font-weight: bold; opacity: 0.8; }
+        .setting-item input, .setting-item select { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; max-width: 300px; }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body class="dark-mode">
 
-<!-- SNAPSHOT MASK: PIXEL PERFECT PINEY GROVE -->
-<div id="snapshot-mask">
-    <div class="cv-sidebar">
-        <div class="fcs-logo">FCS</div>
-        <div>Account</div><div class="active">Dashboard</div>
-        <div>Courses</div><div>Groups</div><div>Calendar</div>
-        <div>Inbox<span class="notif">40</span></div><div>History</div><div>Studio</div>
-        <div>Help<span class="notif" style="background:#EAAA00; color:#000;">2</span></div>
-        <div style="margin-top:auto; opacity:0.5; font-size:18px;">←</div>
-    </div>
-    <div class="cv-main">
-        <div class="cv-header">Dashboard</div>
-        <div class="cv-grid">
-            <div class="cv-card"><div class="card-top" style="background:#ad62a1;">🐾</div><div class="card-body"><div class="card-title">Advanced Language Arts - Reformado</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="card-top" style="background:#517e5a; background-image: url('https://images.unsplash.com'); background-size:cover;">🌲</div><div class="card-body"><div class="card-title">Advanced Science - Ms. Cain</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="card-top" style="background:#d19d59;">📐</div><div class="card-body"><div class="card-title">Accelerated Mathematics - Mr. Chesser</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="card-top" style="background:#d16c4d;">🌍</div><div class="card-body"><div class="card-title">Advanced Social Studies - 6430y</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="card-top" style="background:#517e5a;">🐾</div><div class="card-body"><div class="card-title">Interdisciplinary Studies - Reformado</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
-            <div class="cv-card"><div class="card-top" style="background:#ad62a1;">🏀</div><div class="card-body"><div class="card-title">6th Grade PE - Jackson</div><div class="card-sub">2025/2026 - Piney Grove Middle School</div></div></div>
+<div id="dashboard">
+    <div class="nav">
+        <div style="font-size: 20px; font-weight: 800; letter-spacing: 1px;">About Blank Embedder</div>
+        <div class="nav-links">
+            <span onclick="showSection('apps-sec')">Apps</span>
+            <span onclick="showSection('settings-sec')">Settings</span>
         </div>
     </div>
-    <div style="width: 280px; padding: 24px; border-left: 1px solid #E1E1E1; background:#fff; text-align: center;">
-        <div style="font-weight:bold; border-bottom:1px solid #ddd; padding-bottom:8px; display:flex; justify-content:space-between; font-size:14px; color:#2D3B45;">To Do <span>✕</span></div>
-        <div style="color:#666; font-style:italic; margin-top:30px; font-size:12px;">Nothing for now</div>
-    </div>
-</div>
 
-<!-- STAGE 1: DECOY LOGIN -->
-<div id="login-page" style="height:100vh; background:#fff; display:flex; align-items:center; justify-content:center;">
-    <div style="width: 300px; text-align: center;">
-        <img src="https://launchpad.classlink.com" style="width:60px;">
-        <h2 style="font-weight:400; color:#444;">Fulton County Schools</h2>
-        <input type="text" id="u" placeholder="Username" style="width:100%; padding:10px; margin:5px 0; border:1px solid #ccc; border-radius:4px;">
-        <input type="password" id="p" placeholder="Password" style="width:100%; padding:10px; margin:5px 0; border:1px solid #ccc; border-radius:4px;">
-        <button onclick="login()" style="width:100%; padding:12px; background:#004d99; color:white; border:none; margin-top:10px; cursor:pointer; font-weight:bold;">Sign In</button>
-    </div>
-</div>
+    <div class="main-content">
+        <!-- APPS SECTION -->
+        <div id="apps-sec" class="section active">
+            <div class="app-creator">
+                <input type="text" id="new-name" placeholder="App Name">
+                <input type="text" id="new-url" placeholder="https://example.com">
+                <button onclick="addApp()">Add App</button>
+            </div>
+            <div class="apps-grid" id="apps"></div>
+        </div>
 
-<!-- STAGE 3: DASHBOARD -->
-<div id="dashboard">
-    <div style="height:55px; background:var(--fcs-blue); display:flex; align-items:center; padding:0 25px; justify-content:space-between;">
-        <div style="font-weight:900; font-size:18px;">ExistenceGG</div>
-        <div onclick="addApp()" style="cursor:pointer; font-size:20px;">⚙️</div>
+        <!-- SETTINGS SECTION -->
+        <div id="settings-sec" class="section">
+            <div class="settings-card">
+                <h2>Settings</h2>
+                
+                <div class="setting-item">
+                    <label>Panic Key</label>
+                    <input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)">
+                </div>
+
+                <div class="setting-item">
+                    <label>Panic Redirect URL</label>
+                    <input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)">
+                </div>
+
+                <div class="setting-item">
+                    <label>Cloaking Method</label>
+                    <select id="cloak-method" onchange="updateSetting('method', this.value)">
+                        <option value="about">about:blank</option>
+                        <option value="blob">Blob URL</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label>Appearance</label>
+                    <select id="theme-select" onchange="toggleTheme(this.value)">
+                        <option value="dark">Dark Mode</option>
+                        <option value="light">Light Mode</option>
+                    </select>
+                </div>
+
+                <div class="setting-item" style="flex-direction: row; gap: 10px; margin-top: 20px;">
+                    <button onclick="floodHistory()" style="background:#444; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">Flood History</button>
+                    <button onclick="cloudSync()" style="background:var(--primary); color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">Cloud Sync / Login</button>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="apps-grid" id="apps"></div>
 </div>
 
 <script>
-    let apps = JSON.parse(localStorage.getItem("ex_v21")) || [];
-    const panicUrl = "https://forsyth.instructure.com";
-    const pKey = "-";
-    let hoverTimer;
+    let config = JSON.parse(localStorage.getItem("ex_config")) || {
+        apps: [],
+        pKey: "]",
+        panicUrl: "https://forsyth.instructure.com",
+        method: "about",
+        theme: "dark"
+    };
 
-    // Snapshot protection for Linewize
-    window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'flex'; });
-    window.addEventListener('focus', () => { setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; }, 200); });
+    function save() { localStorage.setItem("ex_config", JSON.stringify(config)); }
 
-    function login() { if(document.getElementById("u").value && document.getElementById("p").value) { document.getElementById("login-page").style.display="none"; document.getElementById("dashboard").style.display="flex"; renderApps(); } }
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function toggleTheme(mode) {
+        config.theme = mode;
+        document.body.className = mode + "-mode";
+        save();
+    }
+
+    function updateSetting(key, val) { config[key] = val; save(); }
 
     function addApp() {
-        const n = prompt("App Name:");
-        const u = prompt("URL:");
-        if(n && u) { apps.push({name: n, url: u.startsWith('http') ? u : 'https://' + u}); localStorage.setItem("ex_v21", JSON.stringify(apps)); renderApps(); }
+        const n = document.getElementById("new-name").value;
+        const u = document.getElementById("new-url").value;
+        if(n && u) {
+            config.apps.push({name: n, url: u.startsWith('http') ? u : 'https://' + u});
+            document.getElementById("new-name").value = "";
+            document.getElementById("new-url").value = "";
+            save(); renderApps();
+        }
     }
+
+    function removeApp(i) { config.apps.splice(i, 1); save(); renderApps(); }
 
     function renderApps() {
         const grid = document.getElementById("apps"); grid.innerHTML = "";
-        apps.forEach((app, i) => {
-            const div = document.createElement("div"); div.className = "app-folder";
-            div.innerHTML = `<div class="icon-box"><img src="https://www.google.com{new URL(app.url).hostname}&sz=128" style="width:45px;"></div><div style="font-weight:600; font-size:11px;">${app.name}</div>`;
-            // Anti-Clickjacking: Require 0.6s hover
-            div.onmouseenter = () => { hoverTimer = setTimeout(() => { div.classList.add("ready"); div.onclick = () => openApp(i); }, 600); };
-            div.onmouseleave = () => { clearTimeout(hoverTimer); div.classList.remove("ready"); div.onclick = null; };
+        config.apps.forEach((app, i) => {
+            const div = document.createElement("div"); div.className = "app-item";
+            const domain = new URL(app.url).hostname;
+            div.innerHTML = `
+                <div class="app-info">
+                    <img class="app-icon" src="https://www.google.com{domain}&sz=128">
+                    <div style="font-weight:600;">${app.name}</div>
+                </div>
+                <div class="app-actions">
+                    <button class="btn-cloak" onclick="openApp(${i})">Cloak</button>
+                    <button class="btn-remove" onclick="removeApp(${i})">Remove</button>
+                </div>
+            `;
             grid.appendChild(div);
         });
     }
 
-    // BOT: Automatically detects if proxy is needed
-    async function getSmartUrl(url) {
-        const blacklist = ['discord.com', 'youtube.com', 'roblox.com', 'google.com', 'github.com', 'tiktok.com'];
-        const domain = new URL(url).hostname.toLowerCase();
-        if (blacklist.some(b => domain.includes(b))) return `http://proxy.ikunbeautiful.workers.dev{encodeURIComponent(url)}`;
-        try { const controller = new AbortController(); setTimeout(() => controller.abort(), 2000); await fetch(url, { mode: 'no-cors', signal: controller.signal }); return url; } 
-        catch (e) { return `http://proxy.ikunbeautiful.workers.dev{encodeURIComponent(url)}`; }
-    }
-
-    async function openApp(i) {
-        const app = apps[i];
-        const finalUrl = await getSmartUrl(app.url);
+    function openApp(i) {
+        const url = config.apps[i].url;
         const win = window.open("about:blank", "_blank");
-        const blobContent = `<html><head><title>Dashboard</title><link rel="icon" href="https://instructure-uploads.s3.amazonaws.com"><style>body,html,iframe{margin:0;padding:0;height:100%;width:100%;overflow:hidden;border:none;background:#fff;}</style></head>
-            <body><iframe src="${finalUrl}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${pKey}")window.location.replace("${panicUrl}")};document.addEventListener("visibilitychange",()=>{if(document.visibilityState==='hidden'){setTimeout(()=>{window.location.replace("${panicUrl}")},30000)}});<\/script></body></html>`;
-        win.location.href = URL.createObjectURL(new Blob([blobContent], { type: 'text/html' }));
+        if (!win) return alert("Pop-up blocked!");
+
+        const content = `<html><head><title>Dashboard</title><link rel="icon" href="https://instructure-uploads.s3.amazonaws.com"><style>body,html,iframe{margin:0;padding:0;height:100%;width:100%;overflow:hidden;border:none;background:#fff;}</style></head>
+            <body><iframe src="${url}" style="width:100%;height:100%;border:none;"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}")window.location.replace("${config.panicUrl}")};<\/script></body></html>`;
+        
+        if (config.method === "blob") {
+            win.location.href = URL.createObjectURL(new Blob([content], { type: 'text/html' }));
+        } else {
+            win.document.write(content);
+        }
     }
 
-    window.onkeydown = (e) => { if(e.key === pKey) window.location.replace(panicUrl); };
+    function floodHistory() {
+        for (let i = 0; i < 50; i++) {
+            history.pushState({}, '', window.location.href + "#" + i);
+        }
+        alert("History Flooded!");
+    }
+
+    function cloudSync() {
+        const user = prompt("Enter Sync ID / Username:");
+        if (user) alert("Syncing with ExistenceGG Cloud...");
+    }
+
+    // Initialize UI
+    document.getElementById("panic-key-input").value = config.pKey;
+    document.getElementById("panic-url-input").value = config.panicUrl;
+    document.getElementById("cloak-method").value = config.method;
+    document.getElementById("theme-select").value = config.theme;
+    toggleTheme(config.theme);
     renderApps();
+
+    window.onkeydown = (e) => { if(e.key === config.pKey) window.location.replace(config.panicUrl); };
 </script>
 </body>
 </html>
