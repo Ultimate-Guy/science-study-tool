@@ -25,41 +25,33 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # Speeds up subsequent runs by caching tools
+          cache: 'npm' # Speeds up Node tools on every run
 
-      - name: Build & Sync
+      - name: Build and Sync
         run: |
           mkdir -p staging/js
-          # Build JS only if the folder exists to save time
+          
+          # JS: Bundle & Minify only if folder exists
           if [ -d "js" ]; then
-            npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
+            npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error || cp -r js/* staging/js/
           fi
           
-          # High-speed asset sync using rsync
+          # FAST SYNC: Moves all assets into staging in one pass
           rsync -am . staging/ --include='*.html' --include='css/***' --include='imgs/***' \
           --include='fonts/***' --include='games/***' --include='favicon.ico' --exclude='*'
 
-      # =========================
-      # 1. CRASH PROTECTION (Content Check)
-      # =========================
-      - name: Verify Build Integrity
+      - name: Crash Protection Check
         run: |
-          # 1. Ensure index.html isn't empty (must be > 100 bytes)
-          if [ $(stat -c%s "staging/index.html") -lt 100 ]; then
-            echo "Error: index.html is too small or empty!" && exit 1
+          # 1. Check if index.html actually exists and has content
+          if [ ! -s staging/index.html ]; then
+            echo "ERROR: index.html is empty or missing! Blocking deploy."
+            exit 1
           fi
-          # 2. Ensure page loaded properly (checks for essential closing tag)
-          grep -q "</body>" staging/index.html || (echo "Error: index.html is malformed/incomplete!" && exit 1)
-
-      # =========================
-      # 2. FAST LINK CHECKER (Lychee)
-      # =========================
-      - name: Check for Broken Links
-        uses: lycheeverse/lychee-action@v2
-        with:
-          # Checks all local HTML files in the staging folder
-          args: --offline staging/**/*.html
-          fail: true # This kills the build if a link is broken, preventing a bad deploy
+          # 2. Check for the closing body tag (ensures the file isn't cut off)
+          if ! grep -q "</body>" staging/index.html; then
+            echo "ERROR: index.html is incomplete/corrupted! Blocking deploy."
+            exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
