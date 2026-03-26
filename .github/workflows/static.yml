@@ -16,12 +16,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Treeless Checkout
+      - name: Fast & Safe Checkout
         uses: actions/checkout@v4
         with:
-          # tree:0 is even faster than blob:none for initial startup
-          filter: 'tree:0' 
+          # blob:none = fast BUT still fetches files correctly when needed
+          filter: 'blob:none'
           sparse-checkout: |
             index.html
             404.html
@@ -42,24 +43,56 @@ jobs:
           cache: 'npm'
 
       - name: Fast Install
-        # npm ci is significantly faster than npm install
         run: npm ci 
 
-      - name: Instant Sync
+      - name: Build JS
         run: |
+          set -euo pipefail
           mkdir -p staging/js
-          
-          # esbuild is the fastest bundler available
-          npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
-          
-          # Fast linking: Skip copying bytes entirely. 
-          # Using find + cp -rl creates instantaneous filesystem pointers
-          find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -not -path './node_modules' -not -path './package*' -exec cp -rl {} staging/ \;
 
-      - name: Safety Check
+          # avoid npx overhead
+          ./node_modules/.bin/esbuild js/*.js \
+            --bundle --minify \
+            --outdir=staging/js \
+            --log-level=error
+
+      - name: Assemble Site (SAFE + FAST)
         run: |
-          if [ ! -s staging/index.html ] || ! grep -q "</body>" staging/index.html; then
-            echo "Blocking deploy: site files corrupted."
+          set -euo pipefail
+
+          mkdir -p staging
+
+          # Copy only what is needed (no repo scan)
+          cp index.html staging/
+          cp 404.html staging/ || true
+          cp favicon.ico staging/ || true
+
+          cp -r css staging/ || true
+          cp -r fonts staging/ || true
+          cp -r games staging/ || true
+          cp -r imgs staging/ || true
+
+          # If build failed, fallback to raw js (prevents blank site)
+          if [ ! -d staging/js ] || [ -z "$(ls -A staging/js)" ]; then
+            echo "⚠️ Build missing, falling back to raw JS"
+            rm -rf staging/js
+            cp -r js staging/
+          fi
+
+      - name: Safety Check (stronger)
+        run: |
+          set -euo pipefail
+
+          if [ ! -s staging/index.html ] || \
+             ! grep -q "</html>" staging/index.html || \
+             ! grep -q "<head>" staging/index.html; then
+            echo "Blocking deploy: index.html corrupted."
+            exit 1
+          fi
+
+          # Ensure JS actually exists (prevents infinite loading)
+          if [ ! -d staging/js ] || [ -z "$(ls -A staging/js)" ]; then
+            echo "Blocking deploy: JS missing."
             exit 1
           fi
 
@@ -73,7 +106,5 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v4
