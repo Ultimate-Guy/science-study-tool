@@ -17,10 +17,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Optimized Checkout
         uses: actions/checkout@v4
         with:
-          # Sparse checkout prevents downloading unnecessary 3.7GB bloat
+          # Blobless clone: doesn't download file data until needed
+          filter: 'blob:none'
+          # Sparse checkout: only brings in your specific folders
           sparse-checkout: |
             index.html
             404.html
@@ -42,18 +44,18 @@ jobs:
         run: |
           mkdir -p staging/js
           
-          # Bundle only your core site JS files
-          # Using esbuild is significantly faster than standard copy/minify tools
+          # Bundle your core JS (super fast with esbuild)
           npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
           
-          # Link all other static assets (instant move, zero extra disk usage)
-          # We skip 'js' because we bundled it above, and '.git' for safety
+          # 'cp -rl' creates hard links (instant pointers) instead of copying bytes.
+          # This is the fastest way to move 3GB+ of game files.
           find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -not -path './package*' -exec cp -rl {} staging/ \;
 
-      - name: Safety Check
+      - name: Integrity Check
         run: |
+          # Safe check: verifies the critical index.html isn't empty or cut off
           if [ ! -s staging/index.html ] || ! grep -q "</body>" staging/index.html; then
-            echo "Deployment Blocked: index.html is missing or incomplete."
+            echo "DEPLOY BLOCKED: index.html is missing or corrupted."
             exit 1
           fi
 
