@@ -274,6 +274,11 @@
             "path": "dadish-3",
             "aliases": [],
             "categories": []
+       },
+        "Deltarune": {
+            "path": "deltarune",
+            "aliases": [],
+            "categories": []
         },
         "Doge Miner": {
             "path": "doge-miner",
