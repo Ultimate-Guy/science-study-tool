@@ -16,88 +16,56 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # =========================
-      # Checkout (safe + fast)
-      # =========================
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      # =========================
-      # Setup Node ONLY if needed
-      # =========================
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-        if: contains(join(github.event.head_commit.modified, ','), 'js/') ||
-            contains(join(github.event.head_commit.modified, ','), 'css/')
+          cache: 'npm' # Official high-speed caching
 
-      # =========================
-      # Install esbuild (only if JS exists)
-      # =========================
-      - name: Install tools
-        if: hashFiles('js/**/*.js') != ''
-        run: npm i -g esbuild
-
-      # =========================
-      # Build output folder
-      # =========================
-      - name: Prepare dist
-        run: rm -rf dist && mkdir dist
-
-      # =========================
-      # JS (safe build)
-      # =========================
-      - name: Build JS
+      - name: Build and Sync
         run: |
+          mkdir -p staging/js
+          # Build JS if it exists; otherwise skip to keep it fast
           if [ -d "js" ]; then
-            esbuild js/*.js --minify --outdir=dist/js || cp -r js dist/js
+            npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
           fi
+          
+          # Use rsync for the fastest possible asset sync
+          rsync -am . staging/ --include='*.html' --include='css/***' --include='imgs/***' \
+          --include='fonts/***' --include='games/***' --include='favicon.ico' --exclude='*'
 
       # =========================
-      # CSS (safe copy, no fragile bundling)
+      # 1. CRASH PREVENTION: Content Integrity Check
       # =========================
-      - name: CSS
+      - name: Content Integrity Check
         run: |
-          if [ -d "css" ]; then
-            cp -r css dist/
+          # Fails if index.html is too small (e.g. empty/corrupted)
+          if [ $(stat -c%s "staging/index.html") -lt 100 ]; then
+            echo "CRITICAL: index.html looks empty or broken!" && exit 1
           fi
+          # Fails if critical tags like <body> are missing
+          grep -q "</body>" staging/index.html || (echo "CRITICAL: Missing closing body tag!" && exit 1)
 
       # =========================
-      # HTML
+      # 2. BROKEN LINK CHECKER (High Speed)
       # =========================
-      - name: HTML
-        run: cp *.html dist/ 2>/dev/null || true
-
-      # =========================
-      # Assets
-      # =========================
-      - name: Assets
-        run: |
-          cp -r imgs dist/ 2>/dev/null || true
-          cp -r fonts dist/ 2>/dev/null || true
-          cp -r games dist/ 2>/dev/null || true
-          cp favicon.ico dist/ 2>/dev/null || true
-
-      # =========================
-      # Safety checks
-      # =========================
-      - name: Validate
-        run: test -f dist/index.html
-
-      # =========================
-      # Pages artifact
-      # =========================
-      - uses: actions/upload-pages-artifact@v3
+      - name: Check for Broken Links
+        uses: untitaker/hyperlink-link-checker@v0.1.34
         with:
-          path: dist
+          args: staging/ --check-anchors --sources # Scans local files in milliseconds
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: staging
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/deploy-pages@v4
