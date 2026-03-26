@@ -16,13 +16,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Optimized Checkout
         uses: actions/checkout@v4
         with:
-          # Blobless clone avoids downloading 3.7GB of history
           filter: 'blob:none'
-          # Explicitly include lockfiles so "Setup Node" doesn't crash
           sparse-checkout: |
             index.html
             404.html
@@ -36,32 +35,52 @@ jobs:
             js
           sparse-checkout-cone-mode: false 
 
+      - name: Detect JS changes
+        id: changes
+        run: |
+          if git diff --name-only HEAD~1 | grep -E '^(js/|package-lock.json|package.json)'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Node
+        if: steps.changes.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
       - name: Install Dependencies
-        # Installs esbuild and your prompts fast from the lockfile
-        run: npm ci 
+        if: steps.changes.outputs.changed == 'true'
+        run: npm ci
 
-      - name: Fast Build and Sync
+      - name: Build and Sync
         run: |
+          set -euo pipefail
+
           mkdir -p staging/js
-          
-          # Bundle JS using the lightning-fast esbuild
-          npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
-          
-          # Hard Linking: Instantly links 3.7GB of files into staging without 
-          # duplicating data on disk. Skips node_modules and config files.
-          find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -not -path './node_modules' -not -path './package*' -exec cp -rl {} staging/ \;
+
+          if [ "${{ steps.changes.outputs.changed }}" = "true" ]; then
+            ./node_modules/.bin/esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error &
+          fi
+
+          rsync -a --exclude=node_modules \
+                    --exclude=js \
+                    --exclude=staging \
+                    --exclude="package*" \
+                    ./ staging/
+
+          wait || true
 
       - name: Safety Check
         run: |
-          # Blocks deploy if index.html is missing or corrupted
-          if [ ! -s staging/index.html ] || ! grep -q "</body>" staging/index.html; then
-            echo "Critical Error: index.html missing or corrupted."
+          set -euo pipefail
+
+          if [ ! -s staging/index.html ] || \
+             ! grep -q "</html>" staging/index.html || \
+             ! grep -q "<head>" staging/index.html; then
+            echo "Critical Error: index.html missing or malformed."
             exit 1
           fi
 
@@ -75,7 +94,5 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v4
