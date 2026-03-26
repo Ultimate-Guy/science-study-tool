@@ -16,92 +16,52 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Minimal Checkout (only what we need)
+      - name: Optimized Checkout
         uses: actions/checkout@v4
         with:
+          # Blobless clone avoids downloading 3.7GB of history
           filter: 'blob:none'
+          # Explicitly include lockfiles so "Setup Node" doesn't crash
           sparse-checkout: |
             index.html
             404.html
             favicon.ico
+            package.json
+            package-lock.json
             css
             fonts
             games
             imgs
             js
-            package.json
-            package-lock.json
-          sparse-checkout-cone-mode: false
+          sparse-checkout-cone-mode: false 
 
-      # 🔍 Detect JS-related changes using GitHub event (FAST, no git diff)
-      - name: Detect JS changes
-        id: changes
-        run: |
-          echo "changed=false" >> $GITHUB_OUTPUT
-          for file in ${{ join(github.event.head_commit.modified, ' ') }}; do
-            if [[ "$file" == js/* || "$file" == package.json || "$file" == package-lock.json ]]; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-              break
-            fi
-          done
-
-      # ⚡ Only setup Node if needed
       - name: Setup Node
-        if: steps.changes.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      - name: Install deps
-        if: steps.changes.outputs.changed == 'true'
-        run: npm ci
+      - name: Install Dependencies
+        # Installs esbuild and your prompts fast from the lockfile
+        run: npm ci 
 
-      # 🚀 Build ONLY when needed
-      - name: Build JS
-        if: steps.changes.outputs.changed == 'true'
+      - name: Fast Build and Sync
         run: |
-          set -euo pipefail
           mkdir -p staging/js
-          ./node_modules/.bin/esbuild js/*.js \
-            --bundle --minify \
-            --outdir=staging/js \
-            --log-level=error
+          
+          # Bundle JS using the lightning-fast esbuild
+          npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
+          
+          # Hard Linking: Instantly links 3.7GB of files into staging without 
+          # duplicating data on disk. Skips node_modules and config files.
+          find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -not -path './node_modules' -not -path './package*' -exec cp -rl {} staging/ \;
 
-      # ⚡ Copy ONLY required files (NO repo-wide scan)
-      - name: Assemble site (fast path)
-        run: |
-          set -euo pipefail
-
-          mkdir -p staging
-
-          # Copy core files (tiny cost)
-          cp index.html staging/
-          cp 404.html staging/ || true
-          cp favicon.ico staging/ || true
-
-          # Copy directories individually (no find/rsync over root!)
-          cp -r css staging/ || true
-          cp -r fonts staging/ || true
-          cp -r games staging/ || true
-          cp -r imgs staging/ || true
-
-          # If JS wasn't rebuilt, just copy it raw
-          if [ ! -d staging/js ]; then
-            cp -r js staging/
-          fi
-
-      # 🛡️ Strong safety check
       - name: Safety Check
         run: |
-          set -euo pipefail
-
-          if [ ! -s staging/index.html ] || \
-             ! grep -q "</html>" staging/index.html || \
-             ! grep -q "<head>" staging/index.html; then
-            echo "Critical Error: index.html missing or malformed."
+          # Blocks deploy if index.html is missing or corrupted
+          if [ ! -s staging/index.html ] || ! grep -q "</body>" staging/index.html; then
+            echo "Critical Error: index.html missing or corrupted."
             exit 1
           fi
 
@@ -115,5 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/deploy-pages@v4
+      - id: deployment
+        uses: actions/deploy-pages@v4
