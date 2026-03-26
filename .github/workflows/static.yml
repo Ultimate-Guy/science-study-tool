@@ -17,12 +17,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Optimized Checkout
+      - name: Treeless Checkout
         uses: actions/checkout@v4
         with:
-          # Blobless clone avoids downloading 3.7GB of history
-          filter: 'blob:none'
-          # Explicitly include lockfiles so "Setup Node" doesn't crash
+          # tree:0 is even faster than blob:none for initial startup
+          filter: 'tree:0' 
           sparse-checkout: |
             index.html
             404.html
@@ -42,26 +41,25 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Dependencies
-        # Installs esbuild and your prompts fast from the lockfile
+      - name: Fast Install
+        # npm ci is significantly faster than npm install
         run: npm ci 
 
-      - name: Fast Build and Sync
+      - name: Instant Sync
         run: |
           mkdir -p staging/js
           
-          # Bundle JS using the lightning-fast esbuild
+          # esbuild is the fastest bundler available
           npx esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error
           
-          # Hard Linking: Instantly links 3.7GB of files into staging without 
-          # duplicating data on disk. Skips node_modules and config files.
+          # Fast linking: Skip copying bytes entirely. 
+          # Using find + cp -rl creates instantaneous filesystem pointers
           find . -maxdepth 1 -not -path '*/.*' -not -path './staging' -not -path './js' -not -path './node_modules' -not -path './package*' -exec cp -rl {} staging/ \;
 
       - name: Safety Check
         run: |
-          # Blocks deploy if index.html is missing or corrupted
           if [ ! -s staging/index.html ] || ! grep -q "</body>" staging/index.html; then
-            echo "Critical Error: index.html missing or corrupted."
+            echo "Blocking deploy: site files corrupted."
             exit 1
           fi
 
