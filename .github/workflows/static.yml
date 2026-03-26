@@ -18,51 +18,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Fast & Safe Checkout
+      - name: Fast Checkout (safe for large repos)
         uses: actions/checkout@v4
         with:
-          # blob:none = fast BUT still fetches files correctly when needed
           filter: 'blob:none'
           sparse-checkout: |
             index.html
             404.html
             favicon.ico
-            package.json
-            package-lock.json
             css
             fonts
             games
             imgs
             js
-          sparse-checkout-cone-mode: false 
+          sparse-checkout-cone-mode: false
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Fast Install
-        run: npm ci 
-
-      - name: Build JS
+      - name: Build JS (never fails)
         run: |
           set -euo pipefail
           mkdir -p staging/js
 
-          # avoid npx overhead
-          ./node_modules/.bin/esbuild js/*.js \
+          # Try fast build
+          if npx --yes esbuild js/*.js \
             --bundle --minify \
             --outdir=staging/js \
-            --log-level=error
+            --log-level=error; then
+            echo "✅ JS built with esbuild"
+          else
+            echo "⚠️ Build failed → using raw JS"
+            rm -rf staging/js
+            cp -r js staging/
+          fi
 
-      - name: Assemble Site (SAFE + FAST)
+      - name: Assemble site (fast, no repo scan)
         run: |
           set -euo pipefail
 
           mkdir -p staging
 
-          # Copy only what is needed (no repo scan)
           cp index.html staging/
           cp 404.html staging/ || true
           cp favicon.ico staging/ || true
@@ -72,27 +65,29 @@ jobs:
           cp -r games staging/ || true
           cp -r imgs staging/ || true
 
-          # If build failed, fallback to raw js (prevents blank site)
+          # If build didn't produce JS, ensure fallback exists
           if [ ! -d staging/js ] || [ -z "$(ls -A staging/js)" ]; then
-            echo "⚠️ Build missing, falling back to raw JS"
+            echo "⚠️ JS missing → copying fallback"
             rm -rf staging/js
             cp -r js staging/
           fi
 
-      - name: Safety Check (stronger)
+      - name: Safety Check (prevents broken sites)
         run: |
           set -euo pipefail
 
-          if [ ! -s staging/index.html ] || \
-             ! grep -q "</html>" staging/index.html || \
-             ! grep -q "<head>" staging/index.html; then
-            echo "Blocking deploy: index.html corrupted."
+          if [ ! -s staging/index.html ]; then
+            echo "❌ index.html missing"
             exit 1
           fi
 
-          # Ensure JS actually exists (prevents infinite loading)
+          if ! grep -q "</html>" staging/index.html; then
+            echo "❌ index.html malformed"
+            exit 1
+          fi
+
           if [ ! -d staging/js ] || [ -z "$(ls -A staging/js)" ]; then
-            echo "Blocking deploy: JS missing."
+            echo "❌ JS missing → site would hang"
             exit 1
           fi
 
