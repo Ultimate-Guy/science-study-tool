@@ -98,15 +98,18 @@
     function updateSetting(k, v) { config[k] = v; save(); }
 
     function addApp() {
-        const n = document.getElementById("new-name").value;
-        let u = document.getElementById("new-url").value;
-        if(n && u) {
-            // Ensure no http prefix exists before adding it properly
-            u = u.replace(/^https?:\/\//, '');
-            config.apps.push({name: n, url: 'https://' + u}); 
-            save(); renderApps(); 
-            document.getElementById("new-name").value = "";
-            document.getElementById("new-url").value = "";
+        const nameInput = document.getElementById("new-name");
+        const urlInput = document.getElementById("new-url");
+        
+        if(nameInput.value && urlInput.value) {
+            let u = urlInput.value.replace(/^https?:\/\//, '');
+            config.apps.push({name: nameInput.value, url: 'https://' + u}); 
+            save(); 
+            renderApps(); 
+            
+            // CLEAR BOXES
+            nameInput.value = "";
+            urlInput.value = "";
         }
     }
 
@@ -125,19 +128,16 @@
         const raw = config.apps[i].url;
         let final = raw;
         
-        // --- SMART BOT PROXY DETECTOR ---
         try {
             const c = new AbortController(); setTimeout(() => c.abort(), 1800);
-            // Mode 'no-cors' is used to bypass CORS errors while checking if site is alive
             await fetch(raw, { mode: 'no-cors', signal: c.signal });
         } catch (e) {
-            // Bot detected block, constructing the proxy URL
             const cleanDomain = raw.replace(/^https?:\/\//, '');
             final = `http://proxy.ikunbeautiful.workers.dev{cleanDomain}`;
         }
 
         const win = window.open("about:blank", "_blank");
-        if (!win) return alert("Pop-up blocked! Allow popups for cloaking to work.");
+        if (!win) return alert("Pop-up blocked!");
 
         const doc = `<html><head><title>Dashboard</title><style>body,html,iframe{margin:0;padding:0;height:100%;width:100%;overflow:hidden;border:none;}</style></head>
             <body><iframe src="${final}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}")window.location.replace("${config.panicUrl}")};<\/script></body></html>`;
