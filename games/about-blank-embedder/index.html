@@ -11,10 +11,9 @@
         body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
 
         /* --- LINEWIZE SNAPSHOT MASK --- */
-        #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; flex-direction: row; }
-        .cv-sidebar { width: 84px; background: var(--canvas-dark); display: flex; flex-direction: column; align-items: center; padding: 10px 0; }
-        .cv-main { flex: 1; padding: 25px 40px; background: white; color: #2D3B45; text-align: left; }
-        .cv-header { font-size: 28px; border-bottom: 1px solid #E1E1E1; padding-bottom: 12px; margin-bottom: 25px; font-weight: 300; }
+        #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; }
+        #snapshot-img { width: 100%; height: 100%; object-fit: cover; }
+        #fake-cursor { position: absolute; width: 22px; transition: all 0.8s ease-in-out; pointer-events: none; z-index: 10000; top: 50%; left: 50%; }
 
         /* --- EMBEDDER UI --- */
         #dashboard { display: flex; flex-direction: column; height: 100vh; }
@@ -42,8 +41,8 @@
 <body class="dark-mode">
 
 <div id="snapshot-mask">
-    <div class="cv-sidebar"><div style="width:45px; height:45px; background:#EAAA00; border-radius:50%; margin-top:20px;"></div></div>
-    <div class="cv-main"><div class="cv-header">Dashboard</div><div style="font-size:14px; color:#556572;">Piney Grove Middle School - Workspace</div></div>
+    <img id="fake-cursor" src="https://www.pngall.com" alt="cursor">
+    <img id="snapshot-img" src="https://i.ibb.co" alt="Canvas Dashboard">
 </div>
 
 <div id="dashboard">
@@ -84,9 +83,40 @@
         apps: [], pKey: "]", panicUrl: "https://forsyth.instructure.com", method: "about", theme: "dark"
     };
 
+    // --- CANVAS SIMULATION BOT CONFIG ---
+    const pages = [
+        "https://i.ibb.co", // Dashboard
+        "https://i.ibb.co", // ELA
+        "https://i.ibb.co", // Science
+        "https://i.ibb.co", // Math
+        "https://i.ibb.co"  // Social Studies
+    ];
+    let pageIdx = 0;
+
+    setInterval(() => {
+        const img = document.getElementById('snapshot-img');
+        const cursor = document.getElementById('fake-cursor');
+        
+        if (pageIdx !== 0) {
+            // "Click" dashboard button on the left sidebar
+            cursor.style.top = "160px"; cursor.style.left = "42px";
+            setTimeout(() => {
+                pageIdx = 0; 
+                img.src = pages[0];
+            }, 850);
+        } else {
+            // "Click" a course card (middle-ish area)
+            cursor.style.top = "420px"; cursor.style.left = "310px";
+            setTimeout(() => {
+                pageIdx = (Math.floor(Math.random() * 4) + 1);
+                img.src = pages[pageIdx];
+            }, 850);
+        }
+    }, 60000);
+
     function save() { localStorage.setItem("ex_v75", JSON.stringify(config)); }
 
-    window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'flex'; });
+    window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'block'; });
     window.addEventListener('focus', () => { setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; }, 200); });
 
     function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
@@ -117,51 +147,37 @@
         const raw = config.apps[i].url;
         let finalUrl = raw;
         
-        console.log("Bot checking status of: " + raw);
-
-        // --- THE BLOCK DETECTOR BOT ---
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5 second limit
-            
-            // We use 'no-cors' so Linewize can't easily block the check itself
-            const response = await fetch(raw, { mode: 'no-cors', signal: controller.signal });
-            console.log("Direct connection succeeded.");
+            const timeoutId = setTimeout(() => controller.abort(), 1500);
+            await fetch(raw, { mode: 'no-cors', signal: controller.signal });
         } catch (e) {
-            // IF BLOCKED: The fetch will fail or timeout. 
-            console.log("Linewize Block Detected. Routing through ikunbeautiful...");
             const domain = raw.replace(/^https?:\/\//, '');
-            finalUrl = `http://proxy.ikunbeautiful.workers.dev{encodeURIComponent('https://' + domain)}`;
+            finalUrl = `https://proxy.ikunbeautiful.workers.dev{encodeURIComponent('https://' + domain)}`;
         }
 
         const win = window.open("about:blank", "_blank");
         if (!win) return alert("Please allow pop-ups!");
 
-        const docContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Dashboard</title>
-                <style>body,html{margin:0;padding:0;height:100vh;width:100vw;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style>
-            </head>
-            <body>
-                <iframe src="${finalUrl}"></iframe>
-                <script>
-                    window.onkeydown = (e) => { if(e.key === "${config.pKey}") window.location.replace("${config.panicUrl}"); };
-                <\/script>
-            </body>
-            </html>
-        `;
-
+        const docContent = `<!DOCTYPE html><html><head><title>Dashboard</title><style>body,html{margin:0;padding:0;height:100vh;width:100vw;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${finalUrl}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}")window.location.replace("${config.panicUrl}");};<\/script></body></html>`;
+        
         if (config.method === "blob") {
             win.location.href = URL.createObjectURL(new Blob([docContent], { type: 'text/html' }));
         } else {
-            win.document.write(docContent);
-            win.document.close();
+            // Using Base64 Data URL for advanced stealth
+            const b64 = btoa(unescape(encodeURIComponent(docContent)));
+            win.location.href = `data:text/html;base64,${b64}`;
         }
+        win.focus();
     }
 
-    function floodHistory() { for (let i = 0; i < 50; i++) history.pushState({}, '', window.location.href + "#" + i); alert("History Flooded!"); }
+    function floodHistory() {
+        const coursePaths = ["/courses/51234/modules", "/courses/51234/assignments", "/grades", "/calendar", "/profile"];
+        for (let i = 0; i < 50; i++) {
+            history.pushState({}, '', coursePaths[i % coursePaths.length] + "#entry-" + i);
+        }
+        alert("History Flooded with Canvas paths!");
+    }
 
     document.getElementById("panic-key-input").value = config.pKey;
     document.getElementById("panic-url-input").value = config.panicUrl;
