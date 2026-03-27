@@ -6,11 +6,11 @@
     <title>Dashboard</title>
     <link rel="icon" href="https://instructure-uploads.s3.amazonaws.com">
     <style>
-        :root { --bg: #1a1a1a; --card: #252525; --text: #ffffff; --primary: #4facfe; --danger: #ff4d4d; --fcs-blue: #004d99; --canvas-dark: #243342; }
+        :root { --bg: #1a1a1a; --card: #252525; --text: #ffffff; --primary: #4facfe; --danger: #ff4d4d; --canvas-dark: #243342; }
         body.light-mode { --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
 
-        /* --- PIXEL-PERFECT LINEWIZE SNAPSHOT MASK --- */
+        /* --- LINEWIZE SNAPSHOT MASK --- */
         #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; flex-direction: row; }
         .cv-sidebar { width: 84px; background: var(--canvas-dark); display: flex; flex-direction: column; align-items: center; padding: 10px 0; }
         .cv-main { flex: 1; padding: 25px 40px; background: white; color: #2D3B45; text-align: left; }
@@ -29,11 +29,15 @@
         .app-creator button { padding: 10px 20px; background: var(--primary); border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
         .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05); }
+        .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between; }
         .btn-cloak { background: var(--primary); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
         .btn-remove { background: var(--danger); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; margin-left: 5px; }
 
-        .settings-card { background: var(--card); padding: 25px; border-radius: 10px; }
+        /* Settings Card & Close Button */
+        .settings-card { background: var(--card); padding: 25px; border-radius: 10px; position: relative; }
+        .close-settings { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; opacity: 0.6; font-weight: bold; }
+        .close-settings:hover { opacity: 1; color: var(--danger); }
+        
         .setting-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
         .setting-item input, .setting-item select { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; }
     </style>
@@ -45,7 +49,7 @@
     <div class="cv-sidebar"><div style="width:45px; height:45px; background:#EAAA00; border-radius:50%; margin-top:20px;"></div></div>
     <div class="cv-main">
         <div class="cv-header">Dashboard</div>
-        <div style="font-size:14px; color:#556572;">2025/2026 - Piney Grove Middle School</div>
+        <div style="font-size:14px; color:#556572;">Piney Grove Middle School Workspace</div>
     </div>
 </div>
 
@@ -61,8 +65,8 @@
     <div class="main-content">
         <div id="apps-sec" class="section active">
             <div class="app-creator">
-                <input type="text" id="new-name" placeholder="App Name (e.g. YouTube)">
-                <input type="text" id="new-url" placeholder="URL (e.g. class321.life)">
+                <input type="text" id="new-name" placeholder="App Name">
+                <input type="text" id="new-url" placeholder="example.com">
                 <button onclick="addApp()">Add App</button>
             </div>
             <div class="apps-grid" id="apps"></div>
@@ -70,13 +74,14 @@
 
         <div id="settings-sec" class="section">
             <div class="settings-card">
+                <span class="close-settings" onclick="showSection('apps-sec')">✕</span>
                 <h2>Settings</h2>
                 <div class="setting-item"><label>Panic Key</label><input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)"></div>
                 <div class="setting-item"><label>Panic URL</label><input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)"></div>
                 <div class="setting-item"><label>Cloaking</label><select id="cloak-method" onchange="updateSetting('method', this.value)"><option value="about">about:blank</option><option value="blob">Blob URL</option></select></div>
                 <div class="setting-item"><label>Theme</label><select id="theme-select" onchange="toggleTheme(this.value)"><option value="dark">Dark Mode</option><option value="light">Light Mode</option></select></div>
-                <button onclick="floodHistory()" style="padding:10px; cursor:pointer;">Flood History</button>
-                <button onclick="cloudSync()" style="padding:10px; cursor:pointer;">Cloud Sync</button>
+                <button onclick="floodHistory()" style="padding:10px; cursor:pointer; background:#444; color:white; border:none; border-radius:4px;">Flood History</button>
+                <button onclick="cloudSync()" style="padding:10px; cursor:pointer; background:var(--primary); color:white; border:none; border-radius:4px; margin-left:10px;">Cloud Sync</button>
             </div>
         </div>
     </div>
@@ -89,27 +94,25 @@
 
     function save() { localStorage.setItem("ex_v75", JSON.stringify(config)); }
 
-    // Linewize Blur Protection
     window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'flex'; });
     window.addEventListener('focus', () => { setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; }, 200); });
 
-    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+    function showSection(id) { 
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+    }
+    
     function toggleTheme(m) { config.theme = m; document.body.className = m + "-mode"; save(); }
     function updateSetting(k, v) { config[k] = v; save(); }
 
     function addApp() {
-        const nameInput = document.getElementById("new-name");
-        const urlInput = document.getElementById("new-url");
-        
-        if(nameInput.value && urlInput.value) {
-            let u = urlInput.value.replace(/^https?:\/\//, '');
-            config.apps.push({name: nameInput.value, url: 'https://' + u}); 
-            save(); 
-            renderApps(); 
-            
-            // CLEAR BOXES
-            nameInput.value = "";
-            urlInput.value = "";
+        const nameIn = document.getElementById("new-name");
+        const urlIn = document.getElementById("new-url");
+        if(nameIn.value && urlIn.value) {
+            let u = urlIn.value.replace(/^https?:\/\//, '');
+            config.apps.push({name: nameIn.value, url: 'https://' + u}); 
+            save(); renderApps(); 
+            nameIn.value = ""; urlIn.value = "";
         }
     }
 
@@ -132,8 +135,9 @@
             const c = new AbortController(); setTimeout(() => c.abort(), 1800);
             await fetch(raw, { mode: 'no-cors', signal: c.signal });
         } catch (e) {
-            const cleanDomain = raw.replace(/^https?:\/\//, '');
-            final = `http://proxy.ikunbeautiful.workers.dev{cleanDomain}`;
+            // PROXY FIX: Forces the specific ?url=https:// structure
+            const domain = raw.replace(/^https?:\/\//, '');
+            final = `https://proxy.ikunbeautiful.workers.dev{domain}`;
         }
 
         const win = window.open("about:blank", "_blank");
@@ -147,7 +151,7 @@
     }
 
     function floodHistory() { for (let i = 0; i < 50; i++) history.pushState({}, '', window.location.href + "#" + i); alert("History Flooded!"); }
-    function cloudSync() { const id = prompt("Sync ID:"); if (id) alert("Syncing to ExistenceGG..."); }
+    function cloudSync() { const id = prompt("Sync ID:"); if (id) alert("Connecting to ExistenceGG Cloud..."); }
 
     document.getElementById("panic-key-input").value = config.pKey;
     document.getElementById("panic-url-input").value = config.panicUrl;
