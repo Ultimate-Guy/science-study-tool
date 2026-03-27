@@ -61,8 +61,8 @@
     <div class="main-content">
         <div id="apps-sec" class="section active">
             <div class="app-creator">
-                <input type="text" id="new-name" placeholder="App Name">
-                <input type="text" id="new-url" placeholder="example.com">
+                <input type="text" id="new-name" placeholder="App Name (e.g. YouTube)">
+                <input type="text" id="new-url" placeholder="URL (e.g. class321.life)">
                 <button onclick="addApp()">Add App</button>
             </div>
             <div class="apps-grid" id="apps"></div>
@@ -98,8 +98,16 @@
     function updateSetting(k, v) { config[k] = v; save(); }
 
     function addApp() {
-        const n = document.getElementById("new-name").value, u = document.getElementById("new-url").value;
-        if(n && u) { config.apps.push({name: n, url: u.startsWith('http') ? u : 'https://' + u}); save(); renderApps(); }
+        const n = document.getElementById("new-name").value;
+        let u = document.getElementById("new-url").value;
+        if(n && u) {
+            // Ensure no http prefix exists before adding it properly
+            u = u.replace(/^https?:\/\//, '');
+            config.apps.push({name: n, url: 'https://' + u}); 
+            save(); renderApps(); 
+            document.getElementById("new-name").value = "";
+            document.getElementById("new-url").value = "";
+        }
     }
 
     function removeApp(i) { config.apps.splice(i, 1); save(); renderApps(); }
@@ -116,15 +124,21 @@
     async function launch(i) {
         const raw = config.apps[i].url;
         let final = raw;
-        // SMART BOT DETECTOR
+        
+        // --- SMART BOT PROXY DETECTOR ---
         try {
-            const c = new AbortController(); setTimeout(() => c.abort(), 1500);
+            const c = new AbortController(); setTimeout(() => c.abort(), 1800);
+            // Mode 'no-cors' is used to bypass CORS errors while checking if site is alive
             await fetch(raw, { mode: 'no-cors', signal: c.signal });
         } catch (e) {
-            final = `https://proxy.ikunbeautiful.workers.dev{encodeURIComponent(raw)}`;
+            // Bot detected block, constructing the proxy URL
+            const cleanDomain = raw.replace(/^https?:\/\//, '');
+            final = `http://proxy.ikunbeautiful.workers.dev{cleanDomain}`;
         }
 
         const win = window.open("about:blank", "_blank");
+        if (!win) return alert("Pop-up blocked! Allow popups for cloaking to work.");
+
         const doc = `<html><head><title>Dashboard</title><style>body,html,iframe{margin:0;padding:0;height:100%;width:100%;overflow:hidden;border:none;}</style></head>
             <body><iframe src="${final}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}")window.location.replace("${config.panicUrl}")};<\/script></body></html>`;
         
@@ -132,8 +146,8 @@
         else { win.document.write(doc); win.document.close(); }
     }
 
-    function floodHistory() { for (let i = 0; i < 50; i++) history.pushState({}, '', window.location.href + "#" + i); alert("Flooded!"); }
-    function cloudSync() { const id = prompt("Sync ID:"); if (id) alert("Syncing..."); }
+    function floodHistory() { for (let i = 0; i < 50; i++) history.pushState({}, '', window.location.href + "#" + i); alert("History Flooded!"); }
+    function cloudSync() { const id = prompt("Sync ID:"); if (id) alert("Syncing to ExistenceGG..."); }
 
     document.getElementById("panic-key-input").value = config.pKey;
     document.getElementById("panic-url-input").value = config.panicUrl;
