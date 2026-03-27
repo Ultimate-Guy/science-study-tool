@@ -14,110 +14,91 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   build:
-
-
     runs-on: ubuntu-latest
 
     steps:
-      # =========================
-      # Checkout (safe + fast)
-      # =========================
-      - uses: actions/checkout@v4
+      - name: Ultra-Fast Checkout
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          filter: 'blob:none'
+          fetch-depth: 1          # Shallow clone → huge speed gain
+          sparse-checkout: |
+            index.html
+            404.html
+            favicon.ico
+            css
+            js
+            imgs
+            fonts
+            games
+          sparse-checkout-cone-mode: true
 
-
-      # =========================
-      # Setup Node ONLY if needed
-      # =========================
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-        if: contains(join(github.event.head_commit.modified, ','), 'js/') ||
-            contains(join(github.event.head_commit.modified, ','), 'css/')
-
-      # =========================
-      # Install esbuild (only if JS exists)
-      # =========================
-      - name: Install tools
-        if: hashFiles('js/**/*.js') != ''
-        run: npm i -g esbuild
-
-      # =========================
-      # Build output folder
-      # =========================
-      - name: Prepare dist
-        run: rm -rf dist && mkdir dist
-
-
-
-      # =========================
-      # JS (safe build)
-      # =========================
-      - name: Build JS
+      - name: Build JS (fast & safe)
         run: |
-          if [ -d "js" ]; then
-            esbuild js/*.js --minify --outdir=dist/js || cp -r js dist/js
+          set -euo pipefail
+          mkdir -p staging/js
 
-
-
-
-
-
+          # Attempt esbuild bundling
+          if npx --yes esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error; then
+            echo "✅ JS built successfully"
+          else
+            echo "⚠️ esbuild failed → copying raw JS"
+            rm -rf staging/js
+            mkdir -p staging/js
+            cp -r js/* staging/js/
           fi
 
-      # =========================
-      # CSS (safe copy, no fragile bundling)
-      # =========================
-      - name: CSS
+      - name: Assemble Site
         run: |
-          if [ -d "css" ]; then
-            cp -r css dist/
+          set -euo pipefail
+          mkdir -p staging
 
+          cp index.html staging/
+          cp 404.html staging/ || true
+          cp favicon.ico staging/ || true
 
+          # Copy all folders safely, preserving subfolder structure
+          for folder in css js imgs fonts games; do
+            if [ -d "$folder" ]; then
+              mkdir -p staging/$folder
+              cp -r $folder/* staging/$folder/
+            fi
+          done
+
+      - name: Safety Check
+        run: |
+          set -euo pipefail
+
+          # Check HTML
+          if [ ! -s staging/index.html ] || ! grep -q "</html>" staging/index.html; then
+            echo "❌ index.html missing or malformed"
+            exit 1
           fi
 
-      # =========================
-      # HTML
-      # =========================
-      - name: HTML
-        run: cp *.html dist/ 2>/dev/null || true
+          # Check JS exists
+          if [ ! -d staging/js ] || [ -z "$(ls -A staging/js)" ]; then
+            echo "❌ JS missing → site would hang"
+            exit 1
+          fi
 
-      # =========================
-      # Assets
-      # =========================
-      - name: Assets
-        run: |
-          cp -r imgs dist/ 2>/dev/null || true
-          cp -r fonts dist/ 2>/dev/null || true
-          cp -r games dist/ 2>/dev/null || true
+          # Optional: Check essential assets
+          for folder in imgs css fonts; do
+            if [ ! -d staging/$folder ] || [ -z "$(ls -A staging/$folder)" ]; then
+              echo "❌ Essential folder $folder missing"
+              exit 1
+            fi
+          done
 
-          cp favicon.ico dist/ 2>/dev/null || true
-
-
-      # =========================
-      # Safety checks
-      # =========================
-      - name: Validate
-        run: test -f dist/index.html
-
-      # =========================
-      # Pages artifact
-      # =========================
-
-
-      - uses: actions/upload-pages-artifact@v3
-
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: staging
 
   deploy:
     needs: build
-
     runs-on: ubuntu-latest
-
+    environment:
+      name: github-pages
     steps:
       - uses: actions/deploy-pages@v4
