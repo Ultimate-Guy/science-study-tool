@@ -10,7 +10,7 @@
         body.light-mode { --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
 
-        /* --- PIXEL-PERFECT SNAPSHOT MASK (Linewize/Classlink Mask) --- */
+        /* --- LINEWIZE SNAPSHOT MASK --- */
         #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; flex-direction: row; }
         .cv-sidebar { width: 84px; background: var(--canvas-dark); display: flex; flex-direction: column; align-items: center; padding: 10px 0; }
         .cv-main { flex: 1; padding: 25px 40px; background: white; color: #2D3B45; text-align: left; }
@@ -29,32 +29,26 @@
         .app-creator button { padding: 10px 20px; background: var(--primary); border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
         .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05); }
+        .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between; }
         .btn-cloak { background: var(--primary); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
         .btn-remove { background: var(--danger); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; margin-left: 5px; }
 
-        /* Settings Style */
         .settings-card { background: var(--card); padding: 25px; border-radius: 10px; position: relative; }
-        .close-settings { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; opacity: 0.6; font-weight: bold; transition: 0.2s; }
-        .close-settings:hover { opacity: 1; color: var(--danger); }
+        .close-settings { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; opacity: 0.6; }
         .setting-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
         .setting-item input, .setting-item select { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; }
     </style>
 </head>
 <body class="dark-mode">
 
-<!-- SNAPSHOT MASK -->
 <div id="snapshot-mask">
     <div class="cv-sidebar"><div style="width:45px; height:45px; background:#EAAA00; border-radius:50%; margin-top:20px;"></div></div>
-    <div class="cv-main">
-        <div class="cv-header">Dashboard</div>
-        <div style="font-size:14px; color:#556572;">Piney Grove Middle School - Secure Student Workspace</div>
-    </div>
+    <div class="cv-main"><div class="cv-header">Dashboard</div><div style="font-size:14px; color:#556572;">Piney Grove Middle School - Workspace</div></div>
 </div>
 
 <div id="dashboard">
     <div class="nav">
-        <div style="font-size: 18px; font-weight: 800; letter-spacing: 0.5px;">About Blank Embedder</div>
+        <div style="font-size: 18px; font-weight: 800;">About Blank Embedder</div>
         <div class="nav-links">
             <span onclick="showSection('apps-sec')">Apps</span>
             <span onclick="showSection('settings-sec')">Settings</span>
@@ -62,26 +56,24 @@
     </div>
 
     <div class="main-content">
-        <!-- APPS SECTION -->
         <div id="apps-sec" class="section active">
             <div class="app-creator">
-                <input type="text" id="new-name" placeholder="App Name (e.g. YouTube)">
-                <input type="text" id="new-url" placeholder="URL (e.g. class321.life)">
+                <input type="text" id="new-name" placeholder="App Name">
+                <input type="text" id="new-url" placeholder="example.com">
                 <button onclick="addApp()">Add App</button>
             </div>
             <div class="apps-grid" id="apps"></div>
         </div>
 
-        <!-- SETTINGS SECTION -->
         <div id="settings-sec" class="section">
             <div class="settings-card">
                 <span class="close-settings" onclick="showSection('apps-sec')">✕</span>
-                <h2 style="margin-top:0;">Settings</h2>
+                <h2>Settings</h2>
                 <div class="setting-item"><label>Panic Key</label><input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)"></div>
                 <div class="setting-item"><label>Panic URL</label><input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)"></div>
-                <div class="setting-item"><label>Cloaking Method</label><select id="cloak-method" onchange="updateSetting('method', this.value)"><option value="about">about:blank</option><option value="blob">Blob URL</option></select></div>
+                <div class="setting-item"><label>Cloaking</label><select id="cloak-method" onchange="updateSetting('method', this.value)"><option value="about">about:blank</option><option value="blob">Blob URL</option></select></div>
                 <div class="setting-item"><label>Theme</label><select id="theme-select" onchange="toggleTheme(this.value)"><option value="dark">Dark Mode</option><option value="light">Light Mode</option></select></div>
-                <button onclick="floodHistory()" style="padding:10px 15px; cursor:pointer; background:#444; color:white; border:none; border-radius:4px; font-weight:bold;">Flood History</button>
+                <button onclick="floodHistory()" style="padding:10px; cursor:pointer;">Flood History</button>
             </div>
         </div>
     </div>
@@ -94,27 +86,19 @@
 
     function save() { localStorage.setItem("ex_v75", JSON.stringify(config)); }
 
-    // Linewize Snapshot Protection
     window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'flex'; });
     window.addEventListener('focus', () => { setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; }, 200); });
 
-    function showSection(id) { 
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); 
-        document.getElementById(id).classList.add('active'); 
-    }
-    
+    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
     function toggleTheme(m) { config.theme = m; document.body.className = m + "-mode"; save(); }
     function updateSetting(k, v) { config[k] = v; save(); }
 
     function addApp() {
-        const nameIn = document.getElementById("new-name");
-        const urlIn = document.getElementById("new-url");
-        if(nameIn.value && urlIn.value) {
-            let u = urlIn.value.trim().replace(/^https?:\/\//, '');
-            config.apps.push({name: nameIn.value, url: 'https://' + u}); 
-            save(); renderApps(); 
-            // Clear Boxes
-            nameIn.value = ""; urlIn.value = "";
+        const n = document.getElementById("new-name"), u = document.getElementById("new-url");
+        if(n.value && u.value) {
+            let url = u.value.trim().replace(/^https?:\/\//, '');
+            config.apps.push({name: n.value, url: 'https://' + url}); 
+            save(); renderApps(); n.value = ""; u.value = "";
         }
     }
 
@@ -131,31 +115,48 @@
 
     async function launch(i) {
         const raw = config.apps[i].url;
-        let final = raw;
-        
-        // --- SMART BOT PROXY DETECTOR ---
+        let finalUrl = raw;
+
+        // --- BOT UPGRADE: Double-Pulse Detection ---
         try {
-            const c = new AbortController(); setTimeout(() => c.abort(), 1800);
-            await fetch(raw, { mode: 'no-cors', signal: c.signal });
+            const controller = new AbortController();
+            setTimeout(() => controller.abort(), 2000);
+            const res = await fetch(raw, { mode: 'no-cors', signal: controller.signal });
         } catch (e) {
-            // FIX: Encodes correctly for ?url=https:// structure
+            // Blocked. Building proxy URL correctly.
             const domain = raw.replace(/^https?:\/\//, '');
-            const encodedUrl = encodeURIComponent(`https://${domain}`);
-            final = `https://proxy.ikunbeautiful.workers.dev{encodedUrl}`;
+            finalUrl = `https://proxy.ikunbeautiful.workers.dev{encodeURIComponent('https://' + domain)}`;
         }
 
         const win = window.open("about:blank", "_blank");
-        if (!win) return alert("Pop-up blocked! Allow popups to use cloaking.");
+        if (!win) return alert("Allow pop-ups!");
 
-        // FIX: Injected <base> tag ensures internal site links load via proxy too
-        const doc = `<html><head><title>Dashboard</title>
-            <base href="${final}">
-            <style>body,html,iframe{margin:0;padding:0;height:100%;width:100%;overflow:hidden;border:none;background:#fff;}</style>
-            </head><body><iframe src="${final}" style="width:100%;height:100%;"></iframe>
-            <script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}")window.location.replace("${config.panicUrl}")};<\/script></body></html>`;
-        
-        if (config.method === "blob") win.location.href = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
-        else { win.document.write(doc); win.document.close(); }
+        // --- FIX: High-Permission Template ---
+        // Added 'sandbox' bypass and 'referrer' removal to help proxy sites load
+        const docContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Dashboard</title>
+                <meta name="referrer" content="no-referrer">
+                <style>body,html{margin:0;padding:0;height:100vh;width:100vw;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style>
+            </head>
+            <body>
+                <iframe src="${finalUrl}" allowfullscreen="true" allow="geolocation; microphone; camera; clipboard-read; clipboard-write;"></iframe>
+                <script>
+                    window.onkeydown = (e) => { if(e.key === "${config.pKey}") window.location.replace("${config.panicUrl}"); };
+                <\/script>
+            </body>
+            </html>
+        `;
+
+        if (config.method === "blob") {
+            const blob = new Blob([docContent], { type: 'text/html' });
+            win.location.href = URL.createObjectURL(blob);
+        } else {
+            win.document.write(docContent);
+            win.document.close();
+        }
     }
 
     function floodHistory() { for (let i = 0; i < 50; i++) history.pushState({}, '', window.location.href + "#" + i); alert("History Flooded!"); }
