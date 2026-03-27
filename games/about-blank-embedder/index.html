@@ -9,26 +9,27 @@
         :root { --bg: #1a1a1a; --card: #252525; --text: #ffffff; --primary: #4facfe; --danger: #ff4d4d; --canvas-dark: #243342; }
         body.light-mode { --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
-        
         #maint-screen { display: none; position: fixed; inset: 0; background: white; color: black; z-index: 10001; padding: 50px; font-family: sans-serif; text-align: left; }
         #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; }
         #snapshot-img { width: 100%; height: 100%; object-fit: cover; }
         #fake-cursor { position: absolute; width: 22px; transition: all 0.8s ease-in-out; pointer-events: none; z-index: 10000; top: 50%; left: 50%; }
-        
         #dashboard { display: flex; flex-direction: column; height: 100vh; }
         .nav { height: 60px; background: rgba(0,0,0,0.2); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .nav-links span { margin-left: 20px; cursor: pointer; font-weight: 600; opacity: 0.8; }
+        .nav-links { display: flex; align-items: center; gap: 20px; }
+        .nav-links span { cursor: pointer; font-weight: 600; opacity: 0.8; }
+        #resume-btn { background:#22c55e; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 13px; display:none; }
         .main-content { flex: 1; padding: 30px; overflow-y: auto; }
         .section { display: none; max-width: 900px; margin: 0 auto; }
         .section.active { display: block; }
         .app-creator { display: flex; gap: 10px; margin-bottom: 30px; background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
         .app-creator input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #333; color: white; }
         .app-creator button { padding: 10px 20px; background: var(--primary); border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1); }
+        .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); }
         .btn-cloak { background: var(--primary); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-remove { background: var(--danger); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; margin-left: 5px; }
+        .btn-remove { background: var(--danger); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
         .settings-card { background: var(--card); padding: 25px; border-radius: 10px; position: relative; }
+        .close-settings { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; opacity: 0.6; color: var(--text); }
         .setting-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
         .setting-item input, .setting-item select { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; }
     </style>
@@ -51,6 +52,7 @@
     <div class="nav">
         <div id="brand-title" style="font-size: 18px; font-weight: 800;">About Blank Embedder</div>
         <div class="nav-links">
+            <button id="resume-btn" onclick="resumeSession()">Resume Last Session</button>
             <span onclick="showSection('apps-sec')">Apps</span>
             <span onclick="showSection('settings-sec')">Settings</span>
         </div>
@@ -66,26 +68,20 @@
         </div>
         <div id="settings-sec" class="section">
             <div class="settings-card">
+                <span class="close-settings" onclick="showSection('apps-sec')">✕</span>
                 <h2>Settings</h2>
+                <div class="setting-item"><label>Default Proxy Mirror</label><select id="proxy-mirror-select" onchange="updateSetting('activeProxy', this.value)"></select><button onclick="proxyBot()" style="margin-top:5px; background:#444; color:white; border:none; padding:5px; cursor:pointer;">Scan for New Proxies</button></div>
                 <div class="setting-item"><label>Panic Key</label><input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)"></div>
                 <div class="setting-item"><label>Panic URL</label><input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)"></div>
                 <div class="setting-item"><label>Shutdown Time (HH:MM)</label><input type="time" id="shutdown-time-input" onchange="updateSetting('shutTime', this.value)"></div>
-                
+                <div class="setting-item"><label>Maintenance Mode</label><select id="maint-toggle" onchange="toggleMaint(this.value)"><option value="off">Off</option><option value="on">On (Show 404)</option></select></div>
                 <div class="setting-item">
                     <label>Update Unlock PIN</label>
                     <div style="display:flex; gap:5px;">
-                        <input type="password" id="old-pin" placeholder="Current PIN" style="width:100px;">
-                        <input type="password" id="new-pin" placeholder="New PIN" style="width:100px;">
-                        <button onclick="updatePin()" style="background:var(--primary); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Update</button>
+                        <input type="password" id="old-pin" placeholder="Current PIN" style="width:100px;"><input type="password" id="new-pin" placeholder="New PIN" style="width:100px;"><button onclick="updatePin()" style="background:var(--primary); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Update</button>
                     </div>
                 </div>
-
-                <div class="setting-item">
-                    <label>Stealth Launcher Keyword</label>
-                    <input type="text" id="stealth-key-input" placeholder="math-project" onchange="updateSetting('stealthKey', this.value)">
-                </div>
-
-                <div class="setting-item"><label>Maintenance Mode</label><select id="maint-toggle" onchange="toggleMaint(this.value)"><option value="off">Off</option><option value="on">On (Show 404)</option></select></div>
+                <div class="setting-item"><label>Stealth Launcher Keyword</label><input type="text" id="stealth-key-input" placeholder="math-project" onchange="updateSetting('stealthKey', this.value)"></div>
                 <div class="setting-item"><label>Theme</label><select id="theme-select" onchange="toggleTheme(this.value)"><option value="dark">Dark Mode</option><option value="light">Light Mode</option></select></div>
                 <button onclick="floodHistory()" style="padding:10px; cursor:pointer; background:#444; border:none; color:white; border-radius:4px;">Flood History</button>
             </div>
@@ -96,134 +92,130 @@
 <script>
     function loadConfig() {
         const raw = localStorage.getItem("ex_data_v75");
-        if (!raw) return { apps: [], pKey: "]", panicUrl: "https://forsyth.instructure.com", method: "about", theme: "dark", shutTime: "", maint: "off", pin: "1234", stealthKey: "math-project" };
+        if (!raw) return { apps: [], pKey: "]", panicUrl: "https://forsyth.instructure.com", method: "about", theme: "dark", shutTime: "", maint: "off", pin: "1234", stealthKey: "math-project", activeProxy: "https://proxy.ikunbeautiful.workers.dev", proxies: ["https://proxy.ikunbeautiful.workers.dev"], lastApp: null };
         return JSON.parse(atob(raw));
     }
     let config = loadConfig();
     function save() { localStorage.setItem("ex_data_v75", btoa(JSON.stringify(config))); }
 
-    let keyBuffer = "";
-    window.addEventListener('keydown', (e) => {
-        // PIN & Stealth Key Detection
-        keyBuffer += e.key;
-        if (keyBuffer.length > 20) keyBuffer = keyBuffer.substring(1);
-        
-        // Check PIN
-        if (keyBuffer.endsWith(config.pin)) {
-            toggleMaint("off"); document.getElementById('maint-toggle').value = "off"; keyBuffer = "";
+    // --- DYNAMIC PROXY MIRROR BOT ---
+    async function proxyBot() {
+        const sources = [
+            "https://raw.githubusercontent.com",
+            "https://raw.githubusercontent.com/almroot/proxylist/master/list.txt"
+        ];
+        alert("Bot is scanning GitHub for fresh proxies...");
+        for (let url of sources) {
+            try {
+                const res = await fetch(url);
+                const text = await res.text();
+                const lines = text.split('\n').slice(0, 10);
+                for (let line of lines) {
+                    if (line.trim()) {
+                        const testUrl = `http://${line.trim()}/`;
+                        try {
+                            const controller = new AbortController();
+                            setTimeout(() => controller.abort(), 1000);
+                            await fetch(testUrl, { mode: 'no-cors', signal: controller.signal });
+                            const formatted = `https://unblocker-mirror.workers.dev{testUrl}`;
+                            if (!config.proxies.includes(formatted)) config.proxies.push(formatted);
+                        } catch(e) {}
+                    }
+                }
+            } catch(e) {}
         }
-        
-        // Check Stealth Keyword (Only on 404 screen)
-        if (config.maint === "on" && keyBuffer.endsWith(config.stealthKey)) {
-            if(config.apps.length > 0) launch(0); keyBuffer = "";
-        }
-
-        if (e.altKey && e.key.toLowerCase() === 'q') {
-            const newState = config.maint === "on" ? "off" : "on";
-            toggleMaint(newState); document.getElementById('maint-toggle').value = newState;
-        }
-        if (e.key === config.pKey) window.location.replace(config.panicUrl);
-    });
-
-    function updatePin() {
-        const oldP = document.getElementById('old-pin').value;
-        const newP = document.getElementById('new-pin').value;
-        if (oldP === config.pin && newP.length > 0) {
-            config.pin = newP; save(); alert("PIN updated.");
-            document.getElementById('old-pin').value = ""; document.getElementById('new-pin').value = "";
-        } else { alert("Incorrect current PIN."); }
+        save(); renderProxySelect(); alert("Scan complete. Working proxies added to settings.");
     }
 
-    setInterval(() => {
-        if (!config.shutTime) return;
-        const now = new Date();
-        const currentTime = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-        if (currentTime === config.shutTime) { window.location.replace(config.panicUrl); window.close(); }
-    }, 30000);
-
-    const titles = ["Dashboard", "Course Modules", "Assignments"];
-    setInterval(() => { if(config.maint === "off") document.title = titles[Math.floor(Math.random() * titles.length)]; }, 120000);
-
-    function toggleMaint(val) {
-        config.maint = val; save();
-        document.getElementById('maint-screen').style.display = (val === "on") ? "block" : "none";
-        document.title = (val === "on") ? "404 Not Found" : "Dashboard";
+    function renderProxySelect() {
+        const select = document.getElementById('proxy-mirror-select');
+        select.innerHTML = "";
+        config.proxies.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p; opt.innerText = p.split('?url=')[1] || "Default Proxy";
+            if (p === config.activeProxy) opt.selected = true;
+            select.appendChild(opt);
+        });
     }
 
-    window.addEventListener('blur', () => { 
-        document.getElementById('snapshot-mask').style.display = 'block'; 
-        document.getElementById('brand-title').innerText = "Canvas Dashboard";
-    });
-    window.addEventListener('focus', () => { 
-        setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; document.getElementById('brand-title').innerText = "About Blank Embedder"; }, 200); 
-    });
-
-    const pages = ["https://i.ibb.co", "https://i.ibb.co", "https://i.ibb.co", "https://i.ibb.co", "https://i.ibb.co"];
-    let pageIdx = 0;
+    // --- CLASS ROTATION BOT ---
+    const classImages = [
+        "https://i.ibb.co", // Dashboard
+        "https://i.ibb.co", // ELA
+        "https://i.ibb.co", // Science
+        "https://i.ibb.co", // Math
+        "https://i.ibb.co"  // SS
+    ];
+    let currentStep = 0;
     setInterval(() => {
         const img = document.getElementById('snapshot-img');
         const cursor = document.getElementById('fake-cursor');
-        if (pageIdx !== 0) {
+        currentStep = (currentStep + 1) % 8;
+        if (currentStep % 2 === 0) {
             cursor.style.top = "160px"; cursor.style.left = "42px";
-            setTimeout(() => { pageIdx = 0; img.src = pages; }, 850);
+            setTimeout(() => { img.src = classImages[0]; }, 800);
         } else {
             cursor.style.top = "420px"; cursor.style.left = "310px";
-            setTimeout(() => { pageIdx = (Math.floor(Math.random() * 4) + 1); img.src = pages[pageIdx]; }, 850);
+            setTimeout(() => { img.src = classImages[(currentStep + 1) / 2]; }, 800);
         }
     }, 60000);
 
+    // --- LAUNCH LOGIC ---
     async function launch(i) {
         const raw = config.apps[i].url;
+        config.lastApp = i; save();
         let finalUrl = raw;
         try {
             const controller = new AbortController();
             setTimeout(() => controller.abort(), 1200);
             await fetch(raw, { mode: 'no-cors', signal: controller.signal });
         } catch (e) {
-            finalUrl = `https://proxy.ikunbeautiful.workers.dev{encodeURIComponent(raw)}`;
+            finalUrl = config.activeProxy + encodeURIComponent(raw);
         }
         const win = window.open("about:blank", "_blank");
-        const script = `
-            document.title = "Dashboard";
-            let link = document.createElement('link'); link.rel = 'icon'; link.href = 'https://instructure-uploads.s3.amazonaws.com';
-            document.head.appendChild(link);
-            const host = document.createElement('div');
-            host.style = "position:fixed;inset:0;width:100vw;height:100vh;margin:0;padding:0;overflow:hidden;background:#000;";
-            document.body.appendChild(host);
-            const shadow = host.attachShadow({mode: 'closed'});
-            const iframe = document.createElement('iframe');
-            iframe.src = "${finalUrl}"; iframe.style = "width:100%;height:100%;border:none;";
-            shadow.appendChild(iframe);
-            window.onkeydown = (e) => { if(e.key === "${config.pKey}") window.location.replace("${config.panicUrl}"); };
-        `;
-        const b64 = btoa(unescape(encodeURIComponent(`<!DOCTYPE html><html><body><script>${script}<\/script></body></html>`)));
-        win.location.href = `data:text/html;base64,${b64}`;
+        const docContent = `<!DOCTYPE html><html><head><title>Dashboard</title><link rel="icon" href="https://instructure-uploads.s3.amazonaws.com"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${finalUrl}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}")window.location.replace("${config.panicUrl}");};<\/script></body></html>`;
+        setTimeout(() => { win.document.write(docContent); win.document.close(); }, 100);
+        win.focus(); updateResumeBtn();
     }
 
-    function floodHistory() {
-        const paths = ["/courses/123", "/calendar", "/grades", "/modules"];
-        for (let i = 0; i < 50; i++) history.pushState({}, '', paths[i % 4] + "#" + i);
-    }
+    function resumeSession() { if(config.lastApp !== null) launch(config.lastApp); }
+    function updateResumeBtn() { document.getElementById('resume-btn').style.display = config.lastApp !== null ? "block" : "none"; }
+    function toggleMaint(val) { config.maint = val; save(); document.getElementById('maint-screen').style.display = (val === "on") ? "block" : "none"; document.title = (val === "on") ? "404 Not Found" : "Dashboard"; }
 
-    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-    function toggleTheme(m) { config.theme = m; document.body.className = m + "-mode"; save(); }
-    function updateSetting(k, v) { config[k] = v; save(); }
+    window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'block'; document.getElementById('brand-title').innerText = "Canvas Dashboard"; });
+    window.addEventListener('focus', () => { setTimeout(() => { document.getElementById('snapshot-mask').style.display = 'none'; document.getElementById('brand-title').innerText = "About Blank Embedder"; }, 200); });
+
     function addApp() {
         const n = document.getElementById("new-name"), u = document.getElementById("new-url");
         if(n.value && u.value) { config.apps.push({name: n.value, url: 'https://' + u.value.trim().replace(/^https?:\/\//, '')}); save(); renderApps(); n.value = ""; u.value = ""; }
     }
-    function removeApp(i) { config.apps.splice(i, 1); save(); renderApps(); }
+    function removeApp(i) { config.apps.splice(i, 1); if(config.lastApp === i) config.lastApp = null; save(); renderApps(); updateResumeBtn(); }
     function renderApps() {
         const grid = document.getElementById("apps"); grid.innerHTML = "";
-        config.apps.forEach((app, i) => { grid.innerHTML += `<div class="app-item"><b>${app.name}</b><div><button class="btn-cloak" onclick="launch(${i})">Cloak</button><button class="btn-remove" onclick="removeApp(${i})">Remove</button></div></div>`; });
+        config.apps.forEach((app, i) => { grid.innerHTML += `<div class="app-item"><b>${app.name}</b><div class="app-actions"><button class="btn-cloak" onclick="launch(${i})">Cloak</button><button class="btn-remove" onclick="removeApp(${i})">Remove</button></div></div>`; });
     }
+
+    function updateSetting(k, v) { config[k] = v; save(); }
+    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+    function toggleTheme(m) { config.theme = m; document.body.className = m + "-mode"; save(); }
+    function updatePin() {
+        const oldP = document.getElementById('old-pin').value, newP = document.getElementById('new-pin').value;
+        if (oldP === config.pin && newP.length > 0) { config.pin = newP; save(); alert("PIN updated."); } else { alert("Error."); }
+    }
+
+    let keyBuffer = "";
+    window.addEventListener('keydown', (e) => {
+        keyBuffer += e.key;
+        if (keyBuffer.length > 20) keyBuffer = keyBuffer.substring(1);
+        if (keyBuffer.endsWith(config.pin)) { toggleMaint("off"); document.getElementById('maint-toggle').value = "off"; keyBuffer = ""; }
+        if (config.maint === "on" && keyBuffer.endsWith(config.stealthKey)) { if(config.apps.length > 0) launch(0); keyBuffer = ""; }
+        if (e.key === config.pKey) window.location.replace(config.panicUrl);
+    });
 
     document.getElementById("panic-key-input").value = config.pKey;
     document.getElementById("panic-url-input").value = config.panicUrl;
-    document.getElementById("shutdown-time-input").value = config.shutTime;
     document.getElementById("stealth-key-input").value = config.stealthKey;
-    document.getElementById("maint-toggle").value = config.maint;
-    toggleMaint(config.maint); toggleTheme(config.theme); renderApps();
+    renderProxySelect(); toggleMaint(config.maint); toggleTheme(config.theme); renderApps(); updateResumeBtn();
 </script>
 </body>
 </html>
