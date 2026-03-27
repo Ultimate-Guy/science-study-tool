@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           filter: 'blob:none'
-          fetch-depth: 1          # Shallow clone → huge speed gain
+          fetch-depth: 1           # Shallow clone → huge speed gain
           sparse-checkout: |
             index.html
             404.html
@@ -34,22 +34,7 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      - name: Build JS (fast & safe)
-        run: |
-          set -euo pipefail
-          mkdir -p staging/js
-
-          # Attempt esbuild bundling
-          if npx --yes esbuild js/*.js --bundle --minify --outdir=staging/js --log-level=error; then
-            echo "✅ JS built successfully"
-          else
-            echo "⚠️ esbuild failed → copying raw JS"
-            rm -rf staging/js
-            mkdir -p staging/js
-            cp -r js/* staging/js/
-          fi
-
-      - name: Assemble Site
+      - name: Assemble Site (fast)
         run: |
           set -euo pipefail
           mkdir -p staging
@@ -70,19 +55,19 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Check HTML
+          # Ensure HTML exists and is valid
           if [ ! -s staging/index.html ] || ! grep -q "</html>" staging/index.html; then
             echo "❌ index.html missing or malformed"
             exit 1
           fi
 
-          # Check JS exists
+          # Ensure JS exists
           if [ ! -d staging/js ] || [ -z "$(ls -A staging/js)" ]; then
             echo "❌ JS missing → site would hang"
             exit 1
           fi
 
-          # Optional: Check essential assets
+          # Ensure essential folders exist
           for folder in imgs css fonts; do
             if [ ! -d staging/$folder ] || [ -z "$(ls -A staging/$folder)" ]; then
               echo "❌ Essential folder $folder missing"
