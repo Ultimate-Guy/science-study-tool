@@ -9,7 +9,6 @@
         :root { --bg: #1a1a1a; --card: #252525; --text: #ffffff; --primary: #4facfe; --danger: #ff4d4d; }
         body.light-mode { --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
-        #maint-screen { display: none; position: fixed; inset: 0; background: white; color: black; z-index: 10001; padding: 50px; text-align: left; }
         #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; }
         #fake-cursor { position: absolute; width: 22px; transition: all 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95); pointer-events: none; z-index: 10000; }
         #dashboard { display: flex; flex-direction: column; height: 100vh; }
@@ -31,12 +30,6 @@
 </head>
 <body class="dark-mode" oncontextmenu="return false;">
 
-<div id="maint-screen">
-    <h1 style="font-size: 50px; margin-bottom: 10px;">404 Not Found</h1>
-    <p>The requested URL was not found on this server.</p>
-    <hr><address>Apache/2.4.41 (Ubuntu) Server at forsyth.instructure.com Port 443</address>
-</div>
-
 <div id="snapshot-mask">
     <img id="fake-cursor" src="https://www.pngall.com" alt="cursor">
     <img id="snapshot-img" src="https://i.ibb.co">
@@ -44,7 +37,7 @@
 
 <div id="dashboard">
     <div class="nav">
-        <div id="brand-title" style="font-size: 18px; font-weight: 800;" onclick="tripleClickPanic()">About Blank Embedder</div>
+        <div id="brand-title" style="font-size: 18px; font-weight: 800;">About Blank Embedder</div>
         <div class="nav-links">
             <span onclick="showSection('apps-sec')">Apps</span>
             <span onclick="showSection('settings-sec')">Settings</span>
@@ -62,60 +55,38 @@
         </div>
         <div id="settings-sec" class="section">
             <div class="settings-card">
-                <h2>Security & Stealth</h2>
+                <h2>Stealth & Proxy Settings</h2>
                 <div class="setting-item">
-                    <label>Traffic Jitter (Anti-Linewize AI)</label>
-                    <select id="jitter-toggle" onchange="updateSetting('jitter', this.value)">
-                        <option value="off">Off</option>
-                        <option value="on">On (Randomize traffic shape)</option>
-                    </select>
+                    <label>AgaTab Secure Stealth</label>
+                    <button onclick="toggleStealthMode()" id="stealth-mode-btn" style="background:#22c55e; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;">Activate AgaTab (No-Sniff)</button>
                 </div>
-                <div class="setting-item">
-                    <label>Screenshot Panic (BETA)</label>
-                    <select id="ss-panic-toggle" onchange="updateSetting('ssPanic', this.value)">
-                        <option value="off">Off</option>
-                        <option value="on">On (Switch tab on PrintScreen)</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label>Ghost Mode (Auto-Close)</label>
-                    <select id="ghost-toggle" onchange="updateSetting('ghostMode', this.value)">
-                        <option value="off">Off</option>
-                        <option value="on">On (Close inactive tab after 2m)</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label>Active Proxy</label>
-                    <select id="proxy-mirror-select" onchange="updateSetting('activeProxy', this.value)"></select>
-                    <button onclick="proxyBot()" style="margin-top:5px; background:#444; color:white; border:none; padding:5px; cursor:pointer;">Scan Mirror Backups</button>
-                </div>
+                <div class="setting-item"><label>Domain Scrambler</label><select id="scrambler-toggle" onchange="updateSetting('scrambler', this.value)"><option value="off">Off</option><option value="on">On (Detect Throttling)</option></select></div>
+                <div class="setting-item"><label>Active Proxy</label><select id="proxy-mirror-select" onchange="updateSetting('activeProxy', this.value)"></select><button onclick="proxyBot()" style="margin-top:5px; background:#444; color:white; border:none; padding:5px; cursor:pointer;">Scan Mirror Backups</button></div>
                 <div class="setting-item"><label>Panic Key</label><input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)"></div>
                 <div class="setting-item"><label>Panic URL</label><input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)"></div>
-                <button onclick="floodHistory()" style="padding:10px; background:#444; border:none; color:white; border-radius:4px;">Flood History (12 Steps)</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    const presets = {
-        canvas: { title: "Dashboard", fav: "https://instructure-uploads.s3.amazonaws.com" }
-    };
+    const p1 = "http://proxy.ikunbeautiful.workers.dev";
+    const p2 = "https://hm3.agatab.com";
+    const p3 = "https://vcsefghfhreesgfdf.dfgrdcfhfgfds.bonded-game.com";
 
     function crypt(str, key) { return btoa(str.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join('')); }
     function decrypt(str, key) { try { return atob(str).split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join(''); } catch(e) { return "[]"; } }
 
     function loadConfig() {
         const raw = localStorage.getItem("ex_data_v75");
-        const defaultP = "http://proxy.ikunbeautiful.workers.dev";
-        let data = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", panicUrl: "https://forsyth.instructure.com", pin: "1234", activeProxy: defaultP, proxies: [defaultP], mask: 'canvas', jitter: 'off', ssPanic: 'off', ghostMode: 'off' };
+        let data = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", panicUrl: "https://forsyth.instructure.com", pin: "1234", activeProxy: p1, proxies: [p1, p2, p3], scrambler: 'off', stealthForced: false };
+        [p1, p2, p3].forEach(p => { if(!data.proxies.includes(p)) data.proxies.push(p); });
         data.appList = JSON.parse(decrypt(data.apps, data.pin));
         return data;
     }
 
     let config = loadConfig();
     let childWindow = null;
-    let ghostTimer;
 
     function save() {
         let saveObj = {...config};
@@ -124,40 +95,18 @@
         localStorage.setItem("ex_data_v75", btoa(JSON.stringify(saveObj)));
     }
 
-    // GHOST MODE: Auto-close tab if inactive
-    function resetGhostTimer() {
-        clearTimeout(ghostTimer);
-        if (config.ghostMode === 'on' && childWindow && !childWindow.closed) {
-            ghostTimer = setTimeout(() => {
-                childWindow.location.replace(config.panicUrl);
-                setTimeout(() => childWindow.close(), 100);
-            }, 120000); // 2 Minutes
-        }
-    }
-    window.addEventListener('mousemove', resetGhostTimer);
-
-    // TRAFFIC JITTER: Bypasses Linewize pattern detection
-    setInterval(() => {
-        if (config.jitter === 'on') {
-            // Sends random dummy data to confuse traffic analysis AI
-            fetch(config.activeProxy + '://google.com' + Math.random(), { mode: 'no-cors' }).catch(()=>{});
-        }
-    }, 40000);
-
-    // SCREENSHOT PANIC: Detects manual PrintScreen attempts
-    window.addEventListener('keyup', (e) => {
-        if (config.ssPanic === 'on' && e.key === 'PrintScreen') triggerPanic();
-    });
-
-    function triggerPanic() {
-        if (childWindow) childWindow.location.replace(config.panicUrl);
-        window.location.replace(config.panicUrl);
+    function toggleStealthMode() {
+        config.stealthForced = !config.stealthForced;
+        const btn = document.getElementById('stealth-mode-btn');
+        if (config.stealthForced) { config.activeProxy = p2; btn.innerText = "AgaTab Locked"; btn.style.background = "#ff4fac"; }
+        else { btn.innerText = "Activate AgaTab (No-Sniff)"; btn.style.background = "#22c55e"; }
+        save(); renderProxySelect();
     }
 
     async function launch(i) {
         const app = config.appList[i];
         childWindow = window.open("about:blank", "_blank");
-        const docContent = `<!DOCTYPE html><html><head><title>Dashboard</title><link rel="icon" href="${presets.canvas.fav}"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy + app.url}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${config.panicUrl}");}};<\/script></body></html>`;
+        const docContent = `<!DOCTYPE html><html><head><title>Dashboard</title><link rel="icon" href="https://instructure-uploads.s3.amazonaws.com"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy + app.url}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${config.panicUrl}");}};<\/script></body></html>`;
         setTimeout(() => { childWindow.document.write(docContent); childWindow.document.close(); }, 100);
     }
 
@@ -171,9 +120,24 @@
         config.appList.forEach((app, i) => { grid.innerHTML += `<div class="app-item"><b>${app.name}</b><button onclick="launch(${i})">Cloak</button></div>`; });
     }
 
-    function updateSetting(k, v) { config[k] = v; save(); if(k === 'ghostMode') resetGhostTimer(); }
-    function renderProxySelect() { const select = document.getElementById('proxy-mirror-select'); select.innerHTML = ""; config.proxies.forEach(p => { const opt = document.createElement('option'); opt.value = p; opt.innerText = p.includes('ikunbeautiful') ? "Default Proxy" : "Mirror"; if (p === config.activeProxy) opt.selected = true; select.appendChild(opt); }); }
+    function renderProxySelect() {
+        const select = document.getElementById('proxy-mirror-select');
+        select.innerHTML = "";
+        config.proxies.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.innerText = p.includes('ikun') ? "IKun (Default)" : p.includes('agatab') ? "AgaTab (Secure)" : p.includes('bonded') ? "Bonded (Backup)" : "Mirror";
+            if (p === config.activeProxy) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+
+    function updateSetting(k, v) { config[k] = v; save(); }
     function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+    window.addEventListener('keydown', (e) => { if (e.key === config.pKey) window.location.replace(config.panicUrl); });
+    window.addEventListener('blur', () => document.getElementById('snapshot-mask').style.display = 'block');
+    window.addEventListener('focus', () => document.getElementById('snapshot-mask').style.display = 'none');
 
     renderProxySelect(); renderApps();
 </script>
