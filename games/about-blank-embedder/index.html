@@ -6,18 +6,16 @@
     <title>Dashboard</title>
     <link rel="icon" id="favicon" href="https://instructure-uploads.s3.amazonaws.com">
     <style>
-        :root { --bg: #1a1a1a; --card: #252525; --text: #ffffff; --primary: #4facfe; --danger: #ff4d4d; --canvas-dark: #243342; }
+        :root { --bg: #1a1a1a; --card: #252525; --text: #ffffff; --primary: #4facfe; --danger: #ff4d4d; }
         body.light-mode { --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
-        #maint-screen { display: none; position: fixed; inset: 0; background: white; color: black; z-index: 10001; padding: 50px; font-family: sans-serif; text-align: left; }
+        #maint-screen { display: none; position: fixed; inset: 0; background: white; color: black; z-index: 10001; padding: 50px; text-align: left; }
         #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; }
-        #snapshot-img { width: 100%; height: 100%; object-fit: cover; }
-        #fake-cursor { position: absolute; width: 22px; transition: all 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95); pointer-events: none; z-index: 10000; top: 50%; left: 50%; }
+        #fake-cursor { position: absolute; width: 22px; transition: all 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95); pointer-events: none; z-index: 10000; }
         #dashboard { display: flex; flex-direction: column; height: 100vh; }
         .nav { height: 60px; background: rgba(0,0,0,0.2); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .nav-links { display: flex; align-items: center; gap: 20px; }
         .nav-links span { cursor: pointer; font-weight: 600; opacity: 0.8; }
-        #resume-btn { background:#22c55e; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 13px; display:none; }
         .main-content { flex: 1; padding: 30px; overflow-y: auto; }
         .section { display: none; max-width: 900px; margin: 0 auto; }
         .section.active { display: block; }
@@ -26,10 +24,7 @@
         .app-creator button { padding: 10px 20px; background: var(--primary); border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
         .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); }
-        .btn-cloak { background: var(--primary); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-remove { background: var(--danger); color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
         .settings-card { background: var(--card); padding: 25px; border-radius: 10px; position: relative; }
-        .close-settings { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; opacity: 0.6; color: var(--text); }
         .setting-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
         .setting-item input, .setting-item select { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; }
     </style>
@@ -39,8 +34,7 @@
 <div id="maint-screen">
     <h1 style="font-size: 50px; margin-bottom: 10px;">404 Not Found</h1>
     <p>The requested URL was not found on this server.</p>
-    <hr>
-    <address>Apache/2.4.41 (Ubuntu) Server at forsyth.instructure.com Port 443</address>
+    <hr><address>Apache/2.4.41 (Ubuntu) Server at forsyth.instructure.com Port 443</address>
 </div>
 
 <div id="snapshot-mask">
@@ -52,7 +46,6 @@
     <div class="nav">
         <div id="brand-title" style="font-size: 18px; font-weight: 800;" onclick="tripleClickPanic()">About Blank Embedder</div>
         <div class="nav-links">
-            <button id="resume-btn" onclick="resumeSession()">Resume Last Session</button>
             <span onclick="showSection('apps-sec')">Apps</span>
             <span onclick="showSection('settings-sec')">Settings</span>
         </div>
@@ -69,20 +62,36 @@
         </div>
         <div id="settings-sec" class="section">
             <div class="settings-card">
-                <span class="close-settings" onclick="showSection('apps-sec')">✕</span>
-                <h2>Settings</h2>
-                <div class="setting-item"><label>Tab Masking Preset</label><select id="mask-preset" onchange="updateMask(this.value)"><option value="canvas">Canvas</option><option value="drive">Google Drive</option><option value="campus">Infinite Campus</option><option value="gmail">Gmail</option></select></div>
-                <div class="setting-item"><label>Glass Mode Shortcut</label><input type="text" id="glass-key-input" maxlength="1" onchange="updateSetting('glassKey', this.value)"></div>
-                <div class="setting-item"><label>Stealth Keyword</label><input type="text" id="stealth-key-input" onchange="updateSetting('stealthKey', this.value)"></div>
-                <div class="setting-item"><label>Auto-Lock Hidden Apps</label><select id="auto-lock-toggle" onchange="updateSetting('autoLock', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
-                <div class="setting-item"><label>Auto-Panic on Idle</label><select id="idle-panic-toggle" onchange="updateSetting('idlePanic', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
-                <div class="setting-item"><label>Dev-Tools Anti-Inspect</label><select id="anti-inspect-toggle" onchange="updateSetting('antiInspect', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
-                <div class="setting-item"><label>Background Tab Noise</label><select id="tab-noise-toggle" onchange="updateSetting('tabNoise', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
-                <div class="setting-item"><label>Proxy Mirror</label><select id="proxy-mirror-select" onchange="updateSetting('activeProxy', this.value)"></select><button onclick="proxyBot()" style="margin-top:5px; background:#444; color:white; border:none; padding:5px; cursor:pointer;">Scan for New Proxies</button></div>
+                <h2>Security & Stealth</h2>
+                <div class="setting-item">
+                    <label>Traffic Jitter (Anti-Linewize AI)</label>
+                    <select id="jitter-toggle" onchange="updateSetting('jitter', this.value)">
+                        <option value="off">Off</option>
+                        <option value="on">On (Randomize traffic shape)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Screenshot Panic (BETA)</label>
+                    <select id="ss-panic-toggle" onchange="updateSetting('ssPanic', this.value)">
+                        <option value="off">Off</option>
+                        <option value="on">On (Switch tab on PrintScreen)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Ghost Mode (Auto-Close)</label>
+                    <select id="ghost-toggle" onchange="updateSetting('ghostMode', this.value)">
+                        <option value="off">Off</option>
+                        <option value="on">On (Close inactive tab after 2m)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Active Proxy</label>
+                    <select id="proxy-mirror-select" onchange="updateSetting('activeProxy', this.value)"></select>
+                    <button onclick="proxyBot()" style="margin-top:5px; background:#444; color:white; border:none; padding:5px; cursor:pointer;">Scan Mirror Backups</button>
+                </div>
                 <div class="setting-item"><label>Panic Key</label><input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)"></div>
                 <div class="setting-item"><label>Panic URL</label><input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)"></div>
-                <div class="setting-item"><label>Update PIN (Encrypts Data)</label><div style="display:flex; gap:5px;"><input type="password" id="old-pin" placeholder="Old PIN" style="width:100px;"><input type="password" id="new-pin" placeholder="New PIN" style="width:100px;"><button onclick="updatePin()" style="background:var(--primary); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Update</button></div></div>
-                <button onclick="floodHistory()" style="padding:10px; cursor:pointer; background:#444; border:none; color:white; border-radius:4px;">Flood History (12 Steps)</button>
+                <button onclick="floodHistory()" style="padding:10px; background:#444; border:none; color:white; border-radius:4px;">Flood History (12 Steps)</button>
             </div>
         </div>
     </div>
@@ -90,10 +99,7 @@
 
 <script>
     const presets = {
-        canvas: { title: "Dashboard", fav: "https://instructure-uploads.s3.amazonaws.com" },
-        drive: { title: "My Drive - Google Drive", fav: "https://ssl.gstatic.com" },
-        campus: { title: "Infinite Campus", fav: "https://campus.forsyth.k12.ga.us" },
-        gmail: { title: "Inbox (1) - Gmail", fav: "https://ssl.gstatic.com" }
+        canvas: { title: "Dashboard", fav: "https://instructure-uploads.s3.amazonaws.com" }
     };
 
     function crypt(str, key) { return btoa(str.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join('')); }
@@ -101,64 +107,59 @@
 
     function loadConfig() {
         const raw = localStorage.getItem("ex_data_v75");
-        const defaultProxy = "http://proxy.ikunbeautiful.workers.dev";
-        let data = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", panicUrl: "https://forsyth.instructure.com", theme: "dark", maint: "off", pin: "1234", activeProxy: defaultProxy, proxies: [defaultProxy], lastApp: null, mask: 'canvas', idlePanic: 'off', uaMode: 'default', stealthKey: 'This-is-password', autoLock: 'off', glassKey: 'g', antiInspect: 'off', tabNoise: 'off' };
+        const defaultP = "http://proxy.ikunbeautiful.workers.dev";
+        let data = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", panicUrl: "https://forsyth.instructure.com", pin: "1234", activeProxy: defaultP, proxies: [defaultP], mask: 'canvas', jitter: 'off', ssPanic: 'off', ghostMode: 'off' };
         data.appList = JSON.parse(decrypt(data.apps, data.pin));
-        data.stealthActive = false;
         return data;
     }
 
     let config = loadConfig();
     let childWindow = null;
-    let idleTimer;
-    let clickCount = 0;
-    let keyBuffer = "";
+    let ghostTimer;
 
     function save() {
         let saveObj = {...config};
         saveObj.apps = crypt(JSON.stringify(config.appList), config.pin);
-        delete saveObj.appList; delete saveObj.stealthActive;
+        delete saveObj.appList;
         localStorage.setItem("ex_data_v75", btoa(JSON.stringify(saveObj)));
     }
+
+    // GHOST MODE: Auto-close tab if inactive
+    function resetGhostTimer() {
+        clearTimeout(ghostTimer);
+        if (config.ghostMode === 'on' && childWindow && !childWindow.closed) {
+            ghostTimer = setTimeout(() => {
+                childWindow.location.replace(config.panicUrl);
+                setTimeout(() => childWindow.close(), 100);
+            }, 120000); // 2 Minutes
+        }
+    }
+    window.addEventListener('mousemove', resetGhostTimer);
+
+    // TRAFFIC JITTER: Bypasses Linewize pattern detection
+    setInterval(() => {
+        if (config.jitter === 'on') {
+            // Sends random dummy data to confuse traffic analysis AI
+            fetch(config.activeProxy + '://google.com' + Math.random(), { mode: 'no-cors' }).catch(()=>{});
+        }
+    }, 40000);
+
+    // SCREENSHOT PANIC: Detects manual PrintScreen attempts
+    window.addEventListener('keyup', (e) => {
+        if (config.ssPanic === 'on' && e.key === 'PrintScreen') triggerPanic();
+    });
 
     function triggerPanic() {
         if (childWindow) childWindow.location.replace(config.panicUrl);
         window.location.replace(config.panicUrl);
     }
 
-    function tripleClickPanic() { clickCount++; if (clickCount === 3) { triggerPanic(); clickCount = 0; } setTimeout(() => { clickCount = 0; }, 1000); }
-
     async function launch(i) {
         const app = config.appList[i];
-        config.lastApp = i; save();
         childWindow = window.open("about:blank", "_blank");
-        const docContent = `<!DOCTYPE html><html><head><title>${presets[config.mask].title}</title><link rel="icon" href="${presets[config.mask].fav}"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy + app.url}"></iframe><script>window.addEventListener('message', (e) => { if(e.data === 'panic') window.location.replace("${config.panicUrl}"); });window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic', '*');window.location.replace("${config.panicUrl}");}};window.onbeforeunload=()=>{window.location.replace("${config.panicUrl}");};<\/script></body></html>`;
+        const docContent = `<!DOCTYPE html><html><head><title>Dashboard</title><link rel="icon" href="${presets.canvas.fav}"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy + app.url}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${config.panicUrl}");}};<\/script></body></html>`;
         setTimeout(() => { childWindow.document.write(docContent); childWindow.document.close(); }, 100);
-        updateResumeBtn();
     }
-
-    function floodHistory() {
-        const urls = ["https://forsyth.instructure.com", "https://campus.forsyth.k12.ga.us", "https://drive.google.com", "https://forsyth.studentsupporttime.com", "https://pbisrstudent.navigate360.com", "https://myapps.classlink.com"];
-        for (let j = 0; j < 2; j++) urls.forEach(url => window.history.pushState({}, '', url));
-        alert("History Flooded (12 entries).");
-    }
-
-    window.addEventListener('keydown', (e) => {
-        if (e.key === config.pKey) triggerPanic();
-        if (e.key === config.glassKey) document.body.style.opacity = document.body.style.opacity === "0.3" ? "1" : "0.3";
-        keyBuffer += e.key; if (keyBuffer.length > 30) keyBuffer = keyBuffer.substring(1);
-        if (keyBuffer.endsWith(config.stealthKey)) { config.stealthActive = !config.stealthActive; renderApps(); keyBuffer = ""; }
-    });
-
-    window.addEventListener('blur', () => {
-        if (config.autoLock === 'on') { config.stealthActive = false; renderApps(); }
-        document.getElementById('snapshot-mask').style.display = 'block';
-    });
-
-    window.addEventListener('focus', () => document.getElementById('snapshot-mask').style.display = 'none');
-
-    setInterval(() => { if (config.antiInspect === 'on' && (window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160)) triggerPanic(); }, 1000);
-    setInterval(() => { if (config.tabNoise === 'on') fetch('https://forsyth.instructure.comapi/v1/users/self', { mode: 'no-cors' }).catch(()=>{}); }, 45000);
 
     function addApp(isSecret) {
         const n = document.getElementById("new-name"), u = document.getElementById("new-url");
@@ -167,24 +168,14 @@
 
     function renderApps() {
         const grid = document.getElementById("apps"); grid.innerHTML = "";
-        config.appList.forEach((app, i) => { if (!app.secret || config.stealthActive) grid.innerHTML += `<div class="app-item" style="${app.secret ? 'border:1px solid #ff4fac' : ''}"><b>${app.name}${app.secret ? ' (H)' : ''}</b><div class="app-actions"><button class="btn-cloak" onclick="launch(${i})">Cloak</button><button class="btn-remove" onclick="removeApp(${i})">Remove</button></div></div>`; });
+        config.appList.forEach((app, i) => { grid.innerHTML += `<div class="app-item"><b>${app.name}</b><button onclick="launch(${i})">Cloak</button></div>`; });
     }
 
-    function removeApp(i) { config.appList.splice(i, 1); save(); renderApps(); }
-    function updateMask(val) { config.mask = val; save(); document.title = presets[val].title; document.getElementById('favicon').href = presets[val].fav; }
-    function updateSetting(k, v) { config[k] = v; save(); }
-    function updatePin() { const oldP = document.getElementById('old-pin').value, newP = document.getElementById('new-pin').value; if (oldP === config.pin) { config.pin = newP; save(); alert("PIN Updated."); } }
-    function updateResumeBtn() { document.getElementById('resume-btn').style.display = config.lastApp !== null ? "block" : "none"; }
-    function resumeSession() { if(config.lastApp !== null) launch(config.lastApp); }
-    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+    function updateSetting(k, v) { config[k] = v; save(); if(k === 'ghostMode') resetGhostTimer(); }
     function renderProxySelect() { const select = document.getElementById('proxy-mirror-select'); select.innerHTML = ""; config.proxies.forEach(p => { const opt = document.createElement('option'); opt.value = p; opt.innerText = p.includes('ikunbeautiful') ? "Default Proxy" : "Mirror"; if (p === config.activeProxy) opt.selected = true; select.appendChild(opt); }); }
+    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
 
-    // Init
-    document.getElementById("panic-key-input").value = config.pKey;
-    document.getElementById("panic-url-input").value = config.panicUrl;
-    document.getElementById("stealth-key-input").value = config.stealthKey;
-    document.getElementById("glass-key-input").value = config.glassKey;
-    renderProxySelect(); renderApps(); updateMask(config.mask); updateResumeBtn();
+    renderProxySelect(); renderApps();
 </script>
 </body>
 </html>
