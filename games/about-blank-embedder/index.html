@@ -10,7 +10,6 @@
         body.light-mode { --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
         #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; }
-        #fake-cursor { position: absolute; width: 22px; transition: all 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95); pointer-events: none; z-index: 10000; }
         #dashboard { display: flex; flex-direction: column; height: 100vh; }
         .nav { height: 60px; background: rgba(0,0,0,0.2); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .nav-links { display: flex; align-items: center; gap: 20px; }
@@ -29,13 +28,12 @@
         .setting-item input, .setting-item select, .setting-item textarea { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; }
         
         /* Success Checkmark Style */
-        .check-visible::after { content: " ✔"; color: #22c55e; animation: fadeout 10s forwards; }
+        .check-visible::after { content: " ✔"; color: #22c55e; transition: 0.3s; }
         
         #toast { visibility: hidden; min-width: 200px; background-color: #22c55e; color: #fff; text-align: center; border-radius: 5px; padding: 12px; position: fixed; z-index: 10005; left: 50%; bottom: 30px; transform: translateX(-50%); font-weight: bold; }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout_toast 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout_toast { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-        @keyframes fadeout { from {opacity: 1;} to {opacity: 0;} }
     </style>
 </head>
 <body class="dark-mode" oncontextmenu="return false;">
@@ -132,7 +130,8 @@
     }
 
     function addApp(isSecret, btn) {
-        const nInput = document.getElementById("new-name"), uInput = document.getElementById("new-url");
+        const nInput = document.getElementById("new-name");
+        const uInput = document.getElementById("new-url");
         if(nInput.value && uInput.value) {
             config.appList.push({ name: nInput.value, url: uInput.value.trim().replace(/^https?:\/\//, ''), secret: isSecret });
             save(); renderApps(); nInput.value = ""; uInput.value = ""; 
@@ -145,7 +144,7 @@
         childWindow = window.open("about:blank", "_blank");
         const hs = config.highSec === 'on' ? `Object.defineProperty(navigator,'webdriver',{get:()=>undefined});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});` : '';
         const cssS = config.customCSS ? `const s=document.createElement('style');s.innerHTML=\`${config.customCSS}\`;document.head.appendChild(s);` : '';
-        const doc = `<!DOCTYPE html><html><head><title>${presets[config.mask].title}</title><link rel="icon" href="${presets[config.mask].fav}"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy+app.url}"></iframe><script>${hs+cssS}window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${getPanicUrl()}");}};<\/script></body></html>`;
+        const doc = `<!DOCTYPE html><html><head><title>${presets[config.mask].title}</title><link rel="icon" href="${presets[config.mask].fav}"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy+app.url}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${getPanicUrl()}");}};<\/script></body></html>`;
         setTimeout(() => { childWindow.document.write(doc); childWindow.document.close(); setTimeout(() => createShadow(childWindow), 500); }, 100);
     }
 
@@ -183,8 +182,8 @@
     }
 
     function renderProxySelect() {
-        const s = document.getElementById('proxy-mirror-select'); s.innerHTML = "";
-        config.proxies.forEach(p => { const o = document.createElement('option'); o.value = p; o.innerText = p.includes('ikun') ? "IKun (Default)" : p.includes('agatab') ? "AgaTab" : "Mirror"; if (p === config.activeProxy) o.selected = true; s.appendChild(o); });
+        const s = document.getElementById('proxy-mirror-select'); if (!s) return;
+        s.innerHTML = ""; config.proxies.forEach(p => { const o = document.createElement('option'); o.value = p; o.innerText = p.includes('ikun') ? "IKun (Default)" : p.includes('agatab') ? "AgaTab (Secure)" : p.includes('bonded') ? "Bonded Game" : "Mirror"; if (p === config.activeProxy) o.selected = true; s.appendChild(o); });
     }
 
     async function fetchGistProxies(btn) {
