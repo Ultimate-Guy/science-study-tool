@@ -10,6 +10,7 @@
         body.light-mode { --bg: #f5f5f5; --card: #ffffff; --text: #2D3B45; --primary: #004d99; --danger: #d93025; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: "Segoe UI", sans-serif; overflow: hidden; background: var(--bg); color: var(--text); transition: 0.3s; }
         #snapshot-mask { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 9999; }
+        #fake-cursor { position: absolute; width: 22px; transition: all 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95); pointer-events: none; z-index: 10000; }
         #dashboard { display: flex; flex-direction: column; height: 100vh; }
         .nav { height: 60px; background: rgba(0,0,0,0.2); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .nav-links { display: flex; align-items: center; gap: 20px; }
@@ -26,10 +27,15 @@
         .close-settings { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; opacity: 0.6; color: var(--text); }
         .setting-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
         .setting-item input, .setting-item select, .setting-item textarea { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; }
+        
+        /* Success Checkmark Style */
+        .check-visible::after { content: " ✔"; color: #22c55e; animation: fadeout 10s forwards; }
+        
         #toast { visibility: hidden; min-width: 200px; background-color: #22c55e; color: #fff; text-align: center; border-radius: 5px; padding: 12px; position: fixed; z-index: 10005; left: 50%; bottom: 30px; transform: translateX(-50%); font-weight: bold; }
-        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout_toast 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        @keyframes fadeout_toast { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        @keyframes fadeout { from {opacity: 1;} to {opacity: 0;} }
     </style>
 </head>
 <body class="dark-mode" oncontextmenu="return false;">
@@ -53,8 +59,8 @@
             <div class="app-creator">
                 <input type="text" id="new-name" placeholder="App Name">
                 <input type="text" id="new-url" placeholder="example.com">
-                <button onclick="addApp(false)">Add App</button>
-                <button onclick="addApp(true)" style="background:#ff4fac">Add Hidden</button>
+                <button onclick="addApp(false, this)">Add App</button>
+                <button onclick="addApp(true, this)" style="background:#ff4fac">Add Hidden</button>
             </div>
             <div id="apps" class="apps-grid"></div>
         </div>
@@ -62,31 +68,34 @@
             <div class="settings-card">
                 <span class="close-settings" onclick="showSection('apps-sec')">✕</span>
                 <h2>Master Settings</h2>
-                <div class="setting-item"><label>Tab Masking (Preset)</label><select id="mask-preset" onchange="updateMask(this.value)"><option value="canvas">Canvas</option><option value="drive">Google Drive</option><option value="campus">Infinite Campus</option><option value="gmail">Gmail</option></select></div>
-                <div class="setting-item"><label>SSL Intercept Alert (Linewize Check)</label><select id="ssl-toggle" onchange="updateSetting('sslCheck', this.value)"><option value="off">Off</option><option value="on">On (Alert if Sniffed)</option></select></div>
-                <div class="setting-item"><label>Dead Man's Switch (Idle/Lid Panic)</label><select id="deadman-toggle" onchange="updateSetting('deadman', this.value)"><option value="off">Off</option><option value="on">On (Auto-Panic after 5m)</option></select></div>
-                <div class="setting-item"><label>Dynamic Mirroring (GitHub Gist ID)</label><input type="text" id="gist-id-input" placeholder="Gist ID" onchange="updateSetting('gistId', this.value)"><button onclick="fetchGistProxies()" style="margin-top:5px; background:#444; border:none; padding:5px; color:white; cursor:pointer;">Sync Mirrors</button></div>
+                <div class="setting-item"><label>Tab Masking</label><select id="mask-preset" onchange="updateMask(this.value)"><option value="canvas">Canvas</option><option value="drive">Google Drive</option><option value="campus">Infinite Campus</option><option value="gmail">Gmail</option></select></div>
+                <div class="setting-item"><label>AgaTab Secure Stealth</label><button onclick="toggleStealthMode(this)" id="stealth-mode-btn" style="background:#22c55e; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;">Activate AgaTab (No-Sniff)</button></div>
+                <div class="setting-item"><label>Shadow Mask (Idle Deception)</label><select id="shadow-toggle" onchange="updateSetting('shadowMode', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
+                <div class="setting-item"><label>High-Security (Anti-Linewize)</label><select id="high-sec-toggle" onchange="updateSetting('highSec', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
+                <div class="setting-item"><label>Dev-Tools Anti-Inspect</label><select id="anti-inspect-toggle" onchange="updateSetting('antiInspect', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
+                <div class="setting-item"><label>Traffic Jitter</label><select id="jitter-toggle" onchange="updateSetting('jitter', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
+                <div class="setting-item"><label>Dead Man's Switch</label><select id="deadman-toggle" onchange="updateSetting('deadman', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
+                <div class="setting-item"><label>SSL Intercept Alert</label><select id="ssl-toggle" onchange="updateSetting('sslCheck', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
+                <div class="setting-item"><label>Data Self-Destruct</label><select id="purge-timer" onchange="updateSetting('purgeHours', this.value)"><option value="0">Never</option><option value="1">1 Hour</option><option value="4">4 Hours</option></select></div>
+                <div class="setting-item"><label>Glass Mode Key</label><input type="text" id="glass-key-input" maxlength="1" onchange="updateSetting('glassKey', this.value)"></div>
+                <div class="setting-item"><label>Stealth Key (Hidden Apps)</label><input type="text" id="stealth-key-input" onchange="updateSetting('stealthKey', this.value)"></div>
+                <div class="setting-item"><label>Custom Site CSS</label><textarea id="custom-css-input" onchange="updateSetting('customCSS', this.value)" placeholder="body { background: #000 !important; }"></textarea></div>
+                <div class="setting-item"><label>Dynamic Mirroring (Gist ID)</label><input type="text" id="gist-id-input" placeholder="Gist ID" onchange="updateSetting('gistId', this.value)"><button onclick="fetchGistProxies(this)" style="margin-top:5px; background:#444; border:none; padding:5px; color:white; cursor:pointer;">Sync Mirrors</button></div>
                 <div class="setting-item"><label>Active Proxy</label><select id="proxy-mirror-select" onchange="updateSetting('activeProxy', this.value)"></select></div>
+                <div class="setting-item"><label>Panic Schedule</label><div id="schedule-list" style="display:flex; flex-direction:column; gap:5px;"></div><button onclick="addSchedule(this)" style="background:#444; border:none; padding:5px; color:white; cursor:pointer; margin-top:5px;">+ Add Time Slot</button></div>
                 <div class="setting-item"><label>Panic URL</label><input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)"></div>
                 <div class="setting-item"><label>Panic Key</label><input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)"></div>
-                <button onclick="floodHistory()" style="padding:10px; width:100%; background:#444; border:none; color:white; border-radius:4px; cursor:pointer;">Flood History (6 Step Trail)</button>
+                <div class="setting-item"><label>App Sharing</label><div style="display:flex; gap:5px;"><button onclick="exportApps(this)" style="flex:1; background:#4facfe; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Copy Code</button><button onclick="importApps(this)" style="flex:1; background:#22c55e; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Import Code</button></div></div>
+                <button onclick="floodHistory(this)" style="padding:10px; width:100%; background:#444; border:none; color:white; border-radius:4px; cursor:pointer;">Flood History (6 Step Trail)</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // 3. KEYWORD OBFUSCATION
-    const O_KEYS = {
-        P_URL: atob("aHR0cHM6Ly9mb3JzeXRoLmluc3RydWN0dXJlLmNvbS8="), // Panic: Forsyth Canvas
-        S_MSG: atob("U1NMIEludGVyY2VwdCBGbGFnZ2VkIQ=="),
-        A_URL: atob("YWdhdGFi"), B_URL: atob("Ym9uZGVkLWdhbWU=")
-    };
-
     const p1 = "http://proxy.ikunbeautiful.workers.dev";
     const p2 = "https://hm3.agatab.com";
     const p3 = "https://vcsefghfhreesgfdf.dfgrdcfhfgfds.bonded-game.com";
-
     const presets = {
         canvas: { title: "Dashboard", fav: "https://instructure-uploads.s3.amazonaws.com" },
         drive: { title: "My Drive - Google Drive", fav: "https://ssl.gstatic.com" },
@@ -99,14 +108,14 @@
 
     function loadConfig() {
         const raw = localStorage.getItem("ex_data_v75");
-        let d = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", panicUrl: O_KEYS.P_URL, pin: "1234", activeProxy: p1, proxies: [p1, p2, p3], mask: 'canvas', deadman: 'off', sslCheck: 'off', gistId: '' };
+        let d = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", panicUrl: "https://forsyth.instructure.com", pin: "1234", activeProxy: p1, proxies: [p1, p2, p3], mask: 'canvas', shadowMode: 'off', highSec: 'off', glassKey: 'g', stealthKey: 'This-is-password', autoLock: 'off', antiInspect: 'off', jitter: 'off', customCSS: '', purgeHours: '0', sslCheck: 'off', deadman: 'off', gistId: '', panicSchedule: [], stealthForced: false };
         [p1, p2, p3].forEach(p => { if(!d.proxies.includes(p)) d.proxies.push(p); });
         d.appList = JSON.parse(decrypt(d.apps, d.pin)); d.stealthActive = false;
         return d;
     }
 
     let config = loadConfig();
-    let childWindow = null, idleTimer, clickCount = 0;
+    let childWindow = null, shadowIframe = null, idleTimer, clickCount = 0, keyBuffer = "";
 
     function save() {
         let sO = {...config}; sO.apps = crypt(JSON.stringify(config.appList), config.pin);
@@ -115,114 +124,124 @@
     }
 
     function showNotification(msg) { const t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => t.className = "", 3000); }
-
-    // 1. BEHAVIORAL MIMICRY (Random Jitters)
-    function simulateActivity(win) {
-        setInterval(() => {
-            if (win && !win.closed) {
-                const x = Math.random() * 5, y = Math.random() * 5;
-                const e = new MouseEvent('mousemove', { 'view': win, 'bubbles': true, 'clientX': x, 'clientY': y });
-                win.dispatchEvent(e);
-            }
-        }, 14000);
+    
+    function showCheck(btn) {
+        if(!btn) return;
+        btn.classList.add('check-visible');
+        setTimeout(() => btn.classList.remove('check-visible'), 10000);
     }
 
-    // 2. SSL INTERCEPT CHECK
-    async function verifyEncryption() {
-        if (config.sslCheck !== 'on') return;
-        try {
-            await fetch(config.activeProxy + '://google.com', { mode: 'no-cors' });
-        } catch (e) {
-            if (e.message.includes("SSL") || e.message.includes("certificate")) {
-                showNotification(O_KEYS.S_MSG);
-            }
-        }
-    }
-
-    // 4. DEAD MAN'S SWITCH (Idle & Lid Close)
-    function resetTimer() {
-        clearTimeout(idleTimer);
-        if (config.deadman === 'on') {
-            idleTimer = setTimeout(() => triggerPanic(), 300000);
-        }
-    }
-
-    function triggerPanic() {
-        if (childWindow) childWindow.location.replace(config.panicUrl);
-        window.location.replace(config.panicUrl);
-    }
-
-    // 5. GIST UPDATER
-    async function fetchGistProxies() {
-        if (!config.gistId) return;
-        try {
-            const res = await fetch(`https://api.github.com{config.gistId}`);
-            const data = await res.json();
-            const content = JSON.parse(data.files['proxies.json'].content);
-            config.proxies = Array.from(new Set([...config.proxies, ...content]));
-            save(); renderProxySelect();
-            showNotification("Mirrors Synced");
-        } catch (e) { showNotification("Sync Error"); }
-    }
-
-    async function launch(i) {
-        const app = config.appList[i];
-        childWindow = window.open("about:blank", "_blank");
-        const doc = `<!DOCTYPE html><html><head><title>${presets[config.mask].title}</title><link rel="icon" href="${presets[config.mask].fav}"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy+app.url}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${config.panicUrl}");}};<\/script></body></html>`;
-        setTimeout(() => { 
-            childWindow.document.write(doc); 
-            childWindow.document.close(); 
-            simulateActivity(childWindow);
-        }, 100);
-    }
-
-    function addApp(isSecret) {
+    function addApp(isSecret, btn) {
         const nInput = document.getElementById("new-name"), uInput = document.getElementById("new-url");
         if(nInput.value && uInput.value) {
             config.appList.push({ name: nInput.value, url: uInput.value.trim().replace(/^https?:\/\//, ''), secret: isSecret });
-            save(); renderApps(); nInput.value = ""; uInput.value = ""; showNotification("App Added");
+            save(); renderApps(); nInput.value = ""; uInput.value = ""; 
+            showNotification("App Added"); showCheck(btn);
         }
+    }
+
+    async function launch(i) {
+        const app = config.appList[i]; config.lastApp = i; save();
+        childWindow = window.open("about:blank", "_blank");
+        const hs = config.highSec === 'on' ? `Object.defineProperty(navigator,'webdriver',{get:()=>undefined});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});` : '';
+        const cssS = config.customCSS ? `const s=document.createElement('style');s.innerHTML=\`${config.customCSS}\`;document.head.appendChild(s);` : '';
+        const doc = `<!DOCTYPE html><html><head><title>${presets[config.mask].title}</title><link rel="icon" href="${presets[config.mask].fav}"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy+app.url}"></iframe><script>${hs+cssS}window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${getPanicUrl()}");}};<\/script></body></html>`;
+        setTimeout(() => { childWindow.document.write(doc); childWindow.document.close(); setTimeout(() => createShadow(childWindow), 500); }, 100);
+    }
+
+    function getPanicUrl() {
+        const now = new Date(); const cur = now.getHours() * 100 + now.getMinutes();
+        for (let slot of config.panicSchedule) {
+            const s = parseInt(slot.start.replace(':', '')); const e = parseInt(slot.end.replace(':', ''));
+            if (cur >= s && cur <= e) return slot.url;
+        }
+        return config.panicUrl;
+    }
+
+    function triggerPanic() { const url = getPanicUrl(); if (childWindow) childWindow.location.replace(url); window.location.replace(url); }
+
+    function createShadow(win) {
+        if (config.shadowMode !== 'on') return;
+        shadowIframe = win.document.createElement('iframe'); shadowIframe.src = "https://forsyth.instructure.com";
+        shadowIframe.style = "position:fixed; inset:0; width:100%; height:100%; border:none; z-index:99999; opacity:0; transition:0.4s; pointer-events:none;";
+        win.document.body.appendChild(shadowIframe);
+        const rI = () => { if(shadowIframe) shadowIframe.style.opacity="0"; clearTimeout(idleTimer); resetDeadman(); };
+        win.addEventListener('mousemove', rI); win.addEventListener('keydown', rI); rI();
+    }
+
+    function resetDeadman() { clearTimeout(idleTimer); if (config.deadman === 'on') idleTimer = setTimeout(() => triggerPanic(), 300000); }
+
+    function toggleStealthMode(btn) {
+        config.stealthForced = !config.stealthForced; config.activeProxy = config.stealthForced ? p2 : p1;
+        const b = document.getElementById('stealth-mode-btn'); b.innerText = config.stealthForced ? "AgaTab Locked" : "Activate AgaTab (No-Sniff)";
+        b.style.background = config.stealthForced ? "#ff4fac" : "#22c55e"; save(); renderProxySelect(); showNotification("Stealth Updated"); showCheck(btn);
     }
 
     function renderApps() {
         const g = document.getElementById("apps"); g.innerHTML = "";
-        config.appList.forEach((app, i) => {
-            if (!app.secret || config.stealthActive) {
-                g.innerHTML += `<div class="app-item"><b>${app.name}</b><button onclick="launch(${i})">Cloak</button></div>`;
-            }
-        });
+        config.appList.forEach((app, i) => { if (!app.secret || config.stealthActive) g.innerHTML += `<div class="app-item" style="${app.secret?'border:1px solid #ff4fac':''}"><b>${app.name}${app.secret?' (H)':''}</b><button onclick="launch(${i})">Cloak</button></div>`; });
     }
 
     function renderProxySelect() {
         const s = document.getElementById('proxy-mirror-select'); s.innerHTML = "";
-        config.proxies.forEach(p => {
-            const o = document.createElement('option'); o.value = p; o.innerText = p.includes('ikun') ? "IKun (Primary)" : "Mirror Backup";
-            if (p === config.activeProxy) o.selected = true; s.appendChild(o);
-        });
+        config.proxies.forEach(p => { const o = document.createElement('option'); o.value = p; o.innerText = p.includes('ikun') ? "IKun (Default)" : p.includes('agatab') ? "AgaTab" : "Mirror"; if (p === config.activeProxy) o.selected = true; s.appendChild(o); });
     }
 
-    function floodHistory() {
-        const c = [{t:"Dashboard", u:O_KEYS.P_URL}, {t:"Drive", u:"https://drive.google.com"}, {t:"Gmail", u:"https://mail.google.com"}];
-        c.forEach(x => window.history.pushState({}, x.t, x.u)); showNotification("History Flooded");
+    async function fetchGistProxies(btn) {
+        if (!config.gistId) return;
+        try {
+            const r = await fetch(`https://api.github.com{config.gistId}`); const d = await r.json();
+            const c = JSON.parse(d.files['proxies.json'].content); config.proxies = Array.from(new Set([...config.proxies, ...c]));
+            save(); renderProxySelect(); showNotification("Mirrors Synced"); showCheck(btn);
+        } catch (e) { showNotification("Sync Error"); }
     }
 
-    function tripleClickPanic() { clickCount++; if (clickCount === 3) triggerPanic(); setTimeout(() => clickCount = 0, 1000); }
+    function addSchedule(btn) {
+        const start = prompt("Start (HH:MM):", "09:00"), end = prompt("End (HH:MM):", "10:00"), url = prompt("URL:", "https://google.com");
+        if(start && end && url) { config.panicSchedule.push({start, end, url}); save(); renderSchedule(); showNotification("Saved"); showCheck(btn); }
+    }
+    function renderSchedule() {
+        const c = document.getElementById('schedule-list'); c.innerHTML = "";
+        config.panicSchedule.forEach((s, i) => { c.innerHTML += `<div style="font-size:11px; background:#333; padding:5px; border-radius:4px; display:flex; justify-content:space-between;"><span>${s.start}-${s.end}</span><span onclick="config.panicSchedule.splice(${i},1);save();renderSchedule();" style="color:#ff4d4d; cursor:pointer;">✕</span></div>`; });
+    }
 
-    function updateSetting(k, v) { config[k] = v; save(); showNotification("Saved"); }
+    function exportApps(btn) { const c = btoa(JSON.stringify({ a: config.appList, p: config.activeProxy })); navigator.clipboard.writeText(c); showNotification("Copied!"); showCheck(btn); }
+    function importApps(btn) { const c = prompt("Code:"); if (c) { try { const d = JSON.parse(atob(c)); config.appList = [...config.appList, ...d.a]; config.activeProxy = d.p; save(); renderApps(); showNotification("Imported!"); showCheck(btn); } catch(e) {} } }
+
+    function updateSetting(k, v) { config[k] = v; save(); showNotification("Saved"); if(k==='deadman') resetDeadman(); }
     function updateMask(v) { config.mask = v; save(); document.title = presets[v].title; document.getElementById('favicon').href = presets[v].fav; showNotification("Mask Applied"); }
     function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+    function tripleClickPanic() { clickCount++; if (clickCount === 3) triggerPanic(); setTimeout(() => clickCount = 0, 1000); }
+    function floodHistory(btn) { const c = [{t:"Dashboard", u:"https://forsyth.instructure.com"}, {t:"Assignments", u:"https://forsyth.instructure.comcourses/123/assignments"}]; c.forEach(x => window.history.pushState({}, x.t, x.u)); showNotification("History Flooded"); showCheck(btn); }
 
-    // LID/IDLE EVENTS
+    window.addEventListener('keydown', (e) => {
+        if (e.key === config.pKey) triggerPanic();
+        if (e.key === config.glassKey) document.body.style.opacity = document.body.style.opacity === "0.3" ? "1" : "0.3";
+        keyBuffer += e.key; if (keyBuffer.length > 30) keyBuffer = keyBuffer.substring(1);
+        if (keyBuffer.endsWith(config.stealthKey)) { config.stealthActive = !config.stealthActive; renderApps(); keyBuffer = ""; showNotification("Stealth Mode Toggled"); }
+    });
+
     window.addEventListener('blur', () => { if (config.deadman === 'on') triggerPanic(); document.getElementById('snapshot-mask').style.display = 'block'; });
-    window.addEventListener('focus', () => { document.getElementById('snapshot-mask').style.display = 'none'; resetTimer(); });
-    ['mousemove', 'keydown', 'click'].forEach(evt => window.addEventListener(evt, resetTimer));
+    window.addEventListener('focus', () => { document.getElementById('snapshot-mask').style.display = 'none'; resetDeadman(); });
+    setInterval(() => { if (config.antiInspect === 'on' && (window.outerWidth - window.innerWidth > 160)) triggerPanic(); }, 1000);
 
     document.addEventListener('DOMContentLoaded', () => {
-        renderProxySelect(); renderApps(); updateMask(config.mask);
+        renderProxySelect(); renderApps(); renderSchedule(); updateMask(config.mask);
         document.getElementById('panic-key-input').value = config.pKey;
         document.getElementById('panic-url-input').value = config.panicUrl;
+        document.getElementById('stealth-key-input').value = config.stealthKey;
+        document.getElementById('glass-key-input').value = config.glassKey;
+        document.getElementById('custom-css-input').value = config.customCSS;
+        document.getElementById('high-sec-toggle').value = config.highSec;
+        document.getElementById('shadow-toggle').value = config.shadowMode;
+        document.getElementById('deadman-toggle').value = config.deadman;
+        document.getElementById('anti-inspect-toggle').value = config.antiInspect;
+        document.getElementById('jitter-toggle').value = config.jitter;
+        document.getElementById('ssl-toggle').value = config.sslCheck;
+        document.getElementById('purge-timer').value = config.purgeHours;
         document.getElementById('gist-id-input').value = config.gistId;
-        resetTimer();
+        resetDeadman();
+        if (config.stealthForced) { const b = document.getElementById('stealth-mode-btn'); b.innerText = "AgaTab Locked"; b.style.background = "#ff4fac"; }
     });
 </script>
 </body>
