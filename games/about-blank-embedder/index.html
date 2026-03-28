@@ -24,11 +24,18 @@
         .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
         .app-item { background: var(--card); border-radius: 10px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); }
         .settings-card { background: var(--card); padding: 25px; border-radius: 10px; position: relative; }
+        .close-settings { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; opacity: 0.6; color: var(--text); }
         .setting-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
         .setting-item input, .setting-item select { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; }
+        #toast { visibility: hidden; min-width: 200px; background-color: #22c55e; color: #fff; text-align: center; border-radius: 5px; padding: 12px; position: fixed; z-index: 10005; left: 50%; bottom: 30px; transform: translateX(-50%); font-weight: bold; }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
     </style>
 </head>
 <body class="dark-mode" oncontextmenu="return false;">
+
+<div id="toast">Received</div>
 
 <div id="snapshot-mask">
     <img id="fake-cursor" src="https://www.pngall.com" alt="cursor">
@@ -37,7 +44,7 @@
 
 <div id="dashboard">
     <div class="nav">
-        <div id="brand-title" style="font-size: 18px; font-weight: 800;">About Blank Embedder</div>
+        <div id="brand-title" style="font-size: 18px; font-weight: 800;" onclick="tripleClickPanic()">About Blank Embedder</div>
         <div class="nav-links">
             <span onclick="showSection('apps-sec')">Apps</span>
             <span onclick="showSection('settings-sec')">Settings</span>
@@ -55,15 +62,17 @@
         </div>
         <div id="settings-sec" class="section">
             <div class="settings-card">
-                <h2>Stealth & Proxy Settings</h2>
-                <div class="setting-item">
-                    <label>AgaTab Secure Stealth</label>
-                    <button onclick="toggleStealthMode()" id="stealth-mode-btn" style="background:#22c55e; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;">Activate AgaTab (No-Sniff)</button>
-                </div>
-                <div class="setting-item"><label>Domain Scrambler</label><select id="scrambler-toggle" onchange="updateSetting('scrambler', this.value)"><option value="off">Off</option><option value="on">On (Detect Throttling)</option></select></div>
+                <span class="close-settings" onclick="showSection('apps-sec')">✕</span>
+                <h2>Master Settings</h2>
+                <div class="setting-item"><label>AgaTab Secure Stealth</label><button onclick="toggleStealthMode()" id="stealth-mode-btn" style="background:#22c55e; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;">Activate AgaTab (No-Sniff)</button></div>
+                <div class="setting-item"><label>Shadow Mask (Idle Deception)</label><select id="shadow-toggle" onchange="updateSetting('shadowMode', this.value)"><option value="off">Off</option><option value="on">On (Show Canvas when Idle)</option></select></div>
+                <div class="setting-item"><label>High-Security (Anti-Linewize)</label><select id="high-sec-toggle" onchange="updateSetting('highSec', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
+                <div class="setting-item"><label>Data Self-Destruct</label><select id="purge-timer" onchange="updateSetting('purgeHours', this.value)"><option value="0">Never</option><option value="1">1 Hour</option><option value="4">4 Hours</option></select></div>
                 <div class="setting-item"><label>Active Proxy</label><select id="proxy-mirror-select" onchange="updateSetting('activeProxy', this.value)"></select><button onclick="proxyBot()" style="margin-top:5px; background:#444; color:white; border:none; padding:5px; cursor:pointer;">Scan Mirror Backups</button></div>
+                <div class="setting-item"><label>App Sharing</label><div style="display:flex; gap:5px;"><button onclick="exportApps()" style="flex:1; background:#4facfe; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Copy Code</button><button onclick="importApps()" style="flex:1; background:#22c55e; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Import Code</button></div></div>
                 <div class="setting-item"><label>Panic Key</label><input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)"></div>
                 <div class="setting-item"><label>Panic URL</label><input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)"></div>
+                <button onclick="floodHistory()" style="padding:10px; background:#444; border:none; color:white; border-radius:4px;">Flood History (6 Steps)</button>
             </div>
         </div>
     </div>
@@ -79,14 +88,14 @@
 
     function loadConfig() {
         const raw = localStorage.getItem("ex_data_v75");
-        let data = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", panicUrl: "https://forsyth.instructure.com", pin: "1234", activeProxy: p1, proxies: [p1, p2, p3], scrambler: 'off', stealthForced: false };
+        let data = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", panicUrl: "https://forsyth.instructure.com", pin: "1234", activeProxy: p1, proxies: [p1, p2, p3], mask: 'canvas', stealthKey: 'This-is-password', shadowMode: 'off', highSec: 'off', purgeHours: '0' };
         [p1, p2, p3].forEach(p => { if(!data.proxies.includes(p)) data.proxies.push(p); });
         data.appList = JSON.parse(decrypt(data.apps, data.pin));
         return data;
     }
 
     let config = loadConfig();
-    let childWindow = null;
+    let childWindow = null, shadowIframe = null, idleShadowTimer, clickCount = 0;
 
     function save() {
         let saveObj = {...config};
@@ -95,51 +104,70 @@
         localStorage.setItem("ex_data_v75", btoa(JSON.stringify(saveObj)));
     }
 
+    function showNotification(msg) {
+        const t = document.getElementById("toast");
+        t.innerText = msg; t.className = "show";
+        setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+    }
+
     function toggleStealthMode() {
         config.stealthForced = !config.stealthForced;
         const btn = document.getElementById('stealth-mode-btn');
-        if (config.stealthForced) { config.activeProxy = p2; btn.innerText = "AgaTab Locked"; btn.style.background = "#ff4fac"; }
-        else { btn.innerText = "Activate AgaTab (No-Sniff)"; btn.style.background = "#22c55e"; }
-        save(); renderProxySelect();
+        config.activeProxy = config.stealthForced ? p2 : p1;
+        btn.innerText = config.stealthForced ? "AgaTab Locked" : "Activate AgaTab (No-Sniff)";
+        btn.style.background = config.stealthForced ? "#ff4fac" : "#22c55e";
+        save(); renderProxySelect(); showNotification("Stealth Status Updated");
+    }
+
+    function createShadow(win) {
+        if (config.shadowMode !== 'on') return;
+        shadowIframe = win.document.createElement('iframe');
+        shadowIframe.src = "https://forsyth.instructure.com";
+        shadowIframe.style = "position:fixed; inset:0; width:100%; height:100%; border:none; z-index:99999; opacity:0; transition:opacity 0.4s ease; pointer-events:none;";
+        win.document.body.appendChild(shadowIframe);
+        const resetIdle = () => {
+            if (shadowIframe) shadowIframe.style.opacity = "0";
+            clearTimeout(idleShadowTimer);
+            idleShadowTimer = setTimeout(() => { if (shadowIframe) shadowIframe.style.opacity = "1"; }, 5000);
+        };
+        win.addEventListener('mousemove', resetIdle); win.addEventListener('keydown', resetIdle); resetIdle();
     }
 
     async function launch(i) {
-        const app = config.appList[i];
+        const app = config.appList[i]; config.lastApp = i; save();
         childWindow = window.open("about:blank", "_blank");
-        const docContent = `<!DOCTYPE html><html><head><title>Dashboard</title><link rel="icon" href="https://instructure-uploads.s3.amazonaws.com"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy + app.url}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${config.panicUrl}");}};<\/script></body></html>`;
-        setTimeout(() => { childWindow.document.write(docContent); childWindow.document.close(); }, 100);
+        const hs = config.highSec === 'on' ? `Object.defineProperty(navigator,'webdriver',{get:()=>undefined});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});` : '';
+        const docContent = `<!DOCTYPE html><html><head><title>Dashboard</title><link rel="icon" href="https://instructure-uploads.s3.amazonaws.com"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy + app.url}"></iframe><script>${hs}window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${config.panicUrl}");}};<\/script></body></html>`;
+        setTimeout(() => { childWindow.document.write(docContent); childWindow.document.close(); setTimeout(() => createShadow(childWindow), 500); }, 100);
     }
 
-    function addApp(isSecret) {
-        const n = document.getElementById("new-name"), u = document.getElementById("new-url");
-        if(n.value && u.value) { config.appList.push({name: n.value, url: u.value.trim().replace(/^https?:\/\//, ''), secret: isSecret}); save(); renderApps(); n.value = ""; u.value = ""; }
+    function exportApps() { const code = btoa(JSON.stringify({ a: config.appList, p: config.activeProxy })); navigator.clipboard.writeText(code); showNotification("Code Copied!"); }
+    function importApps() { const code = prompt("Paste Code:"); if (code) { try { const d = JSON.parse(atob(code)); config.appList = [...config.appList, ...d.a]; config.activeProxy = d.p; save(); renderApps(); showNotification("Imported!"); } catch(e) { showNotification("Invalid Code"); } } }
+    
+    function floodHistory() {
+        const crumbs = [{ t: "Dashboard", u: "https://forsyth.instructure.com" }, { t: "Assignments", u: "https://forsyth.instructure.comcourses/123/assignments" }, { t: "Google Drive", u: "https://drive.google.com" }];
+        crumbs.forEach(c => window.history.pushState({}, c.t, c.u));
+        showNotification("History Flooded");
     }
 
-    function renderApps() {
-        const grid = document.getElementById("apps"); grid.innerHTML = "";
-        config.appList.forEach((app, i) => { grid.innerHTML += `<div class="app-item"><b>${app.name}</b><button onclick="launch(${i})">Cloak</button></div>`; });
-    }
-
+    function updateSetting(k, v) { config[k] = v; save(); showNotification("Setting Saved"); }
     function renderProxySelect() {
-        const select = document.getElementById('proxy-mirror-select');
-        select.innerHTML = "";
-        config.proxies.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p;
-            opt.innerText = p.includes('ikun') ? "IKun (Default)" : p.includes('agatab') ? "AgaTab (Secure)" : p.includes('bonded') ? "Bonded (Backup)" : "Mirror";
-            if (p === config.activeProxy) opt.selected = true;
-            select.appendChild(opt);
-        });
+        const s = document.getElementById('proxy-mirror-select'); if (!s) return;
+        s.innerHTML = ""; config.proxies.forEach(p => { const o = document.createElement('option'); o.value = p; o.innerText = p.includes('ikun') ? "IKun (Default)" : p.includes('agatab') ? "AgaTab (Secure)" : "Mirror"; if (p === config.activeProxy) o.selected = true; s.appendChild(o); });
     }
-
-    function updateSetting(k, v) { config[k] = v; save(); }
+    function renderApps() { const g = document.getElementById("apps"); g.innerHTML = ""; config.appList.forEach((app, i) => { g.innerHTML += `<div class="app-item"><b>${app.name}</b><button onclick="launch(${i})">Cloak</button></div>`; }); }
     function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
 
     window.addEventListener('keydown', (e) => { if (e.key === config.pKey) window.location.replace(config.panicUrl); });
     window.addEventListener('blur', () => document.getElementById('snapshot-mask').style.display = 'block');
     window.addEventListener('focus', () => document.getElementById('snapshot-mask').style.display = 'none');
-
-    renderProxySelect(); renderApps();
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('shadow-toggle').value = config.shadowMode;
+        document.getElementById('high-sec-toggle').value = config.highSec;
+        document.getElementById('purge-timer').value = config.purgeHours;
+        renderProxySelect(); renderApps();
+    });
 </script>
 </body>
 </html>
