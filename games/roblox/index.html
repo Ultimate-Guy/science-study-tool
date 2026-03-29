@@ -26,8 +26,8 @@
 <iframe id="content-frame"></iframe>
 
 <script>
-    /* Global Configuration - Password: Super75@ */
-    const _0x7a21 = -1899144835; 
+    /* System Hash for Super75@ */
+    const _0x7a21 = 1405106137; 
     const _0x4f12 = "aHR0cHM6Ly9pbG92ZXRlYWNoZXJzLmdyYXBoaWNvbi5vcmcvNDA4MTB4Lmh0bWw=";
 
     const _0x11b2 = s => s.split("").reduce((a, b) => { 
@@ -45,7 +45,7 @@
     function _0x9921() {
         const val = document.getElementById('passInput').value;
         if (_0x11b2(val) === _0x7a21) {
-            document.getElementById('status-text').innerText = "Verified. Loading...";
+            document.getElementById('status-text').innerText = "Verified.";
             document.getElementById('status-text').style.color = "#0f0";
             
             setTimeout(() => {
@@ -53,24 +53,20 @@
                 frame.src = atob(_0x4f12);
                 document.getElementById('gatekeeper').style.display = 'none';
                 frame.style.display = 'block';
-            }, 800);
+            }, 500);
         } else {
-            // No alert box, just reset the input if wrong
             document.getElementById('passInput').value = "";
             document.getElementById('status-text').innerText = "Invalid Token";
             document.getElementById('status-text').style.color = "#f00";
             setTimeout(() => { 
                 document.getElementById('status-text').innerText = "System Authentication";
                 document.getElementById('status-text').style.color = "#444";
-            }, 2000);
+            }, 1500);
         }
     }
 
     document.addEventListener('keydown', (e) => {
-        // PANIC KEY: Redirects to Google
         if (e.key === "-") window.location.replace("https://google.com");
-        
-        // Block Inspect shortcuts
         if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) || (e.ctrlKey && e.keyCode == 85)) {
             e.preventDefault(); return false;
         }
@@ -78,7 +74,6 @@
 
     document.oncontextmenu = (e) => e.preventDefault();
 
-    // DevTools Killer
     setInterval(function() {
         const start = new Date();
         debugger; 
