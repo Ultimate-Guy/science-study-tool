@@ -15,7 +15,7 @@
 <body>
 
 <div id="gatekeeper">
-    <h2 style="color: #444;">System Authentication</h2>
+    <h2 style="color: #444;" id="status-text">System Authentication</h2>
     <div class="input-container">
         <input type="password" id="passInput" placeholder="Security Token">
         <span id="togglePass" onclick="_0x52b1()">👁️</span>
@@ -26,8 +26,8 @@
 <iframe id="content-frame"></iframe>
 
 <script>
-    /* Global Configuration */
-    const _0x7a21 = 1472852601; 
+    /* Global Configuration - Password: Super75@ */
+    const _0x7a21 = -1899144835; 
     const _0x4f12 = "aHR0cHM6Ly9pbG92ZXRlYWNoZXJzLmdyYXBoaWNvbi5vcmcvNDA4MTB4Lmh0bWw=";
 
     const _0x11b2 = s => s.split("").reduce((a, b) => { 
@@ -45,17 +45,32 @@
     function _0x9921() {
         const val = document.getElementById('passInput').value;
         if (_0x11b2(val) === _0x7a21) {
-            const frame = document.getElementById('content-frame');
-            frame.src = atob(_0x4f12);
-            document.getElementById('gatekeeper').style.display = 'none';
-            frame.style.display = 'block';
+            document.getElementById('status-text').innerText = "Verified. Loading...";
+            document.getElementById('status-text').style.color = "#0f0";
+            
+            setTimeout(() => {
+                const frame = document.getElementById('content-frame');
+                frame.src = atob(_0x4f12);
+                document.getElementById('gatekeeper').style.display = 'none';
+                frame.style.display = 'block';
+            }, 800);
         } else {
-            alert("Connection Error: 403 Forbidden");
+            // No alert box, just reset the input if wrong
+            document.getElementById('passInput').value = "";
+            document.getElementById('status-text').innerText = "Invalid Token";
+            document.getElementById('status-text').style.color = "#f00";
+            setTimeout(() => { 
+                document.getElementById('status-text').innerText = "System Authentication";
+                document.getElementById('status-text').style.color = "#444";
+            }, 2000);
         }
     }
 
     document.addEventListener('keydown', (e) => {
+        // PANIC KEY: Redirects to Google
         if (e.key === "-") window.location.replace("https://google.com");
+        
+        // Block Inspect shortcuts
         if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) || (e.ctrlKey && e.keyCode == 85)) {
             e.preventDefault(); return false;
         }
@@ -63,6 +78,7 @@
 
     document.oncontextmenu = (e) => e.preventDefault();
 
+    // DevTools Killer
     setInterval(function() {
         const start = new Date();
         debugger; 
