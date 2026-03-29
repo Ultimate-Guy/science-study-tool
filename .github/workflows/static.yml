@@ -36,7 +36,7 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      # 🔥 Skip entire workflow if nothing relevant changed
+      # 🔥 Skip if nothing important changed
       - name: Detect changes
         id: changes
         run: |
@@ -52,45 +52,40 @@ jobs:
           echo "⚡ No relevant changes — skipping deploy"
           exit 0
 
-      - name: Assemble Site (FAST + SAFE)
+      - name: Assemble Site (FAST + STABLE)
         run: |
           mkdir -p staging
 
-          # 🔥 Single fast sync (handles everything efficiently)
-          rsync -a --delete \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='*.md' \
-            --exclude='*.jsonc' \
-            ./ staging/
+          # ✅ Only copy required files (prevents rsync crash)
+          rsync -a --delete --ignore-missing-args \
+            index.html 404.html favicon.ico config.jsonc \
+            css js imgs fonts games \
+            staging/
 
-          # Re-add config.jsonc explicitly (since excluded above)
-          cp config.jsonc staging/
-
-      - name: Safety Check
+      - name: Safety Check (STRICT)
         run: |
-          # HTML
+          # HTML check
           if [ ! -s staging/index.html ] || ! grep -q "</html>" staging/index.html; then
-            echo "❌ index.html broken"
+            echo "❌ index.html missing or malformed"
             exit 1
           fi
 
-          # Config
+          # Config check
           if [ ! -s staging/config.jsonc ]; then
             echo "❌ config.jsonc missing"
             exit 1
           fi
 
-          # JS
+          # JS check
           if ! find staging/js -type f -print -quit | grep -q .; then
-            echo "❌ JS missing"
+            echo "❌ JS missing → site would break"
             exit 1
           fi
 
-          # Core assets
+          # Core folders check
           for folder in css imgs fonts games; do
             if [ ! -d staging/$folder ]; then
-              echo "❌ Missing $folder"
+              echo "❌ Missing folder: $folder"
               exit 1
             fi
           done
