@@ -22,7 +22,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           filter: 'blob:none'
-          fetch-depth: 1           # Shallow clone → huge speed gain
+          fetch-depth: 2   # needed for diff check
+          clean: false
           sparse-checkout: |
             index.html
             404.html
@@ -34,42 +35,57 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      - name: Assemble Site (fast)
+      # 🔥 Skip everything if nothing important changed
+      - name: Detect changes
+        id: changes
         run: |
-          set -euo pipefail
+          if git diff --name-only HEAD~1 | grep -E '^(index.html|404.html|favicon.ico|css/|js/|imgs/|fonts/|games/)'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop early if no changes
+        if: steps.changes.outputs.changed == 'false'
+        run: |
+          echo "⚡ No relevant changes — skipping build"
+          exit 0
+
+      - name: Assemble Site (MAX FAST)
+        run: |
           mkdir -p staging
 
-          cp index.html staging/
-          cp 404.html staging/ || true
-          cp favicon.ico staging/ || true
+          # Core files (always copy)
+          rsync -a --ignore-missing-args \
+            index.html 404.html favicon.ico \
+            css js imgs fonts \
+            staging/
 
-          # Copy all folders safely, preserving subfolder structure
-          for folder in css js imgs fonts games; do
-            if [ -d "$folder" ]; then
-              mkdir -p staging/$folder
-              cp -r $folder/* staging/$folder/
-            fi
-          done
+          # 🔥 ONLY copy games if they changed
+          if git diff --name-only HEAD~1 | grep -q '^games/'; then
+            echo "🎮 Games changed — syncing games folder"
+            rsync -a games staging/
+          else
+            echo "⚡ Games unchanged — skipping (HUGE speed win)"
+          fi
 
-      - name: Safety Check
+      - name: Safety Check (fast + strict)
         run: |
-          set -euo pipefail
-
-          # Ensure HTML exists and is valid
+          # HTML check
           if [ ! -s staging/index.html ] || ! grep -q "</html>" staging/index.html; then
             echo "❌ index.html missing or malformed"
             exit 1
           fi
 
-          # Ensure JS exists
-          if [ ! -d staging/js ] || [ -z "$(ls -A staging/js)" ]; then
-            echo "❌ JS missing → site would hang"
+          # JS check
+          if ! find staging/js -type f -print -quit | grep -q .; then
+            echo "❌ JS missing → site would break"
             exit 1
           fi
 
-          # Ensure essential folders exist
+          # Essential folders
           for folder in imgs css fonts; do
-            if [ ! -d staging/$folder ] || [ -z "$(ls -A staging/$folder)" ]; then
+            if ! find staging/$folder -type f -print -quit | grep -q .; then
               echo "❌ Essential folder $folder missing"
               exit 1
             fi
