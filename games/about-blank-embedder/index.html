@@ -26,23 +26,25 @@
         .close-settings { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; opacity: 0.6; color: var(--text); }
         .setting-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
         .setting-item input, .setting-item select, .setting-item textarea { padding: 10px; border-radius: 5px; background: #333; border: 1px solid #444; color: white; }
-        
-        /* Success Checkmark Style */
         .check-visible::after { content: " ✔"; color: #22c55e; transition: 0.3s; }
-        
         #toast { visibility: hidden; min-width: 200px; background-color: #22c55e; color: #fff; text-align: center; border-radius: 5px; padding: 12px; position: fixed; z-index: 10005; left: 50%; bottom: 30px; transform: translateX(-50%); font-weight: bold; }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout_toast 0.5s 2.5s; }
+        #hot-corner { position: fixed; top: 0; left: 0; width: 15px; height: 15px; z-index: 10006; cursor: crosshair; }
+        #qr-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10010; align-items: center; justify-content: center; }
+        .qr-box { background: white; padding: 20px; border-radius: 10px; text-align: center; color: black; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout_toast { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
     </style>
 </head>
 <body class="dark-mode" oncontextmenu="return false;">
 
+<div id="hot-corner"></div>
 <div id="toast">Received</div>
-
 <div id="snapshot-mask">
     <img src="https://i.ibb.co" style="width:100%; height:100%; object-fit:cover;">
 </div>
+
+<div id="qr-modal" onclick="this.style.display='none'"><div class="qr-box" id="qr-target"></div></div>
 
 <div id="dashboard">
     <div class="nav">
@@ -73,175 +75,75 @@
                 <div class="setting-item"><label>Dev-Tools Anti-Inspect</label><select id="anti-inspect-toggle" onchange="updateSetting('antiInspect', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
                 <div class="setting-item"><label>Traffic Jitter</label><select id="jitter-toggle" onchange="updateSetting('jitter', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
                 <div class="setting-item"><label>Dead Man's Switch</label><select id="deadman-toggle" onchange="updateSetting('deadman', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
-                <div class="setting-item"><label>SSL Intercept Alert</label><select id="ssl-toggle" onchange="updateSetting('sslCheck', this.value)"><option value="off">Off</option><option value="on">On</option></select></div>
-                <div class="setting-item"><label>Data Self-Destruct</label><select id="purge-timer" onchange="updateSetting('purgeHours', this.value)"><option value="0">Never</option><option value="1">1 Hour</option><option value="4">4 Hours</option></select></div>
-                <div class="setting-item"><label>Glass Mode Key</label><input type="text" id="glass-key-input" maxlength="1" onchange="updateSetting('glassKey', this.value)"></div>
-                <div class="setting-item"><label>Stealth Key (Hidden Apps)</label><input type="text" id="stealth-key-input" onchange="updateSetting('stealthKey', this.value)"></div>
-                <div class="setting-item"><label>Custom Site CSS</label><textarea id="custom-css-input" onchange="updateSetting('customCSS', this.value)" placeholder="body { background: #000 !important; }"></textarea></div>
-                <div class="setting-item"><label>Dynamic Mirroring (Gist ID)</label><input type="text" id="gist-id-input" placeholder="Gist ID" onchange="updateSetting('gistId', this.value)"><button onclick="fetchGistProxies(this)" style="margin-top:5px; background:#444; border:none; padding:5px; color:white; cursor:pointer;">Sync Mirrors</button></div>
-                <div class="setting-item"><label>Active Proxy</label><select id="proxy-mirror-select" onchange="updateSetting('activeProxy', this.value)"></select></div>
-                <div class="setting-item"><label>Panic Schedule</label><div id="schedule-list" style="display:flex; flex-direction:column; gap:5px;"></div><button onclick="addSchedule(this)" style="background:#444; border:none; padding:5px; color:white; cursor:pointer; margin-top:5px;">+ Add Time Slot</button></div>
+                <div class="setting-item"><label>Data Self-Destruct Combo</label><div style="display:flex; gap:5px;"><input type="text" id="sd-k1" readonly placeholder="Key 1" style="width:60px; text-align:center;"><input type="text" id="sd-k2" readonly placeholder="Key 2" style="width:60px; text-align:center;"><input type="text" id="sd-k3" readonly placeholder="Key 3" style="width:60px; text-align:center;"><button onclick="saveSDKeys(this)" style="background:#22c55e; color:white; border:none; border-radius:4px;">Save</button></div></div>
                 <div class="setting-item"><label>Panic URL</label><input type="text" id="panic-url-input" onchange="updateSetting('panicUrl', this.value)"></div>
-                <div class="setting-item"><label>Panic Key</label><input type="text" id="panic-key-input" maxlength="1" onchange="updateSetting('pKey', this.value)"></div>
-                <div class="setting-item"><label>App Sharing</label><div style="display:flex; gap:5px;"><button onclick="exportApps(this)" style="flex:1; background:#4facfe; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Copy Code</button><button onclick="importApps(this)" style="flex:1; background:#22c55e; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Import Code</button></div></div>
+                <div class="setting-item"><label>App Sharing</label><div style="display:flex; gap:5px;"><button onclick="exportApps(this)" style="flex:1; background:#4facfe; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Download File</button><button onclick="generateQR(this)" style="flex:1; background:#ff4fac; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Get QR Code</button></div></div>
                 <button onclick="floodHistory(this)" style="padding:10px; width:100%; background:#444; border:none; color:white; border-radius:4px; cursor:pointer;">Flood History (6 Step Trail)</button>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
 <script>
-    const p1 = "http://proxy.ikunbeautiful.workers.dev";
-    const p2 = "https://hm3.agatab.com";
-    const p3 = "https://vcsefghfhreesgfdf.dfgrdcfhfgfds.bonded-game.com";
-    const presets = {
-        canvas: { title: "Dashboard", fav: "https://instructure-uploads.s3.amazonaws.com" },
-        drive: { title: "My Drive - Google Drive", fav: "https://ssl.gstatic.com" },
-        campus: { title: "Infinite Campus", fav: "https://campus.forsyth.k12.ga.us" },
-        gmail: { title: "Inbox (1) - Gmail", fav: "https://ssl.gstatic.com" }
-    };
+    const p1 = "http://proxy.ikunbeautiful.workers.dev", p2 = "https://hm3.agatab.com", p3 = "https://vcsefghfhreesgfdf.bonded-game.com";
+    const presets = { canvas: { title: "Dashboard", fav: "https://instructure-uploads.s3.amazonaws.com" }, drive: { title: "My Drive", fav: "https://ssl.gstatic.com" }, campus: { title: "Infinite Campus", fav: "https://campus.forsyth.k12.ga.us" }, gmail: { title: "Inbox (1) - Gmail", fav: "https://ssl.gstatic.com" } };
 
     function crypt(str, key) { return btoa(str.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join('')); }
     function decrypt(str, key) { try { return atob(str).split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join(''); } catch(e) { return "[]"; } }
 
     function loadConfig() {
         const raw = localStorage.getItem("ex_data_v75");
-        let d = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", panicUrl: "https://forsyth.instructure.com", pin: "1234", activeProxy: p1, proxies: [p1, p2, p3], mask: 'canvas', shadowMode: 'off', highSec: 'off', glassKey: 'g', stealthKey: 'This-is-password', autoLock: 'off', antiInspect: 'off', jitter: 'off', customCSS: '', purgeHours: '0', sslCheck: 'off', deadman: 'off', gistId: '', panicSchedule: [], stealthForced: false };
-        [p1, p2, p3].forEach(p => { if(!d.proxies.includes(p)) d.proxies.push(p); });
-        d.appList = JSON.parse(decrypt(d.apps, d.pin)); d.stealthActive = false;
-        return d;
+        let d = raw ? JSON.parse(atob(raw)) : { apps: "W00=", pKey: "]", sdCombo: [], panicUrl: "https://google.com", pin: "1234", activeProxy: p1, proxies: [p1, p2, p3], mask: 'canvas', shadowMode: 'off', highSec: 'off' };
+        d.appList = JSON.parse(decrypt(d.apps, d.pin)); return d;
     }
 
-    let config = loadConfig();
-    let childWindow = null, shadowIframe = null, idleTimer, clickCount = 0, keyBuffer = "";
+    let config = loadConfig(), childWindow = null, idleTimer, keysPressed = {}, hcTimer;
 
-    function save() {
-        let sO = {...config}; sO.apps = crypt(JSON.stringify(config.appList), config.pin);
-        delete sO.appList; delete sO.stealthActive;
-        localStorage.setItem("ex_data_v75", btoa(JSON.stringify(sO)));
-    }
-
+    function save() { let sO = {...config}; sO.apps = crypt(JSON.stringify(config.appList), config.pin); delete sO.appList; localStorage.setItem("ex_data_v75", btoa(JSON.stringify(sO))); }
     function showNotification(msg) { const t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => t.className = "", 3000); }
-    
-    function showCheck(btn) {
-        if(!btn) return;
-        btn.classList.add('check-visible');
-        setTimeout(() => btn.classList.remove('check-visible'), 10000);
-    }
+    function showCheck(btn) { if(btn) { btn.classList.add('check-visible'); setTimeout(() => btn.classList.remove('check-visible'), 5000); } }
 
     function addApp(isSecret, btn) {
-        const nInput = document.getElementById("new-name");
-        const uInput = document.getElementById("new-url");
-        if(nInput.value && uInput.value) {
-            config.appList.push({ name: nInput.value, url: uInput.value.trim().replace(/^https?:\/\//, ''), secret: isSecret });
-            save(); renderApps(); nInput.value = ""; uInput.value = ""; 
-            showNotification("App Added"); showCheck(btn);
-        }
-    }
-
-    async function launch(i) {
-        const app = config.appList[i]; config.lastApp = i; save();
-        childWindow = window.open("about:blank", "_blank");
-        const hs = config.highSec === 'on' ? `Object.defineProperty(navigator,'webdriver',{get:()=>undefined});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>8});` : '';
-        const cssS = config.customCSS ? `const s=document.createElement('style');s.innerHTML=\`${config.customCSS}\`;document.head.appendChild(s);` : '';
-        const doc = `<!DOCTYPE html><html><head><title>${presets[config.mask].title}</title><link rel="icon" href="${presets[config.mask].fav}"><style>body,html{margin:0;padding:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy+app.url}"></iframe><script>window.onkeydown=(e)=>{if(e.key==="${config.pKey}"){window.parent.postMessage('panic','*');window.location.replace("${getPanicUrl()}");}};<\/script></body></html>`;
-        setTimeout(() => { childWindow.document.write(doc); childWindow.document.close(); setTimeout(() => createShadow(childWindow), 500); }, 100);
-    }
-
-    function getPanicUrl() {
-        const now = new Date(); const cur = now.getHours() * 100 + now.getMinutes();
-        for (let slot of config.panicSchedule) {
-            const s = parseInt(slot.start.replace(':', '')); const e = parseInt(slot.end.replace(':', ''));
-            if (cur >= s && cur <= e) return slot.url;
-        }
-        return config.panicUrl;
-    }
-
-    function triggerPanic() { const url = getPanicUrl(); if (childWindow) childWindow.location.replace(url); window.location.replace(url); }
-
-    function createShadow(win) {
-        if (config.shadowMode !== 'on') return;
-        shadowIframe = win.document.createElement('iframe'); shadowIframe.src = "https://forsyth.instructure.com";
-        shadowIframe.style = "position:fixed; inset:0; width:100%; height:100%; border:none; z-index:99999; opacity:0; transition:0.4s; pointer-events:none;";
-        win.document.body.appendChild(shadowIframe);
-        const rI = () => { if(shadowIframe) shadowIframe.style.opacity="0"; clearTimeout(idleTimer); resetDeadman(); };
-        win.addEventListener('mousemove', rI); win.addEventListener('keydown', rI); rI();
-    }
-
-    function resetDeadman() { clearTimeout(idleTimer); if (config.deadman === 'on') idleTimer = setTimeout(() => triggerPanic(), 300000); }
-
-    function toggleStealthMode(btn) {
-        config.stealthForced = !config.stealthForced; config.activeProxy = config.stealthForced ? p2 : p1;
-        const b = document.getElementById('stealth-mode-btn'); b.innerText = config.stealthForced ? "AgaTab Locked" : "Activate AgaTab (No-Sniff)";
-        b.style.background = config.stealthForced ? "#ff4fac" : "#22c55e"; save(); renderProxySelect(); showNotification("Stealth Updated"); showCheck(btn);
+        const n = document.getElementById("new-name"), u = document.getElementById("new-url");
+        if(n.value && u.value) { config.appList.push({ name: n.value, url: u.value.trim().replace(/^https?:\/\//, ''), secret: isSecret }); save(); renderApps(); n.value = ""; u.value = ""; showNotification("App Added"); showCheck(btn); }
     }
 
     function renderApps() {
         const g = document.getElementById("apps"); g.innerHTML = "";
-        config.appList.forEach((app, i) => { if (!app.secret || config.stealthActive) g.innerHTML += `<div class="app-item" style="${app.secret?'border:1px solid #ff4fac':''}"><b>${app.name}${app.secret?' (H)':''}</b><button onclick="launch(${i})">Cloak</button></div>`; });
+        config.appList.forEach((app, i) => { g.innerHTML += `<div class="app-item"><b>${app.name}</b><button onclick="launch(${i}, this)">Cloak</button></div>`; });
     }
 
-    function renderProxySelect() {
-        const s = document.getElementById('proxy-mirror-select'); if (!s) return;
-        s.innerHTML = ""; config.proxies.forEach(p => { const o = document.createElement('option'); o.value = p; o.innerText = p.includes('ikun') ? "IKun (Default)" : p.includes('agatab') ? "AgaTab (Secure)" : p.includes('bonded') ? "Bonded Game" : "Mirror"; if (p === config.activeProxy) o.selected = true; s.appendChild(o); });
+    async function launch(i, btn) {
+        const app = config.appList[i]; childWindow = window.open("about:blank", "_blank");
+        const doc = `<!DOCTYPE html><html><head><title>${presets[config.mask].title}</title><link rel="icon" href="${presets[config.mask].fav}"><style>body,html{margin:0;height:100vh;overflow:hidden;background:#000;}iframe{width:100%;height:100%;border:none;}</style></head><body><iframe src="${config.activeProxy+app.url}"></iframe></body></html>`;
+        setTimeout(() => { childWindow.document.write(doc); childWindow.document.close(); showCheck(btn); }, 100);
     }
 
-    async function fetchGistProxies(btn) {
-        if (!config.gistId) return;
-        try {
-            const r = await fetch(`https://api.github.com{config.gistId}`); const d = await r.json();
-            const c = JSON.parse(d.files['proxies.json'].content); config.proxies = Array.from(new Set([...config.proxies, ...c]));
-            save(); renderProxySelect(); showNotification("Mirrors Synced"); showCheck(btn);
-        } catch (e) { showNotification("Sync Error"); }
-    }
-
-    function addSchedule(btn) {
-        const start = prompt("Start (HH:MM):", "09:00"), end = prompt("End (HH:MM):", "10:00"), url = prompt("URL:", "https://google.com");
-        if(start && end && url) { config.panicSchedule.push({start, end, url}); save(); renderSchedule(); showNotification("Saved"); showCheck(btn); }
-    }
-    function renderSchedule() {
-        const c = document.getElementById('schedule-list'); c.innerHTML = "";
-        config.panicSchedule.forEach((s, i) => { c.innerHTML += `<div style="font-size:11px; background:#333; padding:5px; border-radius:4px; display:flex; justify-content:space-between;"><span>${s.start}-${s.end}</span><span onclick="config.panicSchedule.splice(${i},1);save();renderSchedule();" style="color:#ff4d4d; cursor:pointer;">✕</span></div>`; });
-    }
-
-    function exportApps(btn) { const c = btoa(JSON.stringify({ a: config.appList, p: config.activeProxy })); navigator.clipboard.writeText(c); showNotification("Copied!"); showCheck(btn); }
-    function importApps(btn) { const c = prompt("Code:"); if (c) { try { const d = JSON.parse(atob(c)); config.appList = [...config.appList, ...d.a]; config.activeProxy = d.p; save(); renderApps(); showNotification("Imported!"); showCheck(btn); } catch(e) {} } }
-
-    function updateSetting(k, v) { config[k] = v; save(); showNotification("Saved"); if(k==='deadman') resetDeadman(); }
+    function updateSetting(k, v) { config[k] = v; save(); showNotification("Saved"); }
     function updateMask(v) { config.mask = v; save(); document.title = presets[v].title; document.getElementById('favicon').href = presets[v].fav; showNotification("Mask Applied"); }
     function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-    function tripleClickPanic() { clickCount++; if (clickCount === 3) triggerPanic(); setTimeout(() => clickCount = 0, 1000); }
-    function floodHistory(btn) { const c = [{t:"Dashboard", u:"https://forsyth.instructure.com"}, {t:"Assignments", u:"https://forsyth.instructure.comcourses/123/assignments"}]; c.forEach(x => window.history.pushState({}, x.t, x.u)); showNotification("History Flooded"); showCheck(btn); }
 
-    window.addEventListener('keydown', (e) => {
-        if (e.key === config.pKey) triggerPanic();
-        if (e.key === config.glassKey) document.body.style.opacity = document.body.style.opacity === "0.3" ? "1" : "0.3";
-        keyBuffer += e.key; if (keyBuffer.length > 30) keyBuffer = keyBuffer.substring(1);
-        if (keyBuffer.endsWith(config.stealthKey)) { config.stealthActive = !config.stealthActive; renderApps(); keyBuffer = ""; showNotification("Stealth Mode Toggled"); }
-    });
+    // Multi-Key Self-Destruct
+    [1,2,3].forEach(i => { document.getElementById(`sd-k${i}`).addEventListener('keydown', (e) => { e.preventDefault(); document.getElementById(`sd-k${i}`).value = e.key; }); });
+    function saveSDKeys(btn) { config.sdCombo = [document.getElementById('sd-k1').value, document.getElementById('sd-k2').value, document.getElementById('sd-k3').value].filter(x => x); save(); showNotification("Combo Saved"); showCheck(btn); }
+    function selfDestruct() { localStorage.clear(); if(childWindow) childWindow.close(); window.location.replace(config.panicUrl); }
 
-    window.addEventListener('blur', () => { if (config.deadman === 'on') triggerPanic(); document.getElementById('snapshot-mask').style.display = 'block'; });
-    window.addEventListener('focus', () => { document.getElementById('snapshot-mask').style.display = 'none'; resetDeadman(); });
-    setInterval(() => { if (config.antiInspect === 'on' && (window.outerWidth - window.innerWidth > 160)) triggerPanic(); }, 1000);
+    // Sharing Functions
+    function exportApps(btn) { const data = JSON.stringify({ a: config.appList, p: config.activeProxy }); const blob = new Blob([data], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'backup.json'; a.click(); showCheck(btn); }
+    function generateQR(btn) { document.getElementById('qr-modal').style.display='flex'; document.getElementById('qr-target').innerHTML = ""; new QRCode(document.getElementById('qr-target'), JSON.stringify(config.appList)); showCheck(btn); }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        renderProxySelect(); renderApps(); renderSchedule(); updateMask(config.mask);
-        document.getElementById('panic-key-input').value = config.pKey;
-        document.getElementById('panic-url-input').value = config.panicUrl;
-        document.getElementById('stealth-key-input').value = config.stealthKey;
-        document.getElementById('glass-key-input').value = config.glassKey;
-        document.getElementById('custom-css-input').value = config.customCSS;
-        document.getElementById('high-sec-toggle').value = config.highSec;
-        document.getElementById('shadow-toggle').value = config.shadowMode;
-        document.getElementById('deadman-toggle').value = config.deadman;
-        document.getElementById('anti-inspect-toggle').value = config.antiInspect;
-        document.getElementById('jitter-toggle').value = config.jitter;
-        document.getElementById('ssl-toggle').value = config.sslCheck;
-        document.getElementById('purge-timer').value = config.purgeHours;
-        document.getElementById('gist-id-input').value = config.gistId;
-        resetDeadman();
-        if (config.stealthForced) { const b = document.getElementById('stealth-mode-btn'); b.innerText = "AgaTab Locked"; b.style.background = "#ff4fac"; }
-    });
+    // Heartbeat Sniffer & Hot Corner
+    setInterval(() => { if(config.highSec === 'on' && window.performance.memory && window.performance.memory.usedJSHeapSize > 100000000) selfDestruct(); }, 2000);
+    document.getElementById('hot-corner').onmouseenter = () => { hcTimer = setTimeout(() => { const keys = Object.keys(presets); const next = keys[(keys.indexOf(config.mask) + 1) % keys.length]; updateMask(next); }, 1000); };
+    document.getElementById('hot-corner').onmouseleave = () => clearTimeout(hcTimer);
+
+    window.addEventListener('keydown', (e) => { keysPressed[e.key] = true; if(config.sdCombo.length > 0 && config.sdCombo.every(k => keysPressed[k])) selfDestruct(); });
+    window.addEventListener('keyup', (e) => delete keysPressed[e.key]);
+    window.addEventListener('blur', () => { document.getElementById('snapshot-mask').style.display = 'block'; });
+    window.addEventListener('focus', () => { document.getElementById('snapshot-mask').style.display = 'none'; });
+
+    renderApps(); updateMask(config.mask);
 </script>
 </body>
 </html>
