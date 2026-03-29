@@ -6,7 +6,7 @@
         body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #000; color: #fff; overflow: hidden; }
         #gatekeeper { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; text-align: center; }
         #content-frame { display: none; width: 100%; height: 100vh; border: none; }
-        input { padding: 12px; margin: 10px; border-radius: 5px; border: 1px solid #333; background: #111; color: white; width: 220px; }
+        input { padding: 12px; margin: 10px; border-radius: 5px; border: 1px solid #333; background: #111; color: white; width: 220px; outline: none; }
         button { padding: 12px 24px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
@@ -21,14 +21,12 @@
 <iframe id="content-frame"></iframe>
 
 <script>
-    // This is the hashed version of "I-like-testing". 
-    // The actual password is NOT in this code.
-    const _0xSECRET_HASH = -1181283995; 
-    
-    // Encoded URL (Hides the site from Linewize keyword scanners)
+    // Password "I_like_testing" is hidden as this hash:
+    const _0xHASH = -1940986704; 
+    // Encoded URL to hide from Linewize scanners
     const _0xURL = "aHR0cHM6Ly9pbG92ZXRlYWNoZXJzLmdyYXBoaWNvbi5vcmcvNDA4MTB4Lmh0bWw=";
 
-    // One-way hashing function: Turns input into a unique number
+    // One-way hashing function
     const generateHash = s => s.split("").reduce((a, b) => { 
         a = (a << 5) - a + b.charCodeAt(0); 
         return a & a; 
@@ -36,9 +34,7 @@
 
     function unlock() {
         const input = document.getElementById('passInput').value;
-        
-        // Checks if the entered password matches the secret signature
-        if (generateHash(input) === _0xSECRET_HASH) {
+        if (generateHash(input) === _0xHASH) {
             const frame = document.getElementById('content-frame');
             frame.src = atob(_0xURL);
             document.getElementById('gatekeeper').style.display = 'none';
@@ -48,9 +44,13 @@
         }
     }
 
-    // PANIC KEY: Press "-" once to instantly bail to Google
+    // --- PANIC & PROTECTION ---
+
     document.addEventListener('keydown', (e) => {
-        if (e.key === "-") window.location.href = "https://google.com";
+        // PANIC KEY: Press "-" to instantly turn the tab into Google.com
+        if (e.key === "-") {
+            window.location.replace("https://google.com");
+        }
         // Block Inspect Element shortcuts
         if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) || (e.ctrlKey && e.keyCode == 85)) {
             e.preventDefault();
@@ -61,14 +61,17 @@
     // Disable Right-Click
     document.oncontextmenu = (e) => e.preventDefault();
 
-    // Infinite Debugger: Freezes DevTools if they force it open
+    // Infinite Debugger Loop: Freezes DevTools if someone tries to inspect
     setInterval(function() {
         const start = new Date();
         debugger; 
         if (new Date() - start > 100) window.location.reload(); 
     }, 100);
 
-    document.getElementById("passInput").onkeydown = (e) => { if (e.key === "Enter") unlock(); };
+    // Let user press Enter to login
+    document.getElementById("passInput").onkeydown = (e) => { 
+        if (e.key === "Enter") unlock(); 
+    };
 </script>
 
 </body>
