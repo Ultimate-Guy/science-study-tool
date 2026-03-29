@@ -22,12 +22,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           filter: 'blob:none'
-          fetch-depth: 2   # needed for diff check
+          fetch-depth: 2
           clean: false
           sparse-checkout: |
             index.html
             404.html
             favicon.ico
+            config.jsonc
             css
             js
             imgs
@@ -35,11 +36,11 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      # 🔥 Skip everything if nothing important changed
+      # 🔥 Skip entire workflow if nothing relevant changed
       - name: Detect changes
         id: changes
         run: |
-          if git diff --name-only HEAD~1 | grep -E '^(index.html|404.html|favicon.ico|css/|js/|imgs/|fonts/|games/)'; then
+          if git diff --name-only HEAD~1 | grep -E '^(index.html|404.html|favicon.ico|config.jsonc|css/|js/|imgs/|fonts/|games/)'; then
             echo "changed=true" >> $GITHUB_OUTPUT
           else
             echo "changed=false" >> $GITHUB_OUTPUT
@@ -48,45 +49,48 @@ jobs:
       - name: Stop early if no changes
         if: steps.changes.outputs.changed == 'false'
         run: |
-          echo "⚡ No relevant changes — skipping build"
+          echo "⚡ No relevant changes — skipping deploy"
           exit 0
 
-      - name: Assemble Site (MAX FAST)
+      - name: Assemble Site (FAST + SAFE)
         run: |
           mkdir -p staging
 
-          # Core files (always copy)
-          rsync -a --ignore-missing-args \
-            index.html 404.html favicon.ico \
-            css js imgs fonts \
-            staging/
+          # 🔥 Single fast sync (handles everything efficiently)
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='*.md' \
+            --exclude='*.jsonc' \
+            ./ staging/
 
-          # 🔥 ONLY copy games if they changed
-          if git diff --name-only HEAD~1 | grep -q '^games/'; then
-            echo "🎮 Games changed — syncing games folder"
-            rsync -a games staging/
-          else
-            echo "⚡ Games unchanged — skipping (HUGE speed win)"
-          fi
+          # Re-add config.jsonc explicitly (since excluded above)
+          cp config.jsonc staging/
 
-      - name: Safety Check (fast + strict)
+      - name: Safety Check
         run: |
-          # HTML check
+          # HTML
           if [ ! -s staging/index.html ] || ! grep -q "</html>" staging/index.html; then
-            echo "❌ index.html missing or malformed"
+            echo "❌ index.html broken"
             exit 1
           fi
 
-          # JS check
+          # Config
+          if [ ! -s staging/config.jsonc ]; then
+            echo "❌ config.jsonc missing"
+            exit 1
+          fi
+
+          # JS
           if ! find staging/js -type f -print -quit | grep -q .; then
-            echo "❌ JS missing → site would break"
+            echo "❌ JS missing"
             exit 1
           fi
 
-          # Essential folders
-          for folder in imgs css fonts; do
-            if ! find staging/$folder -type f -print -quit | grep -q .; then
-              echo "❌ Essential folder $folder missing"
+          # Core assets
+          for folder in css imgs fonts games; do
+            if [ ! -d staging/$folder ]; then
+              echo "❌ Missing $folder"
               exit 1
             fi
           done
