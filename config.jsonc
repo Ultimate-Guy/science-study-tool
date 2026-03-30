@@ -765,11 +765,7 @@
             "path": "rift-shift",
             "aliases": [],
             "categories": []
-        },
-        "Roblox": {
-            "path": "roblox",
-            "aliases": [],
-            "categories": []
+   
         },
         "Rocket League 2D": {
             "path": "rocket-league-2d",
