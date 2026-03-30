@@ -214,6 +214,11 @@
             "path": "chrome-dino",
             "aliases": [],
             "categories": []
+       },
+        "Chromebook Unlocked Games": {
+            "path": "chromebookunlocked",
+            "aliases": [],
+            "categories": []
         },
         "Youtube Unblocked": {
             "path": "clash-royale",
