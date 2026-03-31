@@ -500,12 +500,11 @@
   <script src="https://cdn.jsdelivr.net/npm/p5@1.8.0/lib/p5.min.js" defer></script>
   <script src="js/bg.js" defer></script>
   <script src="js/index.js" defer></script>
-   <script>
+  <script>
     // 1. SUPABASE CONFIG
     const SUPABASE_URL = 'https://bowpgkbsggvqyasqfiue.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvd3Bna2JzZ2d2cXlhc3FmaXVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTQzMzIsImV4cCI6MjA5MDU3MDMzMn0.WS0urzBThrnt5HSH8p0hP0rr-KJ5fzPY-KK2Cw0_0kg';
     
-    // Using supabaseClient to avoid name conflicts
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // --- Panic Key Logic ---
@@ -539,11 +538,13 @@
         });
     }
 
+    // UPDATED: Global redirect for the entire tab
     window.addEventListener('keydown', (e) => {
         const savedKey = localStorage.getItem('panicKey');
         const savedUrl = localStorage.getItem('panicUrl');
         if (e.key === savedKey && savedUrl) {
-            window.location.href = savedUrl.startsWith('http') ? savedUrl : 'https://' + savedUrl;
+            const finalUrl = savedUrl.startsWith('http') ? savedUrl : 'https://' + savedUrl;
+            window.top.location.href = finalUrl; // Redirects the actual tab
         }
     });
         
@@ -555,7 +556,6 @@
 
     if (loginTrigger) loginTrigger.addEventListener('click', () => authModal.showModal());
 
-    // 2. GitHub Login
     document.getElementById('auth-enter').addEventListener('click', async () => {
         const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'github',
@@ -564,13 +564,11 @@
         if (error) alert("Login Error: " + error.message);
     });
 
-    // 3. Logout
     logoutBtn.addEventListener('click', async () => {
         await supabaseClient.auth.signOut();
         location.reload(); 
     });
 
-    // 4. UI Manager (Checks Cloud Session)
     async function updateAuthUI() {
         const { data: { user } } = await supabaseClient.auth.getUser();
         
@@ -588,9 +586,9 @@
         }
     }
 
-    // Run on page load
     updateAuthUI();
   </script>
 
 </body>
 </html>
+
