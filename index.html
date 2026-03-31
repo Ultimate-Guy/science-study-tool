@@ -78,7 +78,8 @@
         <h3 id="user-greeting" style="pointer-events: auto; margin: 0; display: none; font-size: 1.2rem;"></h3>
     </div>
     
-    <button id="login-trigger" class="submit-button" style="position: fixed; bottom: 20px; right: 20px; z-index: 99;">Login / Sign Up</button>
+<button id="login-trigger" class="submit-button" style="position: fixed; bottom: 30px; right: 30px; z-index: 9999; display: block !important; background-color: #373737; padding: 10px 20px; border: 2px solid #5ebd3e; color: white; cursor: pointer;">Login / Sign Up</button>
+
 
     <h1 id="title">UltraGG2</h1>
     <logo>
@@ -498,22 +499,30 @@
   <script src="https://cdn.jsdelivr.net/npm/p5@1.8.0/lib/p5.min.js" defer></script>
   <script src="js/bg.js" defer></script>
   <script src="js/index.js" defer></script>
-    <script>
-    const panicInput = document.getElementById('panicKeyInput');
-    // ... (the rest of the code I gave you)
       <script>
     // --- Panic Key Logic ---
     const panicInput = document.getElementById('panicKeyInput');
     const panicUrlInput = document.getElementById('panicUrlInput');
 
     if (panicInput) {
+        // Load the saved key from browser memory
         panicInput.value = localStorage.getItem('panicKey') || "";
+        
+        // When you click the box, it waits for a key
+        panicInput.addEventListener('click', () => {
+            panicInput.value = "Press any key...";
+            panicInput.style.borderColor = "#5ebd3e";
+        });
+
+        // Captures the key you press
         panicInput.addEventListener('keydown', (e) => {
             e.preventDefault();
             panicInput.value = e.key; 
+            panicInput.style.borderColor = "";
+            panicInput.blur(); // Stop recording
         });
     }
-    
+
     if (panicUrlInput) {
         panicUrlInput.value = localStorage.getItem('panicUrl') || "";
     }
@@ -527,6 +536,7 @@
         });
     }
 
+    // This runs the redirect if you press the key anywhere on the site
     window.addEventListener('keydown', (e) => {
         const savedKey = localStorage.getItem('panicKey');
         const savedUrl = localStorage.getItem('panicUrl');
@@ -534,7 +544,7 @@
             window.location.href = savedUrl.startsWith('http') ? savedUrl : 'https://' + savedUrl;
         }
     });
-
+        
     // --- Sign In / Auth Logic ---
     const authModal = document.getElementById('auth-modal');
     const modalTitle = document.getElementById('modal-title');
