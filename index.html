@@ -500,7 +500,7 @@
   <script src="https://cdn.jsdelivr.net/npm/p5@1.8.0/lib/p5.min.js" defer></script>
   <script src="js/bg.js" defer></script>
   <script src="js/index.js" defer></script>
-  <script>
+<script>
     // 1. SUPABASE CONFIG
     const SUPABASE_URL = 'https://bowpgkbsggvqyasqfiue.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvd3Bna2JzZ2d2cXlhc3FmaXVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTQzMzIsImV4cCI6MjA5MDU3MDMzMn0.WS0urzBThrnt5HSH8p0hP0rr-KJ5fzPY-KK2Cw0_0kg';
@@ -525,10 +525,6 @@
         });
     }
 
-    if (panicUrlInput) {
-        panicUrlInput.value = localStorage.getItem('panicUrl') || "";
-    }
-
     const savePanicBtn = document.getElementById('savePanicSettings');
     if (savePanicBtn) {
         savePanicBtn.addEventListener('click', () => {
@@ -538,13 +534,12 @@
         });
     }
 
-    // UPDATED: Global redirect for the entire tab
     window.addEventListener('keydown', (e) => {
         const savedKey = localStorage.getItem('panicKey');
         const savedUrl = localStorage.getItem('panicUrl');
         if (e.key === savedKey && savedUrl) {
             const finalUrl = savedUrl.startsWith('http') ? savedUrl : 'https://' + savedUrl;
-            window.top.location.href = finalUrl; // Redirects the actual tab
+            window.top.location.href = finalUrl;
         }
     });
         
@@ -553,21 +548,30 @@
     const loginTrigger = document.getElementById('login-trigger');
     const greeting = document.getElementById('user-greeting');
     const logoutBtn = document.getElementById('logout-btn');
+    const authEnterBtn = document.getElementById('auth-enter');
 
     if (loginTrigger) loginTrigger.addEventListener('click', () => authModal.showModal());
 
-    document.getElementById('auth-enter').addEventListener('click', async () => {
-        const { error } = await supabaseClient.auth.signInWithOAuth({
-            provider: 'github',
-            options: { redirectTo: window.location.origin }
+    // Fix: Ensure the button exists before adding the listener
+    if (authEnterBtn) {
+        authEnterBtn.addEventListener('click', async (e) => {
+            e.preventDefault(); // Prevents page reload before redirect
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'github',
+                options: { 
+                    redirectTo: window.location.href // Redirects back to exactly where you are
+                }
+            });
+            if (error) alert("Login Error: " + error.message);
         });
-        if (error) alert("Login Error: " + error.message);
-    });
+    }
 
-    logoutBtn.addEventListener('click', async () => {
-        await supabaseClient.auth.signOut();
-        location.reload(); 
-    });
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            await supabaseClient.auth.signOut();
+            location.reload(); 
+        });
+    }
 
     async function updateAuthUI() {
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -587,6 +591,8 @@
     }
 
     updateAuthUI();
+</script>
+
   </script>
 
 </body>
