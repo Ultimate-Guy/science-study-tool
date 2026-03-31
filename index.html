@@ -493,33 +493,36 @@
       </p>
       <button onclick="document.getElementById('auth-modal').close()" style="background:none; border:none; color:grey; width:100%; cursor:pointer; margin-top:10px; font-size: 0.7rem;">Close</button>
   </dialog>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="js/loading.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.8.0/lib/p5.min.js" defer></script>
   <script src="js/bg.js" defer></script>
   <script src="js/index.js" defer></script>
-      <script>
+   <script>
+    // 1. SUPABASE CONFIG
+    const SUPABASE_URL = 'https://bowpgkbsggvqyasqfiue.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvd3Bna2JzZ2d2cXlhc3FmaXVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTQzMzIsImV4cCI6MjA5MDU3MDMzMn0.WS0urzBThrnt5HSH8p0hP0rr-KJ5fzPY-KK2Cw0_0kg';
+    
+    // Using supabaseClient to avoid name conflicts
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     // --- Panic Key Logic ---
     const panicInput = document.getElementById('panicKeyInput');
     const panicUrlInput = document.getElementById('panicUrlInput');
 
     if (panicInput) {
-        // Load the saved key from browser memory
         panicInput.value = localStorage.getItem('panicKey') || "";
-        
-        // When you click the box, it waits for a key
         panicInput.addEventListener('click', () => {
             panicInput.value = "Press any key...";
             panicInput.style.borderColor = "#5ebd3e";
         });
-
-        // Captures the key you press
         panicInput.addEventListener('keydown', (e) => {
             e.preventDefault();
             panicInput.value = e.key; 
             panicInput.style.borderColor = "";
-            panicInput.blur(); // Stop recording
+            panicInput.blur();
         });
     }
 
@@ -536,7 +539,6 @@
         });
     }
 
-    // This runs the redirect if you press the key anywhere on the site
     window.addEventListener('keydown', (e) => {
         const savedKey = localStorage.getItem('panicKey');
         const savedUrl = localStorage.getItem('panicUrl');
@@ -545,91 +547,50 @@
         }
     });
         
-    // --- Sign In / Auth Logic ---
+    // --- GitHub Auth Logic ---
     const authModal = document.getElementById('auth-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const switchBtn = document.getElementById('modal-switch-btn');
-    const switchText = document.getElementById('modal-switch-text');
     const loginTrigger = document.getElementById('login-trigger');
     const greeting = document.getElementById('user-greeting');
     const logoutBtn = document.getElementById('logout-btn');
-    const passInput = document.getElementById('auth-password');
-    const togglePass = document.getElementById('toggle-pass');
 
-    let isSignUpMode = true;
+    if (loginTrigger) loginTrigger.addEventListener('click', () => authModal.showModal());
 
-    if (switchBtn) {
-        switchBtn.addEventListener('click', () => {
-            isSignUpMode = !isSignUpMode;
-            modalTitle.innerText = isSignUpMode ? "Sign Up" : "Login";
-            switchText.innerText = isSignUpMode ? "Have an account already?" : "Need an account?";
-            switchBtn.innerText = isSignUpMode ? "Login" : "Sign Up";
+    // 2. GitHub Login
+    document.getElementById('auth-enter').addEventListener('click', async () => {
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'github',
+            options: { redirectTo: window.location.origin }
         });
-    }
+        if (error) alert("Login Error: " + error.message);
+    });
 
-    if (loginTrigger) {
-        loginTrigger.addEventListener('click', () => authModal.showModal());
-    }
+    // 3. Logout
+    logoutBtn.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        location.reload(); 
+    });
 
-    if (togglePass) {
-        togglePass.addEventListener('click', () => {
-            const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passInput.setAttribute('type', type);
-            togglePass.innerText = type === 'password' ? '👁️' : '🔒';
-        });
-    }
-
-    const authEnter = document.getElementById('auth-enter');
-    if (authEnter) {
-        authEnter.addEventListener('click', () => {
-            const user = document.getElementById('auth-username').value;
-            if (user.trim() !== "") {
-                localStorage.setItem('currentUser', user);
-                updateAuthUI();
-                authModal.close();
-                document.getElementById('auth-username').value = "";
-                passInput.value = "";
-            }
-        });
-    }
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('currentUser');
-            updateAuthUI();
-        });
-    }
-
-    function updateAuthUI() {
-        const user = localStorage.getItem('currentUser');
+    // 4. UI Manager (Checks Cloud Session)
+    async function updateAuthUI() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        
         if (user) {
-            if (greeting) {
-                greeting.innerText = `Hi ${user}`;
-                greeting.style.display = 'block';
-            }
-            if (logoutBtn) logoutBtn.style.display = 'block';
-            if (loginTrigger) loginTrigger.style.display = 'none';
+            const name = user.user_metadata.user_name || user.email.split('@')[0];
+            greeting.innerText = `Hi ${name}`;
+            greeting.style.display = 'block';
+            logoutBtn.style.display = 'block';
+            loginTrigger.style.display = 'none';
+            if (authModal.open) authModal.close();
         } else {
-            if (greeting) greeting.style.display = 'none';
-            if (logoutBtn) logoutBtn.style.display = 'none';
-            if (loginTrigger) loginTrigger.style.display = 'block';
+            greeting.style.display = 'none';
+            logoutBtn.style.display = 'none';
+            loginTrigger.style.display = 'block';
         }
     }
 
-    const homepageEl = document.querySelector('.homepage');
-    if (homepageEl) {
-        const observer = new MutationObserver(() => {
-            if (homepageEl.style.display === 'none') {
-                loginTrigger.style.display = 'none';
-            } else if (!localStorage.getItem('currentUser')) {
-                loginTrigger.style.display = 'block';
-            }
-        });
-        observer.observe(homepageEl, { attributes: true, attributeFilter: ['style'] });
-    }
-
+    // Run on page load
     updateAuthUI();
-</script>
+  </script>
 
 </body>
 </html>
