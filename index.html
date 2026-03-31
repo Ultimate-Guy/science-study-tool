@@ -391,6 +391,22 @@
             </div>
           </label>
         </div>
+                <div class="setting">
+          <h5>Panic Key</h5>
+          <p>Instantly redirect to a safe site when a specific key is pressed.</p>
+          
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <h5 style="margin: 0; min-width: 130px;">Panic Key</h5>
+            <input type="text" id="panicKeyInput" class="text-field" placeholder="Click & press a key..." readonly style="cursor: pointer; flex-grow: 1;" />
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h5 style="margin: 0; min-width: 130px;">Panic Key URL</h5>
+            <input type="text" id="panicUrlInput" class="text-field" placeholder="https://google.com" style="flex-grow: 1;" />
+          </div>
+          
+          <button id="savePanicSettings" class="submit-button" style="margin-top: 15px; width: 100%;">Save Panic Settings</button>
+        </div>
         <h4>Appearance</h4>
         <div class="setting">
           <h5>Custom Theme (change on refresh)</h5>
@@ -453,6 +469,11 @@
   <script src="https://cdn.jsdelivr.net/npm/p5@1.8.0/lib/p5.min.js" defer></script>
   <script src="js/bg.js" defer></script>
   <script src="js/index.js" defer></script>
-</body>
+    <script>
+    const panicInput = document.getElementById('panicKeyInput');
+    // ... (the rest of the code I gave you)
+  </script>
 
+</body>
+  
 </html>
