@@ -72,7 +72,14 @@
       <img src="imgs/icon-256-256.png" alt="UltraGG2 Icon" />
     </div>
   </div>
-  <section id="everything-else">
+<section id="everything-else">
+    <div id="auth-header" style="position: absolute; top: 20px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; pointer-events: none; z-index: 100;">
+        <button id="logout-btn" class="submit-button" style="pointer-events: auto; display: none;">Log out</button>
+        <h3 id="user-greeting" style="pointer-events: auto; margin: 0; display: none; font-size: 1.2rem;"></h3>
+    </div>
+    
+    <button id="login-trigger" class="submit-button" style="position: fixed; bottom: 20px; right: 20px; z-index: 99;">Login / Sign Up</button>
+
     <h1 id="title">UltraGG2</h1>
     <logo>
       <img src="imgs/icon-256-256.png" alt="UltraGG2" />
@@ -463,6 +470,28 @@
       <!-- <i class="fas fa-chevron-left"></i> Font Awesome fontawesome.com -->
     </button>
   </section>
+    <dialog id="auth-modal" class="setting-bg" style="border: none; color: white; border-radius: 10px; padding: 30px; width: 350px; background-color: #2b2b2b;">
+      <h2 id="modal-title" style="margin-top: 0;">Sign Up</h2>
+      
+      <div class="setting" style="border:none; padding: 0;">
+          <label style="font-size: 0.9rem;">Username</label><br>
+          <input type="text" id="auth-username" class="text-field" placeholder="Enter username" style="width: 100%; margin-bottom: 20px;">
+          
+          <label style="font-size: 0.9rem;">Password</label><br>
+          <div style="position: relative; display: flex; align-items: center;">
+              <input type="password" id="auth-password" class="text-field" placeholder="Enter password" style="width: 100%;">
+              <span id="toggle-pass" style="position: absolute; right: 10px; cursor: pointer; filter: grayscale(1);">👁️</span>
+          </div>
+      </div>
+
+      <button id="auth-enter" class="submit-button" style="width: 100%; margin-top: 20px;">Enter</button>
+      
+      <p style="margin-top: 15px; font-size: 0.8rem; text-align: center;">
+          <span id="modal-switch-text">Have an account already?</span> 
+          <button id="modal-switch-btn" style="background: none; border: none; color: #5ebd3e; cursor: pointer; text-decoration: underline; font-size: 0.8rem;">Login</button>
+      </p>
+      <button onclick="document.getElementById('auth-modal').close()" style="background:none; border:none; color:grey; width:100%; cursor:pointer; margin-top:10px; font-size: 0.7rem;">Close</button>
+  </dialog>
   <script src="js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="js/loading.js" defer></script>
@@ -472,8 +501,125 @@
     <script>
     const panicInput = document.getElementById('panicKeyInput');
     // ... (the rest of the code I gave you)
-  </script>
+      <script>
+    // --- Panic Key Logic ---
+    const panicInput = document.getElementById('panicKeyInput');
+    const panicUrlInput = document.getElementById('panicUrlInput');
+
+    if (panicInput) {
+        panicInput.value = localStorage.getItem('panicKey') || "";
+        panicInput.addEventListener('keydown', (e) => {
+            e.preventDefault();
+            panicInput.value = e.key; 
+        });
+    }
+    
+    if (panicUrlInput) {
+        panicUrlInput.value = localStorage.getItem('panicUrl') || "";
+    }
+
+    const savePanicBtn = document.getElementById('savePanicSettings');
+    if (savePanicBtn) {
+        savePanicBtn.addEventListener('click', () => {
+            localStorage.setItem('panicKey', panicInput.value);
+            localStorage.setItem('panicUrl', panicUrlInput.value);
+            alert('Panic settings saved!');
+        });
+    }
+
+    window.addEventListener('keydown', (e) => {
+        const savedKey = localStorage.getItem('panicKey');
+        const savedUrl = localStorage.getItem('panicUrl');
+        if (e.key === savedKey && savedUrl) {
+            window.location.href = savedUrl.startsWith('http') ? savedUrl : 'https://' + savedUrl;
+        }
+    });
+
+    // --- Sign In / Auth Logic ---
+    const authModal = document.getElementById('auth-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const switchBtn = document.getElementById('modal-switch-btn');
+    const switchText = document.getElementById('modal-switch-text');
+    const loginTrigger = document.getElementById('login-trigger');
+    const greeting = document.getElementById('user-greeting');
+    const logoutBtn = document.getElementById('logout-btn');
+    const passInput = document.getElementById('auth-password');
+    const togglePass = document.getElementById('toggle-pass');
+
+    let isSignUpMode = true;
+
+    if (switchBtn) {
+        switchBtn.addEventListener('click', () => {
+            isSignUpMode = !isSignUpMode;
+            modalTitle.innerText = isSignUpMode ? "Sign Up" : "Login";
+            switchText.innerText = isSignUpMode ? "Have an account already?" : "Need an account?";
+            switchBtn.innerText = isSignUpMode ? "Login" : "Sign Up";
+        });
+    }
+
+    if (loginTrigger) {
+        loginTrigger.addEventListener('click', () => authModal.showModal());
+    }
+
+    if (togglePass) {
+        togglePass.addEventListener('click', () => {
+            const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passInput.setAttribute('type', type);
+            togglePass.innerText = type === 'password' ? '👁️' : '🔒';
+        });
+    }
+
+    const authEnter = document.getElementById('auth-enter');
+    if (authEnter) {
+        authEnter.addEventListener('click', () => {
+            const user = document.getElementById('auth-username').value;
+            if (user.trim() !== "") {
+                localStorage.setItem('currentUser', user);
+                updateAuthUI();
+                authModal.close();
+                document.getElementById('auth-username').value = "";
+                passInput.value = "";
+            }
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('currentUser');
+            updateAuthUI();
+        });
+    }
+
+    function updateAuthUI() {
+        const user = localStorage.getItem('currentUser');
+        if (user) {
+            if (greeting) {
+                greeting.innerText = `Hi ${user}`;
+                greeting.style.display = 'block';
+            }
+            if (logoutBtn) logoutBtn.style.display = 'block';
+            if (loginTrigger) loginTrigger.style.display = 'none';
+        } else {
+            if (greeting) greeting.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+            if (loginTrigger) loginTrigger.style.display = 'block';
+        }
+    }
+
+    const homepageEl = document.querySelector('.homepage');
+    if (homepageEl) {
+        const observer = new MutationObserver(() => {
+            if (homepageEl.style.display === 'none') {
+                loginTrigger.style.display = 'none';
+            } else if (!localStorage.getItem('currentUser')) {
+                loginTrigger.style.display = 'block';
+            }
+        });
+        observer.observe(homepageEl, { attributes: true, attributeFilter: ['style'] });
+    }
+
+    updateAuthUI();
+</script>
 
 </body>
-  
 </html>
