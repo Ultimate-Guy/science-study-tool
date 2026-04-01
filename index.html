@@ -543,52 +543,41 @@
         }
     });
         
-    // --- GitHub Auth Logic ---
+    // --- Updated UI & Auth Logic ---
     const authModal = document.getElementById('auth-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const switchBtn = document.getElementById('modal-switch-btn');
+    const switchText = document.getElementById('modal-switch-text');
     const loginTrigger = document.getElementById('login-trigger');
-    const greeting = document.getElementById('user-greeting');
-    const logoutBtn = document.getElementById('logout-btn');
     const authEnterBtn = document.getElementById('auth-enter');
 
-    if (loginTrigger) loginTrigger.addEventListener('click', () => authModal.showModal());
+    let isSignUpMode = true;
 
-    // Fix: Ensure the button exists before adding the listener
+    // This handles the "Swapping" between Sign Up and Login views inside the popup
+    if (switchBtn) {
+        switchBtn.onclick = () => {
+            isSignUpMode = !isSignUpMode;
+            modalTitle.innerText = isSignUpMode ? "Sign Up" : "Login";
+            switchText.innerText = isSignUpMode ? "Have an account already?" : "Need an account?";
+            switchBtn.innerText = isSignUpMode ? "Login" : "Sign Up";
+        };
+    }
+
+    if (loginTrigger) loginTrigger.onclick = () => authModal.showModal();
+
+    // This is the actual "Enter" button that triggers the GitHub flow
     if (authEnterBtn) {
-        authEnterBtn.addEventListener('click', async (e) => {
-            e.preventDefault(); // Prevents page reload before redirect
+        authEnterBtn.onclick = async (e) => {
+            e.preventDefault();
+            // Since we are using GitHub, both "Login" and "Sign Up" use the same cloud flow
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'github',
-                options: { 
-                    redirectTo: window.location.href // Redirects back to exactly where you are
-                }
+                options: { redirectTo: window.location.href }
             });
-            if (error) alert("Login Error: " + error.message);
-        });
+            if (error) alert("Auth Error: " + error.message);
+        };
     }
 
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async () => {
-            await supabaseClient.auth.signOut();
-            location.reload(); 
-        });
-    }
-
-    async function updateAuthUI() {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        
-        if (user) {
-            const name = user.user_metadata.user_name || user.email.split('@')[0];
-            greeting.innerText = `Hi ${name}`;
-            greeting.style.display = 'block';
-            logoutBtn.style.display = 'block';
-            loginTrigger.style.display = 'none';
-            if (authModal.open) authModal.close();
-        } else {
-            greeting.style.display = 'none';
-            logoutBtn.style.display = 'none';
-            loginTrigger.style.display = 'block';
-        }
-    }
 
     updateAuthUI();
 </script>
