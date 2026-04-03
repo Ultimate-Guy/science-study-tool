@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Geometry Dash</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #333;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            background-color: #1e272e;
+            border: 2px solid #d2dae2;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const player = {
+        x: 50,
+        y: canvas.height - 60,
+        width: 40,
+        height: 40,
+        color: "#ff3f34",
+        dy: 0,
+        gravity: 0.5,
+        jumpStrength: -10,
+        onGround: true
+    };
+
+    const obstacles = [];
+    const obstacleWidth = 30;
+    const obstacleHeight = 50;
+    let obstacleSpeed = 5;
+    let score = 0;
+    let gameover = false;
+
+    function createObstacle() {
+        const obstacle = {
+            x: canvas.width,
+            y: canvas.height - obstacleHeight,
+            width: obstacleWidth,
+            height: obstacleHeight,
+            color: "#0fbcf9"
+        };
+        obstacles.push(obstacle);
+    }
+
+    function updatePlayer() {
+        if (!player.onGround) {
+            player.dy += player.gravity;
+        }
+        player.y += player.dy;
+
+        if (player.y + player.height >= canvas.height - 20) {
+            player.y = canvas.height - player.height - 20;
+            player.dy = 0;
+            player.onGround = true;
+        }
+    }
+
+    function updateObstacles() {
+        obstacles.forEach((obstacle, index) => {
+            obstacle.x -= obstacleSpeed;
+
+            if (obstacle.x + obstacle.width < 0) {
+                obstacles.splice(index, 1);
+                score++;
+                if (score % 5 === 0) {
+                    obstacleSpeed += 0.5; // Augmente la difficulté progressivement
+                }
+            }
+
+            if (
+                player.x < obstacle.x + obstacle.width &&
+                player.x + player.width > obstacle.x &&
+                player.y < obstacle.y + obstacle.height &&
+                player.y + player.height > obstacle.y
+            ) {
+                gameover = true;
+            }
+        });
+    }
+
+    function drawPlayer() {
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function drawObstacles() {
+        obstacles.forEach(obstacle => {
+            ctx.fillStyle = obstacle.color;
+            ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+        });
+    }
+
+    function displayScore() {
+        ctx.fillStyle = "#fff";
+        ctx.font = "20px Arial";
+        ctx.fillText(`Score: ${score}`, 10, 30);
+    }
+
+    function gameLoop() {
+        if (gameover) {
+            ctx.fillStyle = "#fff";
+            ctx.font = "30px Arial";
+            ctx.fillText("Game Over", canvas.width / 2 - 70, canvas.height / 2);
+            ctx.font = "20px Arial";
+            ctx.fillText(`Score: ${score}`, canvas.width / 2 - 30, canvas.height / 2 + 30);
+            return;
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        updatePlayer();
+        updateObstacles();
+
+        drawPlayer();
+        drawObstacles();
+        displayScore();
+
+        if (Math.random() < 0.02) createObstacle();
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === " " && player.onGround) {  // Espace pour sauter
+            player.dy = player.jumpStrength;
+            player.onGround = false;
+        }
+    });
+
+    gameLoop();
+</script>
+
+</body>
+</html>
