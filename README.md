@@ -1,4 +1,4 @@
-<h1>EXISTENCEGG75</h1>
-My w game site
+<h1>science-study-tool</h1>
+My w study tool
 <p>I HAVE RETURNED</p>
-Credit goes to https://github.com/Ihatedis1212/ExistenceGG2
+This is a goated science study tool. But sorry guys don't fork it. My license is backing this claim. Check it if you want.
