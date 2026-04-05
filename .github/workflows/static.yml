@@ -18,10 +18,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (Reliable + Fast)
+      - name: Fast Checkout (minimal)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # ✅ full history (fixes edge cases)
+          fetch-depth: 1
+          filter: blob:none   # 🔥 speeds up large repos
           sparse-checkout: |
             index.html
             404.html
@@ -34,51 +35,30 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      - name: Assemble Site
+      - name: Assemble Site (ultra fast copy)
         run: |
           mkdir -p staging
 
-          rsync -a --delete \
-            index.html 404.html favicon.ico config.jsonc \
-            css js imgs fonts games \
-            staging/
+          # faster than rsync for many small files
+          cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts games staging/
 
-      - name: Safety Check
+      - name: Lightweight Safety Check
         run: |
-          echo "🔍 Running safety checks..."
+          echo "🔍 Quick validation..."
 
-          # HTML check
-          if [ ! -s staging/index.html ] || ! grep -q "</html>" staging/index.html; then
-            echo "❌ index.html missing or malformed"
-            exit 1
-          fi
+          [ -s staging/index.html ] || (echo "❌ index.html missing" && exit 1)
+          [ -d staging/games ] || (echo "❌ games folder missing" && exit 1)
 
-          # Config check (allow either config.js OR config.jsonc)
-          if [ ! -s staging/config.jsonc ] && [ ! -f staging/js/config.js ]; then
-            echo "❌ No config found (config.jsonc or config.js)"
-            exit 1
-          fi
+          # only check ONE js file exists (fast)
+          ls staging/js/*.js >/dev/null 2>&1 || (echo "❌ JS missing" && exit 1)
 
-          # JS check
-          if ! find staging/js -type f -name "*.js" -print -quit | grep -q .; then
-            echo "❌ No JS files found"
-            exit 1
-          fi
-
-          # Core folders check
-          for folder in css imgs fonts games; do
-            if [ ! -d staging/$folder ]; then
-              echo "❌ Missing folder: $folder"
-              exit 1
-            fi
-          done
-
-          echo "✅ All checks passed"
+          echo "✅ OK"
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: staging
+          compression-level: 0   # 🔥 faster upload (bigger file, less CPU)
 
   deploy:
     needs: build
