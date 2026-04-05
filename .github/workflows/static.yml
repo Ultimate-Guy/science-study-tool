@@ -18,12 +18,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ultra-Fast Checkout
+      - name: Checkout (Reliable + Fast)
         uses: actions/checkout@v4
         with:
-          filter: 'blob:none'
-          fetch-depth: 2
-          clean: false
+          fetch-depth: 0   # ✅ full history (fixes edge cases)
           sparse-checkout: |
             index.html
             404.html
@@ -36,49 +34,34 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      # 🔥 Skip if nothing important changed
-      - name: Detect changes
-        id: changes
-        run: |
-          if git diff --name-only HEAD~1 | grep -E '^(index.html|404.html|favicon.ico|config.jsonc|css/|js/|imgs/|fonts/|games/)'; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "changed=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Stop early if no changes
-        if: steps.changes.outputs.changed == 'false'
-        run: |
-          echo "⚡ No relevant changes — skipping deploy"
-          exit 0
-
-      - name: Assemble Site (FAST + STABLE)
+      - name: Assemble Site
         run: |
           mkdir -p staging
 
-          # ✅ Only copy required files (prevents rsync crash)
-          rsync -a --delete --ignore-missing-args \
+          rsync -a --delete \
             index.html 404.html favicon.ico config.jsonc \
             css js imgs fonts games \
             staging/
 
-      - name: Safety Check (STRICT)
+      - name: Safety Check
         run: |
+          echo "🔍 Running safety checks..."
+
           # HTML check
           if [ ! -s staging/index.html ] || ! grep -q "</html>" staging/index.html; then
             echo "❌ index.html missing or malformed"
             exit 1
           fi
 
-          # Config check
-          if [ ! -s staging/config.jsonc ]; then
-            echo "❌ config.jsonc missing"
+          # Config check (allow either config.js OR config.jsonc)
+          if [ ! -s staging/config.jsonc ] && [ ! -f staging/js/config.js ]; then
+            echo "❌ No config found (config.jsonc or config.js)"
             exit 1
           fi
 
           # JS check
-          if ! find staging/js -type f -print -quit | grep -q .; then
-            echo "❌ JS missing → site would break"
+          if ! find staging/js -type f -name "*.js" -print -quit | grep -q .; then
+            echo "❌ No JS files found"
             exit 1
           fi
 
@@ -90,6 +73,8 @@ jobs:
             fi
           done
 
+          echo "✅ All checks passed"
+
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -100,5 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
+
     steps:
-      - uses: actions/deploy-pages@v4
+      - name: Deploy
+        uses: actions/deploy-pages@v4
