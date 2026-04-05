@@ -199,6 +199,16 @@
             "path": "buckshot",
             "aliases": [],
             "categories": []
+       },
+        "Build a Big Army": {
+            "path": "build-a-big-army",
+            "aliases": [],
+            "categories": []
+       },
+        "Build a Plane": {
+            "path": "build-a-plane",
+            "aliases": [],
+            "categories": []
         },
         "Cat Ninja": {
             "path": "flash/?game=cat-ninja",
@@ -217,6 +227,11 @@
        },
         "Chromebook Unlocked Games": {
             "path": "chromebookunlocked",
+            "aliases": [],
+            "categories": []
+      },
+        "Clash of Vikings": {
+            "path": "clash-of-vikings",
             "aliases": [],
             "categories": []
         },
@@ -352,6 +367,26 @@
         },
         "Duck Life 4": {
             "path": "duck-life-4",
+            "aliases": [],
+            "categories": []
+       },
+        "Duck Life 5": {
+            "path": "duck-life-5",
+            "aliases": [],
+            "categories": []
+       },
+        "Duck Life 6": {
+            "path": "duck-life-6",
+            "aliases": [],
+            "categories": []
+       },
+        "Duck Life 7": {
+            "path": "duck-life-7",
+            "aliases": [],
+            "categories": []
+       },
+        "Duck Life 8": {
+            "path": "duck-life-8",
             "aliases": [],
             "categories": []
         },
