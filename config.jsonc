@@ -299,6 +299,11 @@
             "path": "deltarune",
             "aliases": [],
             "categories": []
+      },
+        "Destroy The Car": {
+            "path": "destory-the-car",
+            "aliases": [],
+            "categories": []
         },
         "Doge Miner": {
             "path": "doge-miner",
@@ -417,6 +422,11 @@
        },
         "Elite Games": {
             "path": "elite",
+            "aliases": [],
+            "categories": []
+      },
+        "Escape Road 2": {
+            "path": "escape-road-2",
             "aliases": [],
             "categories": []
        },
