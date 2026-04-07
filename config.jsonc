@@ -209,6 +209,11 @@
             "path": "build-a-plane",
             "aliases": [],
             "categories": []
+      },
+        "ChatGPT": {
+            "path": "chatgpt",
+            "aliases": [],
+            "categories": []
         },
         "Cat Ninja": {
             "path": "flash/?game=cat-ninja",
