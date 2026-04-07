@@ -20,7 +20,7 @@ jobs:
       name: github-pages
 
     steps:
-      # Sparse checkout only necessary files
+      # Checkout only necessary files
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -37,8 +37,8 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      # Upload main site (non-games) as artifact
-      - name: Upload main site artifact
+      # Upload main site artifact
+      - name: Upload main site
         uses: actions/upload-pages-artifact@v3
         with:
           path: |
@@ -52,35 +52,32 @@ jobs:
             fonts
           compression-level: 0
 
-      # Upload games in chunks safely
-      - name: Upload games in chunks
+      # Dynamically create chunk folders (temp-chunk-1, temp-chunk-2, …)
+      - name: Split games into chunk folders
         run: |
-          CHUNK_SIZE=1800000000  # ~1.8GB per artifact
+          mkdir -p chunks
+          CHUNK_SIZE=1800000000
           CHUNK_NUM=1
           CURRENT_SIZE=0
-          mkdir -p temp-chunk
-
+          mkdir -p "chunks/chunk-$CHUNK_NUM"
           for game in games/*; do
             SIZE=$(du -s -B1 "$game" | cut -f1)
             if [ $((CURRENT_SIZE + SIZE)) -gt $CHUNK_SIZE ]; then
-              echo "Uploading chunk-$CHUNK_NUM"
-              # Upload chunk artifact
-              actions/upload-pages-artifact@v3 --path temp-chunk --name "chunk-$CHUNK_NUM" --compression-level 0
               CHUNK_NUM=$((CHUNK_NUM + 1))
               CURRENT_SIZE=0
-              rm -rf temp-chunk
-              mkdir -p temp-chunk
+              mkdir -p "chunks/chunk-$CHUNK_NUM"
             fi
-            cp -r "$game" temp-chunk/
+            cp -r "$game" "chunks/chunk-$CHUNK_NUM/"
             CURRENT_SIZE=$((CURRENT_SIZE + SIZE))
           done
 
-          # Upload the last chunk if it exists
-          if [ "$(ls -A temp-chunk)" ]; then
-            echo "Uploading final chunk-$CHUNK_NUM"
-            actions/upload-pages-artifact@v3 --path temp-chunk --name "chunk-$CHUNK_NUM" --compression-level 0
-          fi
+      # Upload each chunk artifact as a separate step
+      - name: Upload game chunks
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: chunks
+          compression-level: 0
 
-      # Deploy all artifacts to GitHub Pages
+      # Deploy all uploaded artifacts to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
