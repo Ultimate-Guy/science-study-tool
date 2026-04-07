@@ -16,14 +16,13 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
 
     steps:
-      - name: Checkout repository
+      - name: Checkout (ultra minimal)
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          filter: blob:none   # 🚀 HUGE speedup for big repos
           sparse-checkout: |
             index.html
             404.html
@@ -36,28 +35,16 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      # Upload main site
-      - name: Upload main site artifact
+      - name: Prepare deploy folder
+        run: |
+          mkdir public
+          cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts games public/
+
+      - name: Upload artifact (single bundle)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: |
-            index.html
-            404.html
-            favicon.ico
-            config.jsonc
-            css
-            js
-            imgs
-            fonts
-          compression-level: 0
+          path: public
+          compression-level: 0   # already optimal for speed
 
-      # Upload games folder as a single artifact
-      - name: Upload games artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: games
-          compression-level: 0
-
-      # Deploy all uploaded artifacts
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         uses: actions/deploy-pages@v4
