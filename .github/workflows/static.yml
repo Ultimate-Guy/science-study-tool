@@ -20,7 +20,7 @@ jobs:
       name: github-pages
 
     steps:
-      # Sparse checkout of required files
+      # Sparse checkout only necessary files
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -37,7 +37,7 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      # Upload main site artifact (non-games files)
+      # Upload main site (non-games) as artifact
       - name: Upload main site artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -53,9 +53,9 @@ jobs:
           compression-level: 0
 
       # Upload games in chunks safely
-      - name: Upload game chunks
+      - name: Upload games in chunks
         run: |
-          CHUNK_SIZE=1800000000  # ~1.8GB
+          CHUNK_SIZE=1800000000  # ~1.8GB per artifact
           CHUNK_NUM=1
           CURRENT_SIZE=0
           mkdir -p temp-chunk
@@ -64,7 +64,8 @@ jobs:
             SIZE=$(du -s -B1 "$game" | cut -f1)
             if [ $((CURRENT_SIZE + SIZE)) -gt $CHUNK_SIZE ]; then
               echo "Uploading chunk-$CHUNK_NUM"
-              gh workflow run upload-pages-artifact@v3 --with "path=temp-chunk compression-level=0" || true
+              # Upload chunk artifact
+              actions/upload-pages-artifact@v3 --path temp-chunk --name "chunk-$CHUNK_NUM" --compression-level 0
               CHUNK_NUM=$((CHUNK_NUM + 1))
               CURRENT_SIZE=0
               rm -rf temp-chunk
@@ -74,12 +75,12 @@ jobs:
             CURRENT_SIZE=$((CURRENT_SIZE + SIZE))
           done
 
-          # Upload last chunk
+          # Upload the last chunk if it exists
           if [ "$(ls -A temp-chunk)" ]; then
             echo "Uploading final chunk-$CHUNK_NUM"
-            gh workflow run upload-pages-artifact@v3 --with "path=temp-chunk compression-level=0" || true
+            actions/upload-pages-artifact@v3 --path temp-chunk --name "chunk-$CHUNK_NUM" --compression-level 0
           fi
 
-      # Deploy all uploaded artifacts to GitHub Pages
+      # Deploy all artifacts to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
