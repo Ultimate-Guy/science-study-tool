@@ -3,56 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Assistant</title>
-    <!-- 1. Include Puter.js library -->
+    <title>Phoenix AI</title>
     <script src="https://js.puter.com/v2/"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; height: 100vh; margin: 0; }
-        #chat-container { flex: 1; overflow-y: auto; padding: 20px; }
-        .msg { margin-bottom: 15px; padding: 10px; border-radius: 8px; max-width: 80%; }
-        .user { background: #007bff; color: white; align-self: flex-end; margin-left: auto; }
-        .ai { background: #e9e9eb; color: #333; }
-        #input-area { display: flex; padding: 20px; background: white; border-top: 1px solid #ddd; }
-        input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; margin-left: 10px; cursor: pointer; }
+        :root { --main-red: #8b0000; --bg-dark: #0d0d0d; --chat-bg: #1a1a1a; --text-light: #f5f5f5; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-dark); color: var(--text-light); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        #header { background: var(--main-red); padding: 15px; text-align: center; font-weight: bold; font-size: 1.2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        .msg { padding: 12px 16px; border-radius: 12px; line-height: 1.5; max-width: 85%; word-wrap: break-word; }
+        .user { background: #333; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .ai { background: var(--chat-bg); border-left: 4px solid var(--main-red); align-self: flex-start; border-bottom-left-radius: 2px; }
+        #input-area { padding: 20px; background: #111; display: flex; gap: 10px; border-top: 1px solid #333; }
+        input { flex: 1; background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 6px; outline: none; }
+        input:focus { border-color: var(--main-red); }
+        button { background: var(--main-red); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #b30000; }
+        .typing { font-style: italic; color: #888; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
+<div id="header">PHOENIX AI</div>
+
 <div id="chat-container">
-    <div class="msg ai">Hello! How can I help you with your studies today?</div>
+    <div class="msg ai">Greetings. I am <b>Phoenix AI</b>. How can I assist your studies today?</div>
 </div>
 
 <div id="input-area">
-    <input type="text" id="user-input" placeholder="Type your message..." onkeypress="if(event.key === 'Enter') sendMessage()">
+    <input type="text" id="user-input" placeholder="Message Phoenix AI..." autocomplete="off">
     <button onclick="sendMessage()">Send</button>
 </div>
 
 <script>
+    // ChatGPT style history management
+    let conversationHistory = [
+        { role: "system", content: "Your name is Phoenix AI. You are a highly advanced, helpful assistant with a bold and professional tone. You respond with accuracy and depth." }
+    ];
+
+    const inputField = document.getElementById('user-input');
+    const container = document.getElementById('chat-container');
+
+    // Send on Enter key
+    inputField.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+
     async function sendMessage() {
-        const input = document.getElementById('user-input');
-        const container = document.getElementById('chat-container');
-        const text = input.value.trim();
-        
+        const text = inputField.value.trim();
         if (!text) return;
 
-        // Add user message to UI
-        container.innerHTML += `<div class="msg user">${text}</div>`;
-        input.value = '';
-        container.scrollTop = container.scrollHeight;
+        // 1. Update UI for User
+        appendMessage('user', text);
+        inputField.value = '';
+        
+        // 2. Add to History
+        conversationHistory.push({ role: "user", content: text });
+
+        // 3. Show Loading
+        const loadingDiv = appendMessage('ai', '<span class="typing">Phoenix is thinking...</span>');
 
         try {
-            // 2. Call the AI directly
-            // Models available: 'gpt-4o', 'gpt-3.5-turbo', 'claude-3-5-sonnet'
-            const response = await puter.ai.chat(text, { model: 'gpt-4o' });
+            // 4. Call AI with full history (memory)
+            const response = await puter.ai.chat(conversationHistory, { model: 'gpt-4o' });
 
-            // Add AI response to UI
-            container.innerHTML += `<div class="msg ai">${response}</div>`;
+            // 5. Update UI for AI
+            loadingDiv.innerHTML = response.replace(/\n/g, '<br>');
+            conversationHistory.push({ role: "assistant", content: response });
+            
             container.scrollTop = container.scrollHeight;
         } catch (error) {
+            loadingDiv.innerHTML = "Error: Connection lost. Ensure you are logged into Puter.";
             console.error(error);
-            container.innerHTML += `<div class="msg ai" style="color:red;">Error: AI is currently unavailable.</div>`;
         }
+    }
+
+    function appendMessage(role, content) {
+        const div = document.createElement('div');
+        div.className = `msg ${role}`;
+        div.innerHTML = content;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        return div;
     }
 </script>
 
