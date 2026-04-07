@@ -33,7 +33,7 @@ jobs:
             js
             imgs
             fonts
-            games/**
+            games
           sparse-checkout-cone-mode: true
 
       - name: Assemble Site (faster with tar)
