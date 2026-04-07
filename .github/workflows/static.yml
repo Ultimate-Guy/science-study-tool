@@ -14,14 +14,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
 
     steps:
-      # Only fetch necessary files to minimize checkout time
-      - name: Minimal Checkout
+      # Minimal checkout of only required files
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -37,8 +37,19 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      # Deploy directly from the sparse-checked out folder
+      # Copy everything into a single staging folder
+      - name: Prepare staging folder
+        run: |
+          mkdir -p staging
+          cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts games staging/
+
+      # Upload the staging folder as a Pages artifact (no compression)
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: staging
+          compression-level: 0
+
+      # Deploy the artifact to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        with:
-          path: "."
