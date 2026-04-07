@@ -14,16 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
 
     steps:
-      - name: Fast Checkout (minimal)
+      # Only fetch necessary files to minimize checkout time
+      - name: Minimal Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          filter: blob:none
-          clean: false
           sparse-checkout: |
             index.html
             404.html
@@ -36,33 +37,8 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      - name: Assemble Site (faster with tar)
-        run: |
-          mkdir -p staging
-
-          tar -cf - \
-            index.html 404.html favicon.ico config.jsonc \
-            css js imgs fonts games \
-          | tar -xf - -C staging
-
-      - name: Lightweight Safety Check
-        run: |
-          test -s staging/index.html || exit 1
-          test -d staging/games || exit 1
-          compgen -G "staging/js/*.js" > /dev/null || exit 1
-
-      - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: staging
-          compression-level: 0
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-
-    steps:
-      - name: Deploy
+      # Deploy directly from the sparse-checked out folder
+      - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
+        with:
+          path: "."
