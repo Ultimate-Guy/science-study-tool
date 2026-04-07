@@ -14,13 +14,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
 
     steps:
-      # Minimal checkout of only required files
+      # Sparse checkout only required files
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -37,19 +37,49 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      # Copy everything into a single staging folder
-      - name: Prepare staging folder
-        run: |
-          mkdir -p staging
-          cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts games staging/
-
-      # Upload the staging folder as a Pages artifact (no compression)
-      - name: Upload Pages Artifact
+      # Upload main site artifact (non-games files)
+      - name: Upload main site artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: staging
+          path: |
+            index.html
+            404.html
+            favicon.ico
+            config.jsonc
+            css
+            js
+            imgs
+            fonts
           compression-level: 0
 
-      # Deploy the artifact to GitHub Pages
+      # Upload game chunks directly from sparse checkout
+      - name: Upload games in chunks
+        run: |
+          CHUNK_SIZE=1800000000  # ~1.8GB per artifact
+          CHUNK_NUM=1
+          CURRENT_SIZE=0
+          mkdir -p temp-chunk
+
+          for game in games/*; do
+            SIZE=$(du -s -B1 "$game" | cut -f1)
+            if [ $((CURRENT_SIZE + SIZE)) -gt $CHUNK_SIZE ]; then
+              echo "Uploading chunk-$CHUNK_NUM"
+              gh run artifact upload temp-chunk --name "chunk-$CHUNK_NUM" --compression-level=0 || true
+              CHUNK_NUM=$((CHUNK_NUM + 1))
+              CURRENT_SIZE=0
+              rm -rf temp-chunk
+              mkdir -p temp-chunk
+            fi
+            cp -r "$game" temp-chunk/
+            CURRENT_SIZE=$((CURRENT_SIZE + SIZE))
+          done
+
+          # Upload last chunk
+          if [ "$(ls -A temp-chunk)" ]; then
+            echo "Uploading final chunk-$CHUNK_NUM"
+            gh run artifact upload temp-chunk --name "chunk-$CHUNK_NUM" --compression-level=0 || true
+          fi
+
+      # Deploy all uploaded artifacts to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
