@@ -22,7 +22,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          filter: blob:none   # 🔥 speeds up large repos
+          filter: blob:none
+          clean: false
           sparse-checkout: |
             index.html
             404.html
@@ -32,33 +33,29 @@ jobs:
             js
             imgs
             fonts
-            games
+            games/**
           sparse-checkout-cone-mode: true
 
-      - name: Assemble Site (ultra fast copy)
+      - name: Assemble Site (faster with tar)
         run: |
           mkdir -p staging
 
-          # faster than rsync for many small files
-          cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts games staging/
+          tar -cf - \
+            index.html 404.html favicon.ico config.jsonc \
+            css js imgs fonts games \
+          | tar -xf - -C staging
 
       - name: Lightweight Safety Check
         run: |
-          echo "🔍 Quick validation..."
-
-          [ -s staging/index.html ] || (echo "❌ index.html missing" && exit 1)
-          [ -d staging/games ] || (echo "❌ games folder missing" && exit 1)
-
-          # only check ONE js file exists (fast)
-          ls staging/js/*.js >/dev/null 2>&1 || (echo "❌ JS missing" && exit 1)
-
-          echo "✅ OK"
+          test -s staging/index.html || exit 1
+          test -d staging/games || exit 1
+          compgen -G "staging/js/*.js" > /dev/null || exit 1
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: staging
-          compression-level: 0   # 🔥 faster upload (bigger file, less CPU)
+          compression-level: 0
 
   deploy:
     needs: build
