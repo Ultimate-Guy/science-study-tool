@@ -300,6 +300,11 @@
             "aliases": [],
             "categories": []
       },
+        "Car Demolition Derby Crash Racing": {
+            "path": "demolition-derby-crash-racing.html",
+            "aliases": [],
+            "categories": []
+      },
         "Destroy The Car": {
             "path": "destory-the-car",
             "aliases": [],
@@ -507,6 +512,11 @@
         },
         "Fluid Sim": {
             "path": "fluid-sim",
+            "aliases": [],
+            "categories": []
+       },
+        "Flying Car Simulator": {
+            "path": "flying-car-simulator",
             "aliases": [],
             "categories": []
         },
@@ -831,6 +841,11 @@
             "path": "rocket-league-2d",
             "aliases": [],
             "categories": []
+       },
+        "Rocket Soccer Derby": {
+            "path": "rocket-soccer-derby",
+            "aliases": [],
+            "categories": []
         },
         "Rogue Soul": {
             "path": "flash/?game=rogue-soul",
@@ -911,6 +926,11 @@
             "path": "sandspiel",
             "aliases": [],
             "categories": []
+       },
+        "School Bus Demolition Derby": {
+            "path": "school-bus-demolition-derby.html",
+            "aliases": [],
+            "categories": []
         },
         "Scuba Bear": {
             "path": "scuba-bear",
@@ -949,6 +969,11 @@
         },
         "Soccer Random": {
             "path": "soccer-random",
+            "aliases": [],
+            "categories": []
+      },
+        "Soccer Skills Champions League": {
+            "path": "soccer-skils-champions-league.html",
             "aliases": [],
             "categories": []
         },
@@ -1084,6 +1109,11 @@
         },
         "Tic Tac What?": {
             "path": "tic-tac-what",
+            "aliases": [],
+            "categories": []
+       },
+        "Tiger Simulator 3d": {
+            "path": "tiger-simulator-3d",
             "aliases": [],
             "categories": []
         },
