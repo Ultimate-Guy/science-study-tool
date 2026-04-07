@@ -20,7 +20,7 @@ jobs:
       name: github-pages
 
     steps:
-      # Sparse checkout only required files
+      # Sparse checkout of required files
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -52,10 +52,10 @@ jobs:
             fonts
           compression-level: 0
 
-      # Upload game chunks directly from sparse checkout
-      - name: Upload games in chunks
+      # Upload games in chunks safely
+      - name: Upload game chunks
         run: |
-          CHUNK_SIZE=1800000000  # ~1.8GB per artifact
+          CHUNK_SIZE=1800000000  # ~1.8GB
           CHUNK_NUM=1
           CURRENT_SIZE=0
           mkdir -p temp-chunk
@@ -64,7 +64,7 @@ jobs:
             SIZE=$(du -s -B1 "$game" | cut -f1)
             if [ $((CURRENT_SIZE + SIZE)) -gt $CHUNK_SIZE ]; then
               echo "Uploading chunk-$CHUNK_NUM"
-              gh run artifact upload temp-chunk --name "chunk-$CHUNK_NUM" --compression-level=0 || true
+              gh workflow run upload-pages-artifact@v3 --with "path=temp-chunk compression-level=0" || true
               CHUNK_NUM=$((CHUNK_NUM + 1))
               CURRENT_SIZE=0
               rm -rf temp-chunk
@@ -77,7 +77,7 @@ jobs:
           # Upload last chunk
           if [ "$(ls -A temp-chunk)" ]; then
             echo "Uploading final chunk-$CHUNK_NUM"
-            gh run artifact upload temp-chunk --name "chunk-$CHUNK_NUM" --compression-level=0 || true
+            gh workflow run upload-pages-artifact@v3 --with "path=temp-chunk compression-level=0" || true
           fi
 
       # Deploy all uploaded artifacts to GitHub Pages
