@@ -35,11 +35,11 @@
         .user-label { color: var(--p-red); }
         .ai-label { color: #555; }
         .content { line-height: 1.8; font-size: 15px; color: #e0e0e0; }
-        pre { background: #000 !important; border: 1px solid #222; padding: 15px; border-radius: 8px; }
+        pre { background: #000 !important; border: 1px solid #222; padding: 15px; border-radius: 8px; overflow-x: auto; }
         #input-wrapper { padding: 20px 15% 40px 15%; background: linear-gradient(transparent, var(--bg)); }
         #input-container { background: #0a0808; border: 1px solid #211; border-radius: 8px; padding: 15px; display: flex; align-items: center; gap: 15px; }
         textarea { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; resize: none; font-family: inherit; }
-        .btn { color: var(--p-red); cursor: pointer; transition: 0.2s; font-size: 18px; }
+        .btn { color: var(--p-red); cursor: pointer; font-size: 18px; }
     </style>
 </head>
 <body>
@@ -54,7 +54,6 @@
     <div id="chat-container"></div>
     <div id="input-wrapper">
         <div id="input-container">
-            <div class="btn" onclick="handleFileUpload()">⊕</div>
             <textarea id="user-input" placeholder="Ask Phoenix AI..." rows="1" autofocus></textarea>
             <div class="btn" onclick="sendMessage()">➔</div>
         </div>
@@ -67,30 +66,18 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    let history = [{ role: "system", content: "You are Phoenix AI, an elite engineer. Respond in professional Markdown." }];
+    // 1. UPDATE THIS WITH YOUR LIVE WORKER URL
+    const WORKER_URL = "https://workers.dev"; 
 
-    // 1. PERSISTENCE: Restore session on load
-    (async () => {
-        try {
-            const saved = await puter.kv.get('phoenix_history');
-            if(saved) {
-                history = JSON.parse(saved);
-                history.slice(1).forEach(m => appendMessage(m.role, m.content));
-            }
-        } catch(e) { console.log("Fresh session started"); }
+    let history = [{ role: "system", content: "You are Phoenix AI. Respond in professional Markdown." }];
+
+    (function init() {
+        const saved = localStorage.getItem('phoenix_history');
+        if(saved) {
+            history = JSON.parse(saved);
+            history.slice(1).forEach(m => appendMessage(m.role, m.content, false));
+        }
     })();
-
-    // 2. FILE UPLOAD: Trigger native Puter cloud picker
-    async function handleFileUpload() {
-        try {
-            const files = await puter.fs.upload(); // Returns FSItem object
-            const file = Array.isArray(files) ? files[0] : files;
-            const text = `Analyzing file: ${file.name} (stored at ${file.path})`;
-            appendMessage('user', text);
-            history.push({role: "user", content: text});
-            await getAIResponse();
-        } catch(e) { console.log("Upload cancelled"); }
-    }
 
     async function sendMessage() {
         const text = input.value.trim();
@@ -101,41 +88,64 @@
         await getAIResponse();
     }
 
-    // 3. AI LOGIC: Accessing properties correctly for GPT-4o
     async function getAIResponse() {
-        const loading = appendMessage('ai', '...');
-        const contentDiv = loading.querySelector('.content');
-        
+        const messageDiv = appendMessage('ai', '...');
+        const contentDiv = messageDiv.querySelector('.content');
+        let fullResponse = "";
+
         try {
-            // Force sign-in if needed
-            if (!puter.auth.isSignedIn()) await puter.auth.signIn();
-            
-            const response = await puter.ai.chat(history, { model: 'gpt-4o' });
-            const responseText = response.message.content; // The content is nested here
-            
-            contentDiv.innerHTML = marked.parse(responseText);
+            const response = await fetch(WORKER_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ messages: history })
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            contentDiv.innerHTML = ""; 
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split("\n");
+
+                for (const line of lines) {
+                    if (line.trim().startsWith("data: ")) {
+                        const dataStr = line.replace("data: ", "").trim();
+                        if (dataStr === "[DONE]") break;
+                        try {
+                            const json = JSON.parse(dataStr);
+                            const content = json.choices[0]?.delta?.content || "";
+                            fullResponse += content;
+                            contentDiv.innerHTML = marked.parse(fullResponse);
+                            container.scrollTop = container.scrollHeight;
+                        } catch (e) {}
+                    }
+                }
+            }
             Prism.highlightAllUnder(contentDiv);
-            
-            history.push({ role: "assistant", content: responseText });
-            await puter.kv.set('phoenix_history', JSON.stringify(history)); // Persist
+            history.push({ role: "assistant", content: fullResponse });
+            localStorage.setItem('phoenix_history', JSON.stringify(history));
         } catch(e) {
-            contentDiv.innerText = "SIGNAL_LOST: Connection or Auth Error.";
-            console.error(e);
+            contentDiv.innerText = "SIGNAL_LOST: Connection Error.";
         }
     }
 
-    function appendMessage(role, text) {
+    function appendMessage(role, text, anim = true) {
         const div = document.createElement('div');
         div.className = 'message';
+        if(!anim) div.style.animation = 'none';
         div.innerHTML = `<div class="label ${role}-label">>> ${role.toUpperCase()}</div><div class="content">${marked.parse(text)}</div>`;
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
         return div;
     }
 
-    function clearSession() { puter.kv.del('phoenix_history'); location.reload(); }
+    function clearSession() { localStorage.removeItem('phoenix_history'); location.reload(); }
 
-    // Visuals...
+    // Red Particle Visuals
     let particles = [];
     window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     window.onresize();
@@ -151,6 +161,7 @@
         requestAnimationFrame(animate);
     }
     animate();
+
     input.addEventListener("keypress", e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 </script>
 </body>
