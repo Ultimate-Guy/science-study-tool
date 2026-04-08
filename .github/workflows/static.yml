@@ -1,4 +1,4 @@
-name: Deploy Static Site Ultra-Fast Safe
+name: Deploy Static Site Ultra-Fast File-Level
 
 on:
   push:
@@ -17,49 +17,53 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout full repository
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Determine changed games
-      - name: Determine changed games
+      # 2️⃣ Determine changed files
+      - name: Get changed files
         id: changes
         run: |
-          # Default: nothing changed
-          CHANGED_GAMES=""
-
-          # Only try git diff if not first commit
+          # Detect changes compared to previous commit, fallback to all files on first commit
           if git rev-parse HEAD^ >/dev/null 2>&1; then
-            CHANGED_GAMES=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
+            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
           else
-            # First commit → all games
-            CHANGED_GAMES=$(ls games || true)
+            CHANGED_FILES=$(git ls-files)
           fi
 
-          echo "changed_games=$CHANGED_GAMES" >> $GITHUB_OUTPUT
+          # Save outputs
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
 
       # 3️⃣ Prepare public folder
       - name: Prepare public folder
         run: |
           mkdir -p public
 
-          # Copy top-level assets (always update if newer)
+          # Top-level assets to always copy
           ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           for asset in $ASSETS; do
-            if [ -e "$asset" ]; then
+            if echo "${{ steps.changes.outputs.changed_files }}" | grep -q "^$asset"; then
               rsync -au "$asset" public/
             fi
           done
 
-          # Copy only changed games, but ensure all exist at least once
+          # Deploy changed game files only
           mkdir -p public/games
+          for file in ${{ steps.changes.outputs.changed_files }}; do
+            if [[ $file == games/* ]]; then
+              # Copy using relative path to preserve folder structure
+              rsync -R "$file" public/
+            fi
+          done
+
+          # Ensure any new games get copied fully (first commit or new folder)
           for folder in games/*; do
             NAME=$(basename "$folder")
-            # Copy if changed OR if folder doesn't exist yet in public
-            if [ -d "$folder" ] && ( [[ "${{ steps.changes.outputs.changed_games }}" == *"$NAME"* ]] || [ ! -d "public/games/$NAME" ] ); then
-              rsync -au "$folder/" "public/games/$NAME/"
+            if [ ! -d "public/games/$NAME" ]; then
+              rsync -a "$folder/" "public/games/$NAME/"
             fi
           done
 
@@ -70,5 +74,5 @@ jobs:
           path: public
 
       # 5️⃣ Deploy
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         uses: actions/deploy-pages@v4
