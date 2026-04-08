@@ -10,42 +10,55 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages-main2-full"
+  group: "pages-main2-smart"
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout ultra-minimal
+      - name: Checkout minimal
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 2 # Needed to check previous commit for changes
           filter: blob:none
-          sparse-checkout: |
-            index.html
-            404.html
-            favicon.ico
-            config.jsonc
-            css
-            js
-            imgs
-            fonts
-            games
-          sparse-checkout-cone-mode: true
+
+      - name: Detect if games changed
+        id: changes
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep '^games/'; then
+            echo "games_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "games_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Sparse checkout (smart)
+        run: |
+          git sparse-checkout init --cone
+          if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
+            echo "Including games..."
+            git sparse-checkout set index.html 404.html favicon.ico config.jsonc css js imgs fonts games
+          else
+            echo "Skipping games..."
+            git sparse-checkout set index.html 404.html favicon.ico config.jsonc css js imgs fonts
+          fi
 
       - name: Prepare deploy folder
         run: |
           mkdir -p public
           # Copy main site files
           cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts public/
-          # Copy all games into public
-          cp -r games/* public/
+          
+          # Copy games only if they changed
+          if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
+            echo "Copying games..."
+            cp -r games/. public/games/
+          fi
 
-      - name: Upload artifact (fast)
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public  # no compression for max speed
+          path: public
 
       - name: Deploy
         uses: actions/deploy-pages@v4
