@@ -1,4 +1,4 @@
-name: Deploy Static Site Ultra-Fast Cached
+name: Deploy Static Site
 
 on:
   push:
@@ -23,16 +23,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2️⃣ Restore cache for public folder
-      - name: Restore public cache
-        uses: actions/cache@v3
-        with:
-          path: public
-          key: public-cache-${{ github.sha }}
-          restore-keys: |
-            public-cache-
-
-      # 3️⃣ Determine changed files
+      # 2️⃣ Determine changed files
       - name: Get changed files
         id: changes
         run: |
@@ -43,48 +34,49 @@ jobs:
           fi
           echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
 
-      # 4️⃣ Prepare public folder incrementally
-      - name: Prepare public folder
-        run: |
+      # 3️⃣ Deploy top-level assets (cached)
+      - name: Deploy top-level assets
+        uses: actions/cache@v3
+        with:
+          path: public_top
+          key: top-assets-${{ github.sha }}
+          restore-keys: top-assets-
+      - run: |
           mkdir -p public
-
-          # Top-level assets
           ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           for asset in $ASSETS; do
             if echo "${{ steps.changes.outputs.changed_files }}" | grep -q "^$asset"; then
               rsync -au "$asset" public/
+            elif [ -e "public_top/$asset" ]; then
+              rsync -au "public_top/$asset" public/
             fi
           done
+          cp -r public/* public_top/
 
-          # Incremental game files
+      # 4️⃣ Deploy games incrementally, per-folder caching
+      - name: Deploy changed games
+        run: |
           mkdir -p public/games
-          for file in ${{ steps.changes.outputs.changed_files }}; do
-            if [[ $file == games/* ]]; then
-              rsync -R "$file" public/
-            fi
-          done
-
-          # Ensure new games exist
           for folder in games/*; do
             NAME=$(basename "$folder")
-            if [ ! -d "public/games/$NAME" ]; then
+            CACHE_KEY="game-${NAME}-${{ github.sha }}"
+
+            # Check if folder has changes or new
+            if echo "${{ steps.changes.outputs.changed_files }}" | grep -q "^games/$NAME/"; then
+              # Use rsync to copy changed files only
+              rsync -au "$folder/" "public/games/$NAME/"
+            elif [ ! -d "public/games/$NAME" ]; then
+              # New game folder
               rsync -a "$folder/" "public/games/$NAME/"
             fi
           done
 
-      # 5️⃣ Save cache for next build
-      - name: Save public cache
-        uses: actions/cache@v3
-        with:
-          path: public
-          key: public-cache-${{ github.sha }}
-
-      # 6️⃣ Upload artifact
+      # 5️⃣ Upload artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
-      # 7️⃣ Deploy
-      - name: Deploy to GitHub Pages
+      # 6️⃣ Deploy
+      - name: Deploy
         uses: actions/deploy-pages@v4
