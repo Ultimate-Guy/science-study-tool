@@ -14,26 +14,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prepare:
+  deploy:
     runs-on: ubuntu-latest
-    outputs:
-      top_assets: ${{ steps.detect.outputs.top_assets }}
-      games: ${{ steps.detect.outputs.games }}
     steps:
-      - name: Checkout sparse repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          sparse: true
-          paths: |
-            index.html
-            404.html
-            favicon.ico
-            config.jsonc
-            css
-            js
-            fonts
-            imgs
 
       - name: Restore public cache
         uses: actions/cache@v3
@@ -43,48 +30,57 @@ jobs:
           restore-keys: public-${{ github.ref }}-
 
       - name: Detect changed files
-        id: detect
+        id: changes
         run: |
-          # Top-level assets
-          ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
-          TOP_CHANGED=""
-          for asset in $ASSETS; do
-            if git diff --name-only HEAD^ HEAD | grep -q "^$asset"; then
-              TOP_CHANGED="$TOP_CHANGED $asset"
-            fi
-          done
+          # Default: everything changed (first commit)
+          GAMES_CHANGED=true
+          TOP_CHANGED="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
 
-          # All changed games (or all games on first commit)
           if git rev-parse HEAD^ >/dev/null 2>&1; then
+            # Detect top-level asset changes
+            TOP_CHANGED=$(git diff --name-only HEAD^ HEAD | grep -E '^(index.html|404.html|favicon.ico|config.jsonc|css|js|fonts|imgs)' || echo "")
+            # Detect changed games
             GAMES_CHANGED=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
           else
+            # First commit → include all games
             GAMES_CHANGED=$(ls games)
           fi
 
-          echo "top_assets=${TOP_CHANGED}" >> $GITHUB_OUTPUT
-          echo "games=${GAMES_CHANGED}" >> $GITHUB_OUTPUT
+          echo "top_changed=$TOP_CHANGED" >> $GITHUB_OUTPUT
+          echo "games_changed=$GAMES_CHANGED" >> $GITHUB_OUTPUT
 
-  deploy:
-    needs: prepare
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout full repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Prebuild public folder
+      - name: Build public folder
         run: |
           mkdir -p public
+
           # Copy top-level assets
-          for asset in ${{ needs.prepare.outputs.top_assets }}; do
-            [ -e "$asset" ] && rsync -au "$asset" public/
-          done
-          # Copy all games (safe and always works)
-          for folder in ${{ needs.prepare.outputs.games }}; do
-            mkdir -p public/games/$folder
-            rsync -a "games/$folder/" "public/games/$folder/"
-          done
+          if [ -n "${{ steps.changes.outputs.top_changed }}" ]; then
+            for asset in ${{ steps.changes.outputs.top_changed }}; do
+              [ -e "$asset" ] && rsync -au "$asset" public/
+            done
+          fi
+
+          # Copy changed games
+          if [ -n "${{ steps.changes.outputs.games_changed }}" ]; then
+            for folder in ${{ steps.changes.outputs.games_changed }}; do
+              mkdir -p public/games/$folder
+              rsync -a "games/$folder/" "public/games/$folder/"
+            done
+          fi
+
+          # First deploy fallback: ensure public has everything if cache empty
+          if [ ! -e public/index.html ]; then
+            echo "Fallback: copying all assets and games..."
+            ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
+            for asset in $ASSETS; do
+              [ -e "$asset" ] && rsync -au "$asset" public/
+            done
+            for folder in games/*; do
+              NAME=$(basename "$folder")
+              mkdir -p public/games/$NAME
+              rsync -a "games/$NAME/" "public/games/$NAME/"
+            done
+          fi
 
       - name: Save public cache
         uses: actions/cache@v3
