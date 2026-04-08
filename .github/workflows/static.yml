@@ -4,6 +4,9 @@ on:
   push:
     branches: ["main2"]
 
+permissions:
+  contents: write   # 🔥 REQUIRED for pushing
+
 concurrency:
   group: "pages-main2"
   cancel-in-progress: true
@@ -13,20 +16,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (fastest possible)
+      - name: Checkout (fast)
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          clean: false
 
-      - name: Disable git compression (faster push)
+      - name: Configure Git (fix exit 128)
         run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
           git config --global core.compression 0
+          git config --global http.postBuffer 524288000
 
-      - name: Deploy to gh-pages (optimized)
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
-          publish_branch: gh-pages
-          force_orphan: true
+      - name: Deploy to gh-pages safely
+        run: |
+          # Create clean deploy folder
+          mkdir deploy
+          rsync -a --delete ./ deploy/ --exclude .git --exclude deploy
+
+          cd deploy
+          git init
+          git checkout -b gh-pages
+
+          git add .
+          git commit -m "Deploy site"
+
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git push origin gh-pages --force
