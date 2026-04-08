@@ -20,10 +20,22 @@ jobs:
       changed_top_assets: ${{ steps.set-output.outputs.top_assets }}
       changed_games: ${{ steps.set-output.outputs.games }}
     steps:
-      - name: Checkout repository
+      - name: Checkout repository sparse
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          sparse: true
+          # only top-level files and folders we care about initially
+          # games folder will be selectively added later
+          paths: |
+            index.html
+            404.html
+            favicon.ico
+            config.jsonc
+            css
+            js
+            fonts
+            imgs
 
       - name: Restore public cache
         uses: actions/cache@v3
@@ -35,7 +47,7 @@ jobs:
       - name: Detect changed files
         id: set-output
         run: |
-          # Top-level assets to monitor
+          # Top-level assets
           ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           TOP_CHANGED=""
           for asset in $ASSETS; do
@@ -61,10 +73,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.prepare.outputs.changed_top_assets != '' }}
     steps:
-      - name: Checkout repository
+      - name: Checkout repository sparse
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          sparse: true
+          paths: ${{ needs.prepare.outputs.changed_top_assets }}
 
       - name: Deploy top-level assets
         run: |
@@ -81,16 +95,17 @@ jobs:
         game: [${{ needs.prepare.outputs.games }}]
       fail-fast: false
     steps:
-      - name: Checkout repository
+      - name: Checkout specific game folder sparse
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          sparse: true
+          paths: "games/${{ matrix.game }}"
 
       - name: Deploy changed game folder
         run: |
           mkdir -p public/games
-          FOLDER="games/${{ matrix.game }}"
-          rsync -a "$FOLDER/" "public/games/${{ matrix.game }}/"
+          rsync -a "games/${{ matrix.game }}/" "public/games/${{ matrix.game }}/"
 
   finalize:
     needs: [deploy_top_assets, deploy_games]
