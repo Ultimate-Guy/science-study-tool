@@ -20,28 +20,30 @@ jobs:
       - name: Checkout full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # ensures git diff works safely
+          fetch-depth: 0  # ✅ fetch all commits to safely diff
           filter: blob:none
 
-      - name: Detect changed games
+      - name: Determine changed games
         id: changes
         run: |
-          # Default: no changed folders
+          # Default values
           CHANGED=""
           GAMES_CHANGED=false
 
-          # If HEAD has a parent, detect changed game folders
+          # Only try git diff if HEAD has a parent
           if git rev-parse HEAD^ >/dev/null 2>&1; then
+            # Get top-level folders under games that changed
             CHANGED=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
             if [ -n "$CHANGED" ]; then
               GAMES_CHANGED=true
             fi
           else
-            # First commit → all games considered changed
+            # First commit or single-commit branch → all games considered changed
             CHANGED=$(ls games)
             GAMES_CHANGED=true
           fi
 
+          # Export to workflow outputs
           echo "games_changed=$GAMES_CHANGED" >> $GITHUB_OUTPUT
           echo "changed_folders=$CHANGED" >> $GITHUB_OUTPUT
 
@@ -57,10 +59,8 @@ jobs:
       - name: Prepare deploy folder
         run: |
           mkdir -p public
-          # Copy main site files
           rsync -a index.html 404.html favicon.ico config.jsonc css js imgs fonts public/
 
-          # Copy only changed game folders
           if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
             for folder in ${{ steps.changes.outputs.changed_folders }}; do
               mkdir -p public/games/$folder
