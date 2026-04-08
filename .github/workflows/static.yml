@@ -1,4 +1,4 @@
-name: Deploy Static Site Ultra-Fast File-Level
+name: Deploy Static Site Ultra-Fast Cached
 
 on:
   push:
@@ -17,32 +17,38 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Determine changed files
+      # 2️⃣ Restore cache for public folder
+      - name: Restore public cache
+        uses: actions/cache@v3
+        with:
+          path: public
+          key: public-cache-${{ github.sha }}
+          restore-keys: |
+            public-cache-
+
+      # 3️⃣ Determine changed files
       - name: Get changed files
         id: changes
         run: |
-          # Detect changes compared to previous commit, fallback to all files on first commit
           if git rev-parse HEAD^ >/dev/null 2>&1; then
             CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
           else
             CHANGED_FILES=$(git ls-files)
           fi
-
-          # Save outputs
           echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
 
-      # 3️⃣ Prepare public folder
+      # 4️⃣ Prepare public folder incrementally
       - name: Prepare public folder
         run: |
           mkdir -p public
 
-          # Top-level assets to always copy
+          # Top-level assets
           ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           for asset in $ASSETS; do
             if echo "${{ steps.changes.outputs.changed_files }}" | grep -q "^$asset"; then
@@ -50,16 +56,15 @@ jobs:
             fi
           done
 
-          # Deploy changed game files only
+          # Incremental game files
           mkdir -p public/games
           for file in ${{ steps.changes.outputs.changed_files }}; do
             if [[ $file == games/* ]]; then
-              # Copy using relative path to preserve folder structure
               rsync -R "$file" public/
             fi
           done
 
-          # Ensure any new games get copied fully (first commit or new folder)
+          # Ensure new games exist
           for folder in games/*; do
             NAME=$(basename "$folder")
             if [ ! -d "public/games/$NAME" ]; then
@@ -67,12 +72,19 @@ jobs:
             fi
           done
 
-      # 4️⃣ Upload artifact
+      # 5️⃣ Save cache for next build
+      - name: Save public cache
+        uses: actions/cache@v3
+        with:
+          path: public
+          key: public-cache-${{ github.sha }}
+
+      # 6️⃣ Upload artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
-      # 5️⃣ Deploy
-      - name: Deploy
+      # 7️⃣ Deploy
+      - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
