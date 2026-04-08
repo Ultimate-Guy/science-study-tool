@@ -17,51 +17,48 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout full repo
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Determine changed files
-      - name: Get changed files
-        id: changes
+      # 2️⃣ Compute top-level asset changes
+      - name: Determine changed top-level assets
+        id: top_changes
         run: |
-          if git rev-parse HEAD^ >/dev/null 2>&1; then
-            git diff --name-only HEAD^ HEAD > changed.txt
-          else
-            git ls-files > changed.txt
-          fi
-          echo "changed_files=$(cat changed.txt | tr '\n' ' ')" >> $GITHUB_OUTPUT
+          ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
+          CHANGED_ASSETS=""
+          for asset in $ASSETS; do
+            if git diff --name-only HEAD^ HEAD | grep -q "^$asset"; then
+              CHANGED_ASSETS="$CHANGED_ASSETS $asset"
+            fi
+          done
+          echo "changed_assets=$CHANGED_ASSETS" >> $GITHUB_OUTPUT
 
-      # 3️⃣ Prepare public folder incrementally
+      # 3️⃣ Prepare public folder
       - name: Prepare public folder
         run: |
           mkdir -p public
 
-          # 3a. Top-level assets
-          ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
-          for asset in $ASSETS; do
-            if echo "${{ steps.changes.outputs.changed_files }}" | grep -q "^$asset"; then
-              rsync -au "$asset" public/
-            elif [ ! -e "public/$asset" ]; then
-              rsync -a "$asset" public/
-            fi
+          # 3a. Copy only changed top-level assets
+          for asset in ${{ steps.top_changes.outputs.changed_assets }}; do
+            rsync -au "$asset" public/
           done
 
-          # 3b. Deploy only changed files in games/
+          # 3b. Deploy games incrementally using hashes
           mkdir -p public/games
-          for file in ${{ steps.changes.outputs.changed_files }}; do
-            if [[ $file == games/* ]]; then
-              rsync -R "$file" public/
-            fi
-          done
+          mkdir -p .game_hashes
 
-          # 3c. Deploy new game folders fully (if they don’t exist in public)
           for folder in games/*; do
             NAME=$(basename "$folder")
-            if [ ! -d "public/games/$NAME" ]; then
+            HASH=$(find "$folder" -type f -exec sha1sum {} \; | sha1sum | awk '{print $1}')
+            HASH_FILE=".game_hashes/$NAME.hash"
+
+            # If hash changed or new game, deploy
+            if [ ! -f "$HASH_FILE" ] || [ "$(cat $HASH_FILE)" != "$HASH" ]; then
               rsync -a "$folder/" "public/games/$NAME/"
+              echo "$HASH" > "$HASH_FILE"
             fi
           done
 
