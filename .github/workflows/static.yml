@@ -14,61 +14,99 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      changed_top_assets: ${{ steps.set-output.outputs.top_assets }}
+      changed_games: ${{ steps.set-output.outputs.games }}
     steps:
-      # 1️⃣ Checkout full repo
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Compute top-level asset changes
-      - name: Determine changed top-level assets
-        id: top_changes
+      - name: Restore public cache
+        uses: actions/cache@v3
+        with:
+          path: public
+          key: public-${{ github.ref }}
+          restore-keys: public-${{ github.ref }}-
+
+      - name: Detect changed files
+        id: set-output
         run: |
+          # Top-level assets to monitor
           ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
-          CHANGED_ASSETS=""
+          TOP_CHANGED=""
           for asset in $ASSETS; do
             if git diff --name-only HEAD^ HEAD | grep -q "^$asset"; then
-              CHANGED_ASSETS="$CHANGED_ASSETS $asset"
+              TOP_CHANGED="$TOP_CHANGED $asset"
             fi
           done
-          echo "changed_assets=$CHANGED_ASSETS" >> $GITHUB_OUTPUT
 
-      # 3️⃣ Prepare public folder
-      - name: Prepare public folder
+          # Detect changed game folders
+          GAMES_CHANGED=""
+          for folder in games/*; do
+            NAME=$(basename "$folder")
+            if git diff --name-only HEAD^ HEAD | grep -q "^games/$NAME/"; then
+              GAMES_CHANGED="$GAMES_CHANGED $NAME"
+            fi
+          done
+
+          echo "top_assets=$TOP_CHANGED" >> $GITHUB_OUTPUT
+          echo "games=$GAMES_CHANGED" >> $GITHUB_OUTPUT
+
+  deploy_top_assets:
+    needs: prepare
+    runs-on: ubuntu-latest
+    if: ${{ needs.prepare.outputs.changed_top_assets != '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy top-level assets
         run: |
           mkdir -p public
-
-          # 3a. Copy only changed top-level assets
-          for asset in ${{ steps.top_changes.outputs.changed_assets }}; do
+          for asset in ${{ needs.prepare.outputs.changed_top_assets }}; do
             rsync -au "$asset" public/
           done
 
-          # 3b. Deploy games incrementally using hashes
+  deploy_games:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        game: [${{ needs.prepare.outputs.games }}]
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy changed game folder
+        run: |
           mkdir -p public/games
-          mkdir -p .game_hashes
+          FOLDER="games/${{ matrix.game }}"
+          rsync -a "$FOLDER/" "public/games/${{ matrix.game }}/"
 
-          for folder in games/*; do
-            NAME=$(basename "$folder")
-            HASH=$(find "$folder" -type f -exec sha1sum {} \; | sha1sum | awk '{print $1}')
-            HASH_FILE=".game_hashes/$NAME.hash"
+  finalize:
+    needs: [deploy_top_assets, deploy_games]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save public cache
+        uses: actions/cache@v3
+        with:
+          path: public
+          key: public-${{ github.ref }}
 
-            # If hash changed or new game, deploy
-            if [ ! -f "$HASH_FILE" ] || [ "$(cat $HASH_FILE)" != "$HASH" ]; then
-              rsync -a "$folder/" "public/games/$NAME/"
-              echo "$HASH" > "$HASH_FILE"
-            fi
-          done
-
-      # 4️⃣ Upload artifact (always present)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
-      # 5️⃣ Deploy
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
         with:
