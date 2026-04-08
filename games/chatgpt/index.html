@@ -55,7 +55,7 @@
     <div id="input-wrapper">
         <div id="input-container">
             <div class="btn" onclick="handleFileUpload()">⊕</div>
-            <textarea id="user-input" placeholder="Request analysis..." rows="1" autofocus></textarea>
+            <textarea id="user-input" placeholder="Ask Phoenix AI..." rows="1" autofocus></textarea>
             <div class="btn" onclick="sendMessage()">➔</div>
         </div>
     </div>
@@ -67,23 +67,29 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    let history = [{ role: "system", content: "You are Phoenix AI, an elite engineer. Be concise." }];
+    let history = [{ role: "system", content: "You are Phoenix AI, an elite engineer. Respond in professional Markdown." }];
 
-    // Persistence & Init
+    // 1. PERSISTENCE: Restore session on load
     (async () => {
-        const saved = await puter.kv.get('phoenix_chat');
-        if(saved) {
-            history = JSON.parse(saved);
-            history.slice(1).forEach(m => appendMessage(m.role, m.content));
-        }
+        try {
+            const saved = await puter.kv.get('phoenix_history');
+            if(saved) {
+                history = JSON.parse(saved);
+                history.slice(1).forEach(m => appendMessage(m.role, m.content));
+            }
+        } catch(e) { console.log("Fresh session started"); }
     })();
 
+    // 2. FILE UPLOAD: Trigger native Puter cloud picker
     async function handleFileUpload() {
-        const file = await puter.fs.upload();
-        const msg = `Analyzing file: ${file.name}`;
-        appendMessage('user', msg);
-        history.push({role: "user", content: msg});
-        await getAIResponse();
+        try {
+            const files = await puter.fs.upload(); // Returns FSItem object
+            const file = Array.isArray(files) ? files[0] : files;
+            const text = `Analyzing file: ${file.name} (stored at ${file.path})`;
+            appendMessage('user', text);
+            history.push({role: "user", content: text});
+            await getAIResponse();
+        } catch(e) { console.log("Upload cancelled"); }
     }
 
     async function sendMessage() {
@@ -95,19 +101,26 @@
         await getAIResponse();
     }
 
+    // 3. AI LOGIC: Accessing properties correctly for GPT-4o
     async function getAIResponse() {
         const loading = appendMessage('ai', '...');
         const contentDiv = loading.querySelector('.content');
         
         try {
-            // FIXED: Using string response to avoid "3 dots" streaming hang
-            const response = await puter.ai.chat(history, {model: 'gpt-4o'});
-            contentDiv.innerHTML = marked.parse(response);
+            // Force sign-in if needed
+            if (!puter.auth.isSignedIn()) await puter.auth.signIn();
+            
+            const response = await puter.ai.chat(history, { model: 'gpt-4o' });
+            const responseText = response.message.content; // The content is nested here
+            
+            contentDiv.innerHTML = marked.parse(responseText);
             Prism.highlightAllUnder(contentDiv);
-            history.push({role: "assistant", content: response});
-            await puter.kv.set('phoenix_chat', JSON.stringify(history));
+            
+            history.push({ role: "assistant", content: responseText });
+            await puter.kv.set('phoenix_history', JSON.stringify(history)); // Persist
         } catch(e) {
-            contentDiv.innerText = "SIGNAL_LOST: RE-AUTHENTICATE";
+            contentDiv.innerText = "SIGNAL_LOST: Connection or Auth Error.";
+            console.error(e);
         }
     }
 
@@ -120,9 +133,9 @@
         return div;
     }
 
-    function clearSession() { puter.kv.del('phoenix_chat'); location.reload(); }
+    function clearSession() { puter.kv.del('phoenix_history'); location.reload(); }
 
-    // Particle Background
+    // Visuals...
     let particles = [];
     window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     window.onresize();
