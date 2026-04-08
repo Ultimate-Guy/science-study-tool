@@ -10,33 +10,35 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages-main2-partial"
+  group: "pages-main2-partial-safe"
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout full history
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0      # ✅ needed to diff
+          fetch-depth: 2   # at least 2 commits to detect changes
           filter: blob:none
 
-      - name: Detect changed games
+      - name: Determine changed games
         id: changes
         run: |
-          # Handle first commit safely
+          # Check if current commit has a parent
           if git rev-parse HEAD^ >/dev/null 2>&1; then
-            # List all changed top-level games folders
+            # Parent exists → detect changed game folders
             CHANGED=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
             if [ -z "$CHANGED" ]; then
               echo "games_changed=false" >> $GITHUB_OUTPUT
+              echo "changed_folders=" >> $GITHUB_OUTPUT
             else
               echo "games_changed=true" >> $GITHUB_OUTPUT
               echo "changed_folders=$CHANGED" >> $GITHUB_OUTPUT
             fi
           else
+            # First commit → deploy all games
             echo "games_changed=true" >> $GITHUB_OUTPUT
             CHANGED=$(ls games)
             echo "changed_folders=$CHANGED" >> $GITHUB_OUTPUT
@@ -46,7 +48,6 @@ jobs:
         run: |
           git sparse-checkout init --cone
           if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
-            # Include only changed folders + main site files
             git sparse-checkout set index.html 404.html favicon.ico config.jsonc css js imgs fonts $(echo "${{ steps.changes.outputs.changed_folders }}" | sed 's/^/games\//g')
           else
             git sparse-checkout set index.html 404.html favicon.ico config.jsonc css js imgs fonts
@@ -55,13 +56,10 @@ jobs:
       - name: Prepare deploy folder
         run: |
           mkdir -p public
-          # Copy main site files
           cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts public/
           
-          # Copy only changed games folders
           if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
             for folder in ${{ steps.changes.outputs.changed_folders }}; do
-              echo "Copying games/$folder..."
               mkdir -p public/games/$folder
               cp -r games/$folder/. public/games/$folder/
             done
