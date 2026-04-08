@@ -23,16 +23,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2️⃣ Get changed files
-      - name: Determine changed files
+      # 2️⃣ Determine changed files
+      - name: Get changed files
         id: changes
         run: |
           if git rev-parse HEAD^ >/dev/null 2>&1; then
-            CHANGED=$(git diff --name-only HEAD^ HEAD)
+            git diff --name-only HEAD^ HEAD > changed.txt
           else
-            CHANGED=$(git ls-files)
+            git ls-files > changed.txt
           fi
-          echo "changed_files=$CHANGED" >> $GITHUB_OUTPUT
+          echo "changed_files=$(cat changed.txt | tr '\n' ' ')" >> $GITHUB_OUTPUT
 
       # 3️⃣ Prepare public folder incrementally
       - name: Prepare public folder
@@ -49,7 +49,7 @@ jobs:
             fi
           done
 
-          # 3b. Game files - only changed files, preserve folder structure
+          # 3b. Deploy only changed files in games/
           mkdir -p public/games
           for file in ${{ steps.changes.outputs.changed_files }}; do
             if [[ $file == games/* ]]; then
@@ -57,7 +57,7 @@ jobs:
             fi
           done
 
-          # 3c. Ensure new game folders are fully deployed
+          # 3c. Deploy new game folders fully (if they don’t exist in public)
           for folder in games/*; do
             NAME=$(basename "$folder")
             if [ ! -d "public/games/$NAME" ]; then
@@ -65,7 +65,7 @@ jobs:
             fi
           done
 
-      # 4️⃣ Upload artifact (always required to avoid deploy error)
+      # 4️⃣ Upload artifact (always present)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -75,5 +75,4 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
         with:
-          # Ensures deploy works even if no files changed
           artifact_path: public
