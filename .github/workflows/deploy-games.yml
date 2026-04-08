@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main2"]
     paths:
-      - "games/**"  # Only trigger when games change
+      - "games/**"
 
 permissions:
   contents: read
@@ -28,15 +28,15 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      - name: Prepare deploy folder
+      - name: Prepare deploy folder (contents only)
         run: |
           mkdir -p public
-          cp -r games public/
+          cp -r games/* public/  # <- copy contents instead of folder
 
       - name: Upload artifact (fast)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public  # no compression for max speed
+          path: public
 
       - name: Deploy
         uses: actions/deploy-pages@v4
