@@ -1,4 +1,4 @@
-name: Deploy Static Site Safely
+name: Deploy Static Site Incrementally
 
 on:
   push:
@@ -17,20 +17,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout full repo
+      # 1️⃣ Checkout full repository
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Determine changed files and games
-      - name: Determine changed files
+      # 2️⃣ Determine changed games
+      - name: Determine changed games
         id: changes
         run: |
-          # Default values
           GAMES_CHANGED=false
           CHANGED_GAMES=""
-          CHANGED_TOPLEVEL="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
 
           # Only try git diff if HEAD has a parent
           if git rev-parse HEAD^ >/dev/null 2>&1; then
@@ -38,33 +36,29 @@ jobs:
             if [ -n "$CHANGED_GAMES" ]; then
               GAMES_CHANGED=true
             fi
-            # Only top-level files that changed
-            CHANGED_TOPLEVEL=$(git diff --name-only HEAD^ HEAD | grep -E '^(index\.html|404\.html|favicon\.ico|config\.jsonc|css/|js/|fonts/|imgs/)' || true)
-            # Fallback if nothing changed
-            if [ -z "$CHANGED_TOPLEVEL" ]; then
-              CHANGED_TOPLEVEL="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
-            fi
           else
-            # First commit → everything changed
+            # First commit → all games changed
             GAMES_CHANGED=true
             CHANGED_GAMES=$(ls games || true)
           fi
 
           echo "games_changed=$GAMES_CHANGED" >> $GITHUB_OUTPUT
           echo "changed_games=$CHANGED_GAMES" >> $GITHUB_OUTPUT
-          echo "changed_toplevel=$CHANGED_TOPLEVEL" >> $GITHUB_OUTPUT
 
       # 3️⃣ Prepare public folder
       - name: Prepare public folder
         run: |
           mkdir -p public
-          # Copy top-level changed files
-          for file in ${{ steps.changes.outputs.changed_toplevel }}; do
-            if [ -e "$file" ]; then
-              rsync -a "$file" public/
+
+          # Always copy top-level assets
+          ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
+          for asset in $ASSETS; do
+            if [ -e "$asset" ]; then
+              rsync -a "$asset" public/
             fi
           done
-          # Copy changed games
+
+          # Copy games
           if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
             for folder in ${{ steps.changes.outputs.changed_games }}; do
               mkdir -p public/games/$folder
@@ -78,6 +72,6 @@ jobs:
         with:
           path: public
 
-      # 5️⃣ Deploy
-      - name: Deploy to GitHub Pages
+      # 5️⃣ Deploy to GitHub Pages
+      - name: Deploy
         uses: actions/deploy-pages@v4
