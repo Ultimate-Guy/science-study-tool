@@ -1,11 +1,13 @@
-name: Deploy Ultra Fast
+name: Deploy Static Site
 
 on:
   push:
     branches: ["main2"]
 
 permissions:
-  contents: write   # 🔥 REQUIRED for pushing
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: "pages-main2"
@@ -16,30 +18,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (fast)
+      - name: Checkout (shallow = faster)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 1   # 🚀 huge speed boost for large repos
 
-      - name: Configure Git (fix exit 128)
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git config --global core.compression 0
-          git config --global http.postBuffer 524288000
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Deploy to gh-pages safely
-        run: |
-          # Create clean deploy folder
-          mkdir deploy
-          rsync -a --delete ./ deploy/ --exclude .git --exclude deploy
+      - name: Upload site (NO copying)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .   # 🚀 deploy repo directly
 
-          cd deploy
-          git init
-          git checkout -b gh-pages
-
-          git add .
-          git commit -m "Deploy site"
-
-          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git push origin gh-pages --force
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
