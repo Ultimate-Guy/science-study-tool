@@ -1,13 +1,8 @@
-name: Deploy Static Site
+name: Deploy Ultra Fast
 
 on:
   push:
     branches: ["main2"]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages-main2"
@@ -18,18 +13,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (shallow = faster)
+      - name: Checkout (fastest possible)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1   # 🚀 huge speed boost for large repos
+          fetch-depth: 1
+          clean: false
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Disable git compression (faster push)
+        run: |
+          git config --global core.compression 0
 
-      - name: Upload site (NO copying)
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to gh-pages (optimized)
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: .   # 🚀 deploy repo directly
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          force_orphan: true
