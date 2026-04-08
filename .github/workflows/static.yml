@@ -1,4 +1,4 @@
-name: Deploy static site
+name: Deploy Static Site Safely
 
 on:
   push:
@@ -17,71 +17,53 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout full history
-      - name: Checkout repo
+      # 1️⃣ Checkout full repo
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # required for diff
-          
-      # 2️⃣ Determine changes
+          fetch-depth: 0
+
+      # 2️⃣ Determine changed files and games
       - name: Determine changed files
         id: changes
         run: |
           # Default values
           GAMES_CHANGED=false
           CHANGED_GAMES=""
-          CHANGED_TOPLEVEL=""
+          CHANGED_TOPLEVEL="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
 
-          # Detect changes if this is not the first commit
+          # Only try git diff if HEAD has a parent
           if git rev-parse HEAD^ >/dev/null 2>&1; then
             CHANGED_GAMES=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
             if [ -n "$CHANGED_GAMES" ]; then
               GAMES_CHANGED=true
             fi
+            # Only top-level files that changed
             CHANGED_TOPLEVEL=$(git diff --name-only HEAD^ HEAD | grep -E '^(index\.html|404\.html|favicon\.ico|config\.jsonc|css/|js/|fonts/|imgs/)' || true)
+            # Fallback if nothing changed
+            if [ -z "$CHANGED_TOPLEVEL" ]; then
+              CHANGED_TOPLEVEL="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
+            fi
           else
             # First commit → everything changed
             GAMES_CHANGED=true
             CHANGED_GAMES=$(ls games || true)
-            CHANGED_TOPLEVEL="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           fi
 
           echo "games_changed=$GAMES_CHANGED" >> $GITHUB_OUTPUT
           echo "changed_games=$CHANGED_GAMES" >> $GITHUB_OUTPUT
           echo "changed_toplevel=$CHANGED_TOPLEVEL" >> $GITHUB_OUTPUT
 
-      # 3️⃣ Sparse checkout once
-      - name: Sparse checkout needed files
-        run: |
-          git sparse-checkout init --cone
-
-          BASE_PATHS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
-
-          # Include top-level files that changed
-          if [ -n "${{ steps.changes.outputs.changed_toplevel }}" ]; then
-            git sparse-checkout set $BASE_PATHS ${{ steps.changes.outputs.changed_toplevel }}
-          else
-            git sparse-checkout set $BASE_PATHS
-          fi
-
-          # Include changed games only once
-          if [ "${{ steps.changes.outputs.games_changed }}" = "true" ] && [ -n "${{ steps.changes.outputs.changed_games }}" ]; then
-            GAME_PATHS=$(echo "${{ steps.changes.outputs.changed_games }}" | sed 's/^/games\//g')
-            git sparse-checkout add $GAME_PATHS
-          fi
-
-      # 4️⃣ Prepare deploy folder
+      # 3️⃣ Prepare public folder
       - name: Prepare public folder
         run: |
           mkdir -p public
-
-          # Copy top-level files
-          for path in ${{ steps.changes.outputs.changed_toplevel }}; do
-            if [ -e "$path" ]; then
-              rsync -a "$path" public/
+          # Copy top-level changed files
+          for file in ${{ steps.changes.outputs.changed_toplevel }}; do
+            if [ -e "$file" ]; then
+              rsync -a "$file" public/
             fi
           done
-
           # Copy changed games
           if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
             for folder in ${{ steps.changes.outputs.changed_games }}; do
@@ -90,12 +72,12 @@ jobs:
             done
           fi
 
-      # 5️⃣ Upload to Pages
+      # 4️⃣ Upload artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
-      # 6️⃣ Deploy
-      - name: Deploy
+      # 5️⃣ Deploy
+      - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
