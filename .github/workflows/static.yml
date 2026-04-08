@@ -16,94 +16,20 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout (shallow = faster)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1   # 🚀 huge speed boost for large repos
 
-      - name: Restore public cache
-        uses: actions/cache@v3
-        with:
-          path: public
-          key: public-${{ github.ref }}
-          restore-keys: public-${{ github.ref }}-
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Detect changed files and removed games
-        id: changes
-        run: |
-          ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
-          TOP_CHANGED=""
-          for asset in $ASSETS; do
-            if git diff --name-only HEAD^ HEAD | grep -q "^$asset"; then
-              TOP_CHANGED="$TOP_CHANGED $asset"
-            fi
-          done
-
-          # Detect changed games
-          if git rev-parse HEAD^ >/dev/null 2>&1; then
-            GAMES_CHANGED=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
-            GAMES_REMOVED=$(git diff --name-only HEAD^ HEAD --diff-filter=D | grep '^games/' | cut -d/ -f2 | sort -u)
-          else
-            # First commit: all games
-            GAMES_CHANGED=$(ls games)
-            GAMES_REMOVED=""
-          fi
-
-          echo "top_changed=$TOP_CHANGED" >> $GITHUB_OUTPUT
-          echo "games_changed=$GAMES_CHANGED" >> $GITHUB_OUTPUT
-          echo "games_removed=$GAMES_REMOVED" >> $GITHUB_OUTPUT
-
-      - name: Build public folder (fast, safe, parallel, clean)
-        run: |
-          mkdir -p public
-
-          # Copy top-level assets if changed (skip unchanged files)
-          if [ -n "${{ steps.changes.outputs.top_changed }}" ]; then
-            for asset in ${{ steps.changes.outputs.top_changed }}; do
-              [ -e "$asset" ] && rsync -au --ignore-existing "$asset" public/
-            done
-          fi
-
-          # Parallel copy of changed games
-          if [ -n "${{ steps.changes.outputs.games_changed }}" ]; then
-            CORES=$(nproc || echo 4)
-            echo "${{ steps.changes.outputs.games_changed }}" | xargs -n1 -P"$CORES" -I{} bash -c 'mkdir -p public/games/{} && rsync -a games/{}/ public/games/{}'
-          fi
-
-          # Remove deleted games
-          if [ -n "${{ steps.changes.outputs.games_removed }}" ]; then
-            for folder in ${{ steps.changes.outputs.games_removed }}; do
-              rm -rf public/games/$folder
-            done
-          fi
-
-          # Fallback for first deploy
-          if [ ! -e public/index.html ]; then
-            echo "Fallback: full public build..."
-            ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
-            for asset in $ASSETS; do
-              [ -e "$asset" ] && rsync -au "$asset" public/
-            done
-            for folder in games/*; do
-              NAME=$(basename "$folder")
-              mkdir -p public/games/$NAME
-              rsync -a "games/$NAME/" "public/games/$NAME/"
-            done
-          fi
-
-      - name: Save public cache
-        uses: actions/cache@v3
-        with:
-          path: public
-          key: public-${{ github.ref }}
-
-      - name: Upload artifact
+      - name: Upload site (NO copying)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: .   # 🚀 deploy repo directly
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        with:
-          artifact_path: public
