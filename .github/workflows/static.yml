@@ -19,7 +19,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout minimal
+      - name: Checkout ultra-minimal
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -37,13 +37,13 @@ jobs:
 
       - name: Prepare deploy folder
         run: |
-          mkdir public
+          mkdir -p public
           cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts public/
 
-      - name: Upload artifact
+      - name: Upload artifact (fast)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: public  # no compression for max speed
 
       - name: Deploy
         uses: actions/deploy-pages@v4
