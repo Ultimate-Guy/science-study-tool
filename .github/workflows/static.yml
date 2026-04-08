@@ -17,61 +17,87 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout full history
+      # Step 1: Checkout repo fully
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # ✅ fetch all commits to safely diff
-          filter: blob:none
+          fetch-depth: 0
 
-      - name: Determine changed games
+      # Step 2: Detect changes
+      - name: Determine changed games and top-level files
         id: changes
         run: |
-          # Default values
-          CHANGED=""
           GAMES_CHANGED=false
+          CHANGED_GAMES=""
+          CHANGED_TOPLEVEL=""
 
-          # Only try git diff if HEAD has a parent
+          # Only try git diff if there is a parent
           if git rev-parse HEAD^ >/dev/null 2>&1; then
-            # Get top-level folders under games that changed
-            CHANGED=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
-            if [ -n "$CHANGED" ]; then
+            # Changed games
+            CHANGED_GAMES=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
+            if [ -n "$CHANGED_GAMES" ]; then
               GAMES_CHANGED=true
             fi
+
+            # Changed top-level site files
+            CHANGED_TOPLEVEL=$(git diff --name-only HEAD^ HEAD | grep -E '^(index\.html|404\.html|favicon\.ico|config\.jsonc|css/|js/|fonts/|imgs/)' || true)
           else
-            # First commit or single-commit branch → all games considered changed
-            CHANGED=$(ls games)
+            # First commit → everything changed
             GAMES_CHANGED=true
+            CHANGED_GAMES=$(ls games || true)
+            CHANGED_TOPLEVEL="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           fi
 
-          # Export to workflow outputs
           echo "games_changed=$GAMES_CHANGED" >> $GITHUB_OUTPUT
-          echo "changed_folders=$CHANGED" >> $GITHUB_OUTPUT
+          echo "changed_games=$CHANGED_GAMES" >> $GITHUB_OUTPUT
+          echo "changed_toplevel=$CHANGED_TOPLEVEL" >> $GITHUB_OUTPUT
 
-      - name: Sparse checkout
+      # Step 3: Sparse checkout only changed files
+      - name: Sparse checkout changed files
         run: |
           git sparse-checkout init --cone
-          if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
-            git sparse-checkout set index.html 404.html favicon.ico config.jsonc css js imgs fonts $(echo "${{ steps.changes.outputs.changed_folders }}" | sed 's/^/games\//g')
+          BASE="$GITHUB_WORKSPACE"
+          # Always include top-level assets
+          BASE_PATHS="index.html 404.html favicon.ico config.jsonc css js imgs fonts"
+
+          # Add only changed top-level files
+          if [ -n "${{ steps.changes.outputs.changed_toplevel }}" ]; then
+            git sparse-checkout set $BASE_PATHS ${{ steps.changes.outputs.changed_toplevel }}
           else
-            git sparse-checkout set index.html 404.html favicon.ico config.jsonc css js imgs fonts
+            git sparse-checkout set $BASE_PATHS
           fi
 
+          # Add only changed game folders
+          if [ "${{ steps.changes.outputs.games_changed }}" = "true" ] && [ -n "${{ steps.changes.outputs.changed_games }}" ]; then
+            GAME_PATHS=$(echo "${{ steps.changes.outputs.changed_games }}" | sed 's/^/games\//g')
+            git sparse-checkout set $BASE_PATHS $GAME_PATHS
+          fi
+
+      # Step 4: Prepare deploy folder
       - name: Prepare deploy folder
         run: |
           mkdir -p public
-          rsync -a index.html 404.html favicon.ico config.jsonc css js imgs fonts public/
+          # Copy changed top-level files
+          for path in ${{ steps.changes.outputs.changed_toplevel }}; do
+            if [ -e "$path" ]; then
+              rsync -a "$path" public/
+            fi
+          done
 
+          # Copy changed games
           if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
-            for folder in ${{ steps.changes.outputs.changed_folders }}; do
+            for folder in ${{ steps.changes.outputs.changed_games }}; do
               mkdir -p public/games/$folder
-              rsync -a games/$folder/ public/games/$folder/
+              rsync -a "games/$folder/" "public/games/$folder/"
             done
           fi
 
+      # Step 5: Upload to Pages
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
+      # Step 6: Deploy
       - name: Deploy
         uses: actions/deploy-pages@v4
