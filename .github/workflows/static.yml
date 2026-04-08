@@ -3,8 +3,6 @@ name: Deploy static site
 on:
   push:
     branches: ["main2"]
-    paths-ignore:
-      - "games/**"  # Exclude games for fast deploy
 
 permissions:
   contents: read
@@ -12,7 +10,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages-main2-site"
+  group: "pages-main2-full"
   cancel-in-progress: true
 
 jobs:
@@ -33,12 +31,16 @@ jobs:
             js
             imgs
             fonts
+            games
           sparse-checkout-cone-mode: true
 
       - name: Prepare deploy folder
         run: |
           mkdir -p public
+          # Copy main site files
           cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts public/
+          # Copy all games into public
+          cp -r games/* public/
 
       - name: Upload artifact (fast)
         uses: actions/upload-pages-artifact@v3
