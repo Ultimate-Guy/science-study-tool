@@ -29,10 +29,9 @@ jobs:
           key: public-${{ github.ref }}
           restore-keys: public-${{ github.ref }}-
 
-      - name: Detect changed files
+      - name: Detect changed files and removed games
         id: changes
         run: |
-          # Top-level assets
           ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           TOP_CHANGED=""
           for asset in $ASSETS; do
@@ -41,36 +40,47 @@ jobs:
             fi
           done
 
-          # Changed games
+          # Detect changed games
           if git rev-parse HEAD^ >/dev/null 2>&1; then
             GAMES_CHANGED=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
+            GAMES_REMOVED=$(git diff --name-only HEAD^ HEAD --diff-filter=D | grep '^games/' | cut -d/ -f2 | sort -u)
           else
             # First commit: all games
             GAMES_CHANGED=$(ls games)
+            GAMES_REMOVED=""
           fi
 
           echo "top_changed=$TOP_CHANGED" >> $GITHUB_OUTPUT
           echo "games_changed=$GAMES_CHANGED" >> $GITHUB_OUTPUT
+          echo "games_removed=$GAMES_REMOVED" >> $GITHUB_OUTPUT
 
-      - name: Build public folder (parallel)
+      - name: Build public folder (fast, safe, parallel, clean)
         run: |
           mkdir -p public
 
-          # Copy top-level assets
+          # Copy top-level assets if changed (skip unchanged files)
           if [ -n "${{ steps.changes.outputs.top_changed }}" ]; then
             for asset in ${{ steps.changes.outputs.top_changed }}; do
-              [ -e "$asset" ] && rsync -au "$asset" public/
+              [ -e "$asset" ] && rsync -au --ignore-existing "$asset" public/
             done
           fi
 
-          # Copy changed games in parallel for speed
+          # Parallel copy of changed games
           if [ -n "${{ steps.changes.outputs.games_changed }}" ]; then
-            echo "${{ steps.changes.outputs.games_changed }}" | xargs -n1 -P8 -I{} bash -c 'mkdir -p public/games/{} && rsync -a games/{}/ public/games/{}'
+            CORES=$(nproc || echo 4)
+            echo "${{ steps.changes.outputs.games_changed }}" | xargs -n1 -P"$CORES" -I{} bash -c 'mkdir -p public/games/{} && rsync -a games/{}/ public/games/{}'
           fi
 
-          # Fallback: full build if public is empty (first deploy)
+          # Remove deleted games
+          if [ -n "${{ steps.changes.outputs.games_removed }}" ]; then
+            for folder in ${{ steps.changes.outputs.games_removed }}; do
+              rm -rf public/games/$folder
+            done
+          fi
+
+          # Fallback for first deploy
           if [ ! -e public/index.html ]; then
-            echo "Fallback: copying all assets and games..."
+            echo "Fallback: full public build..."
             ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
             for asset in $ASSETS; do
               [ -e "$asset" ] && rsync -au "$asset" public/
