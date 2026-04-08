@@ -17,16 +17,14 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      changed_top_assets: ${{ steps.set-output.outputs.top_assets }}
-      changed_games: ${{ steps.set-output.outputs.games }}
+      changed_top_assets: ${{ steps.detect.outputs.top_assets }}
+      changed_games: ${{ steps.detect.outputs.games }}
     steps:
       - name: Checkout repository sparse
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           sparse: true
-          # only top-level files and folders we care about initially
-          # games folder will be selectively added later
           paths: |
             index.html
             404.html
@@ -45,9 +43,8 @@ jobs:
           restore-keys: public-${{ github.ref }}-
 
       - name: Detect changed files
-        id: set-output
+        id: detect
         run: |
-          # Top-level assets
           ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           TOP_CHANGED=""
           for asset in $ASSETS; do
@@ -56,7 +53,6 @@ jobs:
             fi
           done
 
-          # Detect changed game folders
           GAMES_CHANGED=""
           for folder in games/*; do
             NAME=$(basename "$folder")
@@ -65,22 +61,51 @@ jobs:
             fi
           done
 
-          echo "top_assets=$TOP_CHANGED" >> $GITHUB_OUTPUT
-          echo "games=$GAMES_CHANGED" >> $GITHUB_OUTPUT
+          # Ensure outputs are always valid strings
+          echo "top_assets=${TOP_CHANGED}" >> $GITHUB_OUTPUT
+          echo "games=${GAMES_CHANGED}" >> $GITHUB_OUTPUT
 
-  deploy_top_assets:
+  prebuild_public:
     needs: prepare
     runs-on: ubuntu-latest
-    if: ${{ needs.prepare.outputs.changed_top_assets != '' }}
     steps:
-      - name: Checkout repository sparse
+      - name: Checkout repository sparse for all files
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           sparse: true
-          paths: ${{ needs.prepare.outputs.changed_top_assets }}
+          paths: |
+            index.html
+            404.html
+            favicon.ico
+            config.jsonc
+            css
+            js
+            fonts
+            imgs
+            games
 
-      - name: Deploy top-level assets
+      - name: Prebuild public folder
+        run: |
+          mkdir -p public
+          # Copy top-level assets
+          ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
+          for asset in $ASSETS; do
+            [ -e "$asset" ] && rsync -au "$asset" public/
+          done
+          # Copy all games
+          for folder in games/*; do
+            NAME=$(basename "$folder")
+            mkdir -p public/games/$NAME
+            rsync -a "$folder/" "public/games/$NAME/"
+          done
+
+  deploy_top_assets:
+    needs: [prepare, prebuild_public]
+    runs-on: ubuntu-latest
+    if: ${{ needs.prepare.outputs.changed_top_assets != '' }}
+    steps:
+      - name: Deploy changed top-level assets
         run: |
           mkdir -p public
           for asset in ${{ needs.prepare.outputs.changed_top_assets }}; do
@@ -88,20 +113,14 @@ jobs:
           done
 
   deploy_games:
-    needs: prepare
+    needs: [prepare, prebuild_public]
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        game: [${{ needs.prepare.outputs.games }}]
       fail-fast: false
+      matrix:
+        game: ${{ fromJSON('["' + needs.prepare.outputs.changed_games.replace(' ', '","') + '"]') }}
+    if: ${{ matrix.game != '' }}
     steps:
-      - name: Checkout specific game folder sparse
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          sparse: true
-          paths: "games/${{ matrix.game }}"
-
       - name: Deploy changed game folder
         run: |
           mkdir -p public/games
