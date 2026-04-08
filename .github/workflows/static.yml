@@ -3,6 +3,16 @@ name: Deploy static site
 on:
   push:
     branches: ["main2"]
+    paths:
+      - "css/**"
+      - "js/**"
+      - "imgs/**"
+      - "fonts/**"
+      - "games/**"
+      - "index.html"
+      - "404.html"
+      - "config.jsonc"
+      - "favicon.ico"
 
 permissions:
   contents: read
@@ -18,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (ultra minimal)
+      - name: Checkout (absolute minimum)
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -35,10 +45,13 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      - name: Ensure no Jekyll processing
+      - name: Add .nojekyll (safety)
         run: touch .nojekyll
 
-      - name: Upload artifact (fastest path)
+      - name: Add build timestamp (cache bust)
+        run: echo "window.__BUILD_TIME__=$(date +%s)" > js/build.js
+
+      - name: Upload artifact (no compression = fastest)
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
