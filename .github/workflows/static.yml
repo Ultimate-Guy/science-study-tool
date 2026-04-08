@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          filter: blob:none   # 🚀 HUGE speedup for big repos
+          filter: blob:none
           sparse-checkout: |
             index.html
             404.html
@@ -35,16 +35,14 @@ jobs:
             games
           sparse-checkout-cone-mode: true
 
-      - name: Prepare deploy folder
-        run: |
-          mkdir public
-          cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts games public/
+      - name: Ensure no Jekyll processing
+        run: touch .nojekyll
 
-      - name: Upload artifact (single bundle)
+      - name: Upload artifact (fastest path)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
-          compression-level: 0   # already optimal for speed
+          path: .
+          compression-level: 0
 
       - name: Deploy
         uses: actions/deploy-pages@v4
