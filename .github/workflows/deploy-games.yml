@@ -1,0 +1,42 @@
+name: Deploy Games
+
+on:
+  push:
+    branches: ["main2"]
+    paths:
+      - "games/**"  # Only trigger when games change
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-main2-games"
+  cancel-in-progress: true
+
+jobs:
+  deploy-games:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ultra-minimal (games only)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            games
+          sparse-checkout-cone-mode: true
+
+      - name: Prepare deploy folder
+        run: |
+          mkdir -p public
+          cp -r games public/
+
+      - name: Upload artifact (fast)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public  # no compression for max speed
+
+      - name: Deploy
+        uses: actions/deploy-pages@v4
