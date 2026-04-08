@@ -1,4 +1,4 @@
-name: Deploy Static Site Incrementally
+name: Deploy Static Site Ultra-Fast Safe
 
 on:
   push:
@@ -27,22 +27,17 @@ jobs:
       - name: Determine changed games
         id: changes
         run: |
-          GAMES_CHANGED=false
+          # Default: nothing changed
           CHANGED_GAMES=""
 
-          # Only try git diff if HEAD has a parent
+          # Only try git diff if not first commit
           if git rev-parse HEAD^ >/dev/null 2>&1; then
             CHANGED_GAMES=$(git diff --name-only HEAD^ HEAD | grep '^games/' | cut -d/ -f2 | sort -u)
-            if [ -n "$CHANGED_GAMES" ]; then
-              GAMES_CHANGED=true
-            fi
           else
-            # First commit → all games changed
-            GAMES_CHANGED=true
+            # First commit → all games
             CHANGED_GAMES=$(ls games || true)
           fi
 
-          echo "games_changed=$GAMES_CHANGED" >> $GITHUB_OUTPUT
           echo "changed_games=$CHANGED_GAMES" >> $GITHUB_OUTPUT
 
       # 3️⃣ Prepare public folder
@@ -50,21 +45,23 @@ jobs:
         run: |
           mkdir -p public
 
-          # Always copy top-level assets
+          # Copy top-level assets (always update if newer)
           ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           for asset in $ASSETS; do
             if [ -e "$asset" ]; then
-              rsync -a "$asset" public/
+              rsync -au "$asset" public/
             fi
           done
 
-          # Copy games
-          if [ "${{ steps.changes.outputs.games_changed }}" = "true" ]; then
-            for folder in ${{ steps.changes.outputs.changed_games }}; do
-              mkdir -p public/games/$folder
-              rsync -a "games/$folder/" "public/games/$folder/"
-            done
-          fi
+          # Copy only changed games, but ensure all exist at least once
+          mkdir -p public/games
+          for folder in games/*; do
+            NAME=$(basename "$folder")
+            # Copy if changed OR if folder doesn't exist yet in public
+            if [ -d "$folder" ] && ( [[ "${{ steps.changes.outputs.changed_games }}" == *"$NAME"* ]] || [ ! -d "public/games/$NAME" ] ); then
+              rsync -au "$folder/" "public/games/$NAME/"
+            fi
+          done
 
       # 4️⃣ Upload artifact
       - name: Upload artifact
@@ -72,6 +69,6 @@ jobs:
         with:
           path: public
 
-      # 5️⃣ Deploy to GitHub Pages
-      - name: Deploy
+      # 5️⃣ Deploy
+      - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
