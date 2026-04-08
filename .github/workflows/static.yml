@@ -3,16 +3,8 @@ name: Deploy static site
 on:
   push:
     branches: ["main2"]
-    paths:
-      - "css/**"
-      - "js/**"
-      - "imgs/**"
-      - "fonts/**"
-      - "games/**"
-      - "index.html"
-      - "404.html"
-      - "config.jsonc"
-      - "favicon.ico"
+    paths-ignore:
+      - "games/**"  # Exclude games for fast deploy
 
 permissions:
   contents: read
@@ -20,15 +12,14 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages-main2"
+  group: "pages-main2-site"
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout (absolute minimum)
+      - name: Checkout minimal
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -42,20 +33,17 @@ jobs:
             js
             imgs
             fonts
-            games
           sparse-checkout-cone-mode: true
 
-      - name: Add .nojekyll (safety)
-        run: touch .nojekyll
+      - name: Prepare deploy folder
+        run: |
+          mkdir public
+          cp -r index.html 404.html favicon.ico config.jsonc css js imgs fonts public/
 
-      - name: Add build timestamp (cache bust)
-        run: echo "window.__BUILD_TIME__=$(date +%s)" > js/build.js
-
-      - name: Upload artifact (no compression = fastest)
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
-          compression-level: 0
+          path: public
 
       - name: Deploy
         uses: actions/deploy-pages@v4
