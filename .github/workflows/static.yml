@@ -23,60 +23,57 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2️⃣ Determine changed files
-      - name: Get changed files
+      # 2️⃣ Get changed files
+      - name: Determine changed files
         id: changes
         run: |
           if git rev-parse HEAD^ >/dev/null 2>&1; then
-            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+            CHANGED=$(git diff --name-only HEAD^ HEAD)
           else
-            CHANGED_FILES=$(git ls-files)
+            CHANGED=$(git ls-files)
           fi
-          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "changed_files=$CHANGED" >> $GITHUB_OUTPUT
 
-      # 3️⃣ Deploy top-level assets (cached)
-      - name: Deploy top-level assets
-        uses: actions/cache@v3
-        with:
-          path: public_top
-          key: top-assets-${{ github.sha }}
-          restore-keys: top-assets-
-      - run: |
+      # 3️⃣ Prepare public folder incrementally
+      - name: Prepare public folder
+        run: |
           mkdir -p public
+
+          # 3a. Top-level assets
           ASSETS="index.html 404.html favicon.ico config.jsonc css js fonts imgs"
           for asset in $ASSETS; do
             if echo "${{ steps.changes.outputs.changed_files }}" | grep -q "^$asset"; then
               rsync -au "$asset" public/
-            elif [ -e "public_top/$asset" ]; then
-              rsync -au "public_top/$asset" public/
+            elif [ ! -e "public/$asset" ]; then
+              rsync -a "$asset" public/
             fi
           done
-          cp -r public/* public_top/
 
-      # 4️⃣ Deploy games incrementally, per-folder caching
-      - name: Deploy changed games
-        run: |
+          # 3b. Game files - only changed files, preserve folder structure
           mkdir -p public/games
+          for file in ${{ steps.changes.outputs.changed_files }}; do
+            if [[ $file == games/* ]]; then
+              rsync -R "$file" public/
+            fi
+          done
+
+          # 3c. Ensure new game folders are fully deployed
           for folder in games/*; do
             NAME=$(basename "$folder")
-            CACHE_KEY="game-${NAME}-${{ github.sha }}"
-
-            # Check if folder has changes or new
-            if echo "${{ steps.changes.outputs.changed_files }}" | grep -q "^games/$NAME/"; then
-              # Use rsync to copy changed files only
-              rsync -au "$folder/" "public/games/$NAME/"
-            elif [ ! -d "public/games/$NAME" ]; then
-              # New game folder
+            if [ ! -d "public/games/$NAME" ]; then
               rsync -a "$folder/" "public/games/$NAME/"
             fi
           done
 
-      # 5️⃣ Upload artifact
+      # 4️⃣ Upload artifact (always required to avoid deploy error)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
-      # 6️⃣ Deploy
-      - name: Deploy
+      # 5️⃣ Deploy
+      - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
+        with:
+          # Ensures deploy works even if no files changed
+          artifact_path: public
