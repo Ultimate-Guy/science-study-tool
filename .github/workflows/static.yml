@@ -5,65 +5,43 @@ on:
     branches: ["main2"]
 
 permissions:
-  contents: write
+  contents: read
+  pages: write      # Required for official deployment
+  id-token: write   # Required for official deployment
 
 concurrency:
-  group: "pages-main2"
+  group: "pages"
   cancel-in-progress: true
 
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout repo with minimal history
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      # Setup Node.js
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: 'npm'
 
-      # Cache node_modules
-      - name: Cache npm dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.npm
-            node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      # Install dependencies
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
 
-      # Build your site (if you have a build step)
       - name: Build site
-        run: |
-          # Example: if you have a build script
-          if [ -f package.json ]; then
-            npm run build || echo "No build script, skipping"
-          fi
+        run: npm run build --if-present
 
-      # Setup Git for deployment
-      - name: Setup Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      # Deploy incrementally to gh-pages
-      - name: Deploy to gh-pages (incremental & safe)
-        uses: peaceiris/actions-gh-pages@v4
+      # This step creates a single package of your games folder + site
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./          # root of repo
-          publish_branch: gh-pages
-          keep_files: true         # don't delete existing games
-          force_orphan: true       # avoid .git conflicts
-          incremental: true        # only upload changed files
+          path: '.'
+
+      # This step deploys that package directly to the web
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
