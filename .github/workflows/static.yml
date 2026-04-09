@@ -1,22 +1,11 @@
-name: Deploy Static Site
+name: Deploy static site
 
 on:
   push:
     branches: ["main2"]
-    paths:
-      - '**.html'
-      - 'css/**'
-      - 'js/**'
-      - 'games/**'
-      - 'imgs/**'
-      - 'fonts/**'
-      - 'config.jsonc'
-      - 'favicon.ico'
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: "pages-main2"
@@ -32,34 +21,10 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Disable Jekyll
-        run: touch .nojekyll
-
-      - name: Verify site files exist (debug safety)
-        run: |
-          echo "Checking required files..."
-          ls -lah
-          test -f index.html || (echo "❌ index.html missing" && exit 1)
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload site (safe filtered)
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy (incremental + safe 🚀)
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: .
-          exclude: |
-            .git
-            .github
-            node_modules
-            package.json
-            package-lock.json
-            README.md
-            LICENSE
-            .prettier*
-            jsconfig.json
-            build-config.js
-            add-game-entry.js
-
-      - name: Deploy
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          keep_files: true
