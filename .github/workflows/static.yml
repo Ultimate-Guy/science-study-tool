@@ -3,6 +3,13 @@ name: Deploy Static Site
 on:
   push:
     branches: ["main2"]
+    paths:
+      - '**.html'
+      - 'css/**'
+      - 'js/**'
+      - 'games/**'
+      - 'imgs/**'
+      - 'fonts/**'
 
 permissions:
   contents: read
@@ -18,18 +25,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (shallow = faster)
+      - name: Checkout (fast)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1   # 🚀 huge speed boost for large repos
+          fetch-depth: 1
+
+      - name: Disable Jekyll
+        run: echo "" > .nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload site (NO copying)
+      - name: Upload site (filtered)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .   # 🚀 deploy repo directly
+          path: |
+            index.html
+            404.html
+            css/
+            js/
+            imgs/
+            games/
+            fonts/
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         uses: actions/deploy-pages@v4
