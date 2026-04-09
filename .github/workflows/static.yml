@@ -9,6 +9,7 @@ permissions:
   pages: write
   id-token: write
 
+# This block is the fix: it cancels any deployment currently running
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -23,7 +24,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # 🚀 SPEED: Only download the current files, NOT 3GB of history
           fetch-depth: 1 
 
       - name: Setup Pages
@@ -32,8 +32,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # 🚀 SPEED: Path '.' ensures we grab everything 
-          # (css, fonts, games, imgs, js, and root files)
           path: '.'
 
       - name: Deploy to GitHub Pages
