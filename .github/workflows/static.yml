@@ -1,4 +1,4 @@
-name: Deploy static site
+name: Super Fast Deploy
 
 on:
   push:
