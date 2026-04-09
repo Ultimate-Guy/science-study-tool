@@ -10,6 +10,8 @@ on:
       - 'games/**'
       - 'imgs/**'
       - 'fonts/**'
+      - 'config.jsonc'
+      - 'favicon.ico'
 
 permissions:
   contents: read
@@ -31,22 +33,33 @@ jobs:
           fetch-depth: 1
 
       - name: Disable Jekyll
-        run: echo "" > .nojekyll
+        run: touch .nojekyll
+
+      - name: Verify site files exist (debug safety)
+        run: |
+          echo "Checking required files..."
+          ls -lah
+          test -f index.html || (echo "❌ index.html missing" && exit 1)
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload site (filtered)
+      - name: Upload site (safe filtered)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: |
-            index.html
-            404.html
-            css/
-            js/
-            imgs/
-            games/
-            fonts/
+          path: .
+          exclude: |
+            .git
+            .github
+            node_modules
+            package.json
+            package-lock.json
+            README.md
+            LICENSE
+            .prettier*
+            jsconfig.json
+            build-config.js
+            add-game-entry.js
 
       - name: Deploy
         uses: actions/deploy-pages@v4
