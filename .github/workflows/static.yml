@@ -6,8 +6,8 @@ on:
 
 permissions:
   contents: read
-  pages: write      # Required for official deployment
-  id-token: write   # Required for official deployment
+  pages: write
+  id-token: write
 
 concurrency:
   group: "pages"
@@ -22,26 +22,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: 'npm'
+          fetch-depth: 1 # Only need the latest files
 
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
-
-      - name: Build site
-        run: npm run build --if-present
-
-      # This step creates a single package of your games folder + site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '.' # Uploads everything (games, css, js, etc.)
 
-      # This step deploys that package directly to the web
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
