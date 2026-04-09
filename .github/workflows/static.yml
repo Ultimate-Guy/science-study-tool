@@ -9,7 +9,7 @@ permissions:
   pages: write
   id-token: write
 
-# This block is the fix: it cancels any deployment currently running
+# Automatically kills old, slow deployments when you push a new one
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -24,6 +24,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Only download the "now" files, skipping 2.8GB+ of history
           fetch-depth: 1 
 
       - name: Setup Pages
@@ -33,6 +34,9 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
+          # Skip compression to save CPU time on the runner 
+          # since many game files are already compressed
+          compression-level: 0 
 
       - name: Deploy to GitHub Pages
         id: deployment
