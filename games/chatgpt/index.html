@@ -75,12 +75,15 @@
     </div>
 </div>
 <script>
-    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/;
+    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = true;
     
+    // Clean up dollar signs from math
+    function cleanMath(text) { return text.replace(/\$/g, ''); }
+
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
-    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI assistant." }] }; save(); renderList(); loadChat(activeChatId); }
+    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI. Never use dollar signs for math symbols." }] }; save(); renderList(); loadChat(activeChatId); }
     
     function loadChat(id) { 
         activeChatId = id; 
@@ -95,9 +98,8 @@
         
         let content;
         if (attachedImg) {
-            // FIX: If image is present, automatically add a directive so AI answers immediately.
             content = [
-                { type: "text", text: text || "Analyze this image and provide the full answer." },
+                { type: "text", text: text || "Analyze this image and provide the final answer clearly." },
                 { type: "image_url", image_url: { url: attachedImg } }
             ];
         } else {
@@ -115,28 +117,23 @@
         const contentDiv = div.querySelector('.content');
         let full = "";
         try {
-            const res = await fetch(WORKER_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ messages: chats[activeChatId].history, model: model }) 
-            });
-            
+            const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model: model }) });
             if (model === 'flux') { 
                 const d = await res.json(); 
                 contentDiv.innerHTML = `<img src="${d.image}" class="chat-img">`; 
                 chats[activeChatId].history.push({ role: "assistant", content: `[Image Generated]` }); 
                 save(); return; 
             }
-            
             const reader = res.body.getReader(), decoder = new TextDecoder();
             contentDiv.innerHTML = "";
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 full += decoder.decode(value);
-                contentDiv.innerHTML = marked.parse(full);
+                contentDiv.innerHTML = marked.parse(cleanMath(full));
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
-            chats[activeChatId].history.push({ role: "assistant", content: full }); save();
+            chats[activeChatId].history.push({ role: "assistant", content: cleanMath(full) }); save();
         } catch(e) { contentDiv.innerText = "Error: " + e.message; }
     }
 
@@ -146,10 +143,10 @@
         document.getElementById('chat-container').appendChild(div);
         const cDiv = div.querySelector('.content');
         if (typeof content === 'string') { 
-            cDiv.innerHTML = content.includes('thinking-dots') ? content : marked.parse(content); 
+            cDiv.innerHTML = content.includes('thinking-dots') ? content : marked.parse(cleanMath(content)); 
         } else { 
             content.forEach(p => { 
-                if (p.type === 'text') cDiv.innerHTML += marked.parse(p.text); 
+                if (p.type === 'text') cDiv.innerHTML += marked.parse(cleanMath(p.text)); 
                 if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" class="chat-img">`; 
             }); 
         }
@@ -169,7 +166,7 @@
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
     function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
     
-    function handleFile(e) { if (e.target.files && e.target.files[0]) convertToBase64(e.target.files[0]); }
+    function handleFile(e) { if (e.target.files) convertToBase64(e.target.files[0]); }
     document.getElementById('user-input').onpaste = (e) => { 
         const items = (e.clipboardData || e.originalEvent.clipboardData).items; 
         for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile()); 
