@@ -75,18 +75,20 @@
     </div>
 </div>
 <script>
-    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
+    const WORKER_URL = "https://workers.dev";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = true;
+    
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
     function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI assistant." }] }; save(); renderList(); loadChat(activeChatId); }
-    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content)); renderList(); }
-    function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
-    function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
-    function handleFile(e) { if (e.target.files) convertToBase64(e.target.files); }
-    document.getElementById('user-input').onpaste = (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile()); };
-    function convertToBase64(file) { const r = new FileReader(); r.onload = (e) => { attachedImg = e.target.result; document.getElementById('preview-bar').style.display = 'flex'; document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span style="color:red; cursor:pointer; font-weight:bold; margin-left:10px;" onclick="clearImg()">✕</span>`; }; r.readAsDataURL(file); }
-    function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
+    
+    function loadChat(id) { 
+        activeChatId = id; 
+        document.getElementById('chat-container').innerHTML = ''; 
+        chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content)); 
+        renderList(); 
+    }
+
     async function sendMessage() {
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
@@ -98,6 +100,7 @@
         f.value = ''; clearImg();
         await getAIResponse(document.getElementById('model-select').value);
     }
+
     async function getAIResponse(model) {
         const div = appendMessage('ai', '<div class="thinking-dots"><span></span><span></span><span></span></div>');
         const contentDiv = div.querySelector('.content');
@@ -120,8 +123,9 @@
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: full }); save();
-        } catch(e) { contentDiv.innerText = "Error: System overload. Check binding."; }
+        } catch(e) { contentDiv.innerText = "Error: " + e.message; }
     }
+
     function appendMessage(role, content) {
         const div = document.createElement('div'); div.className = 'message';
         div.innerHTML = `<div class="label">>> ${role.toUpperCase()}</div><div class="content"></div>`;
@@ -132,6 +136,7 @@
         document.getElementById('chat-container').scrollTop = 1e9;
         return div;
     }
+
     function renderList() {
         const l = document.getElementById('chat-list'); l.innerHTML = '';
         Object.keys(chats).sort().reverse().forEach(id => {
@@ -140,6 +145,13 @@
             l.appendChild(d);
         });
     }
+
+    function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
+    function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
+    function handleFile(e) { if (e.target.files) convertToBase64(e.target.files); }
+    document.getElementById('user-input').onpaste = (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile()); };
+    function convertToBase64(file) { const r = new FileReader(); r.onload = (e) => { attachedImg = e.target.result; document.getElementById('preview-bar').style.display = 'flex'; document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span style="color:red; cursor:pointer; font-weight:bold; margin-left:10px;" onclick="clearImg()">✕</span>`; }; r.readAsDataURL(file); }
+    function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
     document.getElementById('user-input').onkeypress = (e) => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 </script>
 </body>
