@@ -42,8 +42,8 @@
         .chat-item { padding: 12px; border-radius: 8px; cursor: pointer; font-size: 12px; color: #777; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
         .chat-item.active { background: rgba(255,26,26,0.08); color: var(--text); border: 1px solid var(--p-red); }
         .chat-options { padding: 4px 8px; cursor: pointer; font-weight: bold; }
-        .thinking-txt { font-size: 12px; color: var(--p-red); font-weight: 800; letter-spacing: 1px; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .thinking-txt { font-size: 12px; color: var(--p-red); font-weight: 800; letter-spacing: 1px; animation: pulse 1.5s infinite; padding: 10px 0; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: translateX(0); } 50% { opacity: 0.4; transform: translateX(5px); } }
     </style>
 </head>
 <body class="dark-mode">
@@ -81,14 +81,14 @@
 
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
-    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI. Never use $ symbols." }] }; save(); renderList(); loadChat(activeChatId); }
+    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI. Never use dollar signs." }] }; save(); renderList(); loadChat(activeChatId); }
     
     function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content)); renderList(); }
 
     async function sendMessage() {
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
-        let content = attachedImg ? [{ type: "text", text: text || "Solve this math problem exactly as shown." }, { type: "image_url", image_url: { url: attachedImg } }] : text;
+        let content = attachedImg ? [{ type: "text", text: text || "Analyze this image." }, { type: "image_url", image_url: { url: attachedImg } }] : text;
         appendMessage('user', content);
         chats[activeChatId].history.push({ role: "user", content: content });
         f.value = ''; clearImg();
@@ -108,22 +108,26 @@
         try {
             const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: cleanHistory, model: model }) });
             if (model === 'flux') { 
-                const d = await res.json(); contentDiv.innerHTML = `<img src="${d.image}" class="chat-img">`; 
+                const d = await res.json(); 
+                contentDiv.innerHTML = `<img src="${d.image}" class="chat-img">`;
+                div.querySelector('.thinking-txt').remove();
                 chats[activeChatId].history.push({ role: "assistant", content: `[Generated]` }); 
                 save(); return; 
             }
             const reader = res.body.getReader(), decoder = new TextDecoder();
-            contentDiv.innerHTML = "";
-            let full = "";
+            let full = "", firstWord = true;
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
+                if (firstWord) { div.querySelector('.thinking-txt').remove(); firstWord = false; }
                 full += decoder.decode(value);
                 contentDiv.innerHTML = marked.parse(cleanMath(full));
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: cleanMath(full) }); save();
-        } catch(e) { contentDiv.innerText = "Error: System overload. Start new chat."; }
+        } catch(e) { 
+            if(div.querySelector('.thinking-txt')) div.querySelector('.thinking-txt').innerText = "Error: System Busy.";
+        }
     }
 
     function appendMessage(role, content) {
@@ -131,7 +135,10 @@
         div.innerHTML = `<div class="label">>> ${role.toUpperCase()}</div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
         const cDiv = div.querySelector('.content');
-        if (typeof content === 'string') { cDiv.innerHTML = content.includes('Thinking...') ? content : marked.parse(cleanMath(content)); }
+        if (typeof content === 'string') { 
+            if (content.includes('Thinking...')) div.insertAdjacentHTML('beforeend', content);
+            else cDiv.innerHTML = marked.parse(cleanMath(content)); 
+        }
         else { content.forEach(p => { if (p.type === 'text') cDiv.innerHTML += marked.parse(cleanMath(p.text)); if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" class="chat-img">`; }); }
         document.getElementById('chat-container').scrollTop = 1e9;
         return div;
@@ -146,11 +153,11 @@
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const scale = Math.min(1, 500 / Math.max(img.width, img.height));
+                const scale = Math.min(1, 450 / Math.max(img.width, img.height));
                 canvas.width = img.width * scale; canvas.height = img.height * scale;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                attachedImg = canvas.toDataURL('image/jpeg', 0.4);
+                attachedImg = canvas.toDataURL('image/jpeg', 0.3);
                 document.getElementById('preview-bar').style.display = 'flex';
                 document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900;">✕</span>`;
             };
