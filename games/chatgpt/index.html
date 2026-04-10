@@ -33,7 +33,7 @@
         #input-container { width: 100%; max-width: 850px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 15px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         .plus-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--text); background: rgba(255,255,255,0.05); border-radius: 50%; cursor: pointer; font-size: 20px; border: 1px solid var(--border); }
         textarea { flex: 1; background: transparent; border: none; color: var(--text); font-size: 15px; outline: none; resize: none; max-height: 200px; }
-        .ai-selector { background: transparent; border: none; color: var(--p-red); font-size: 10px; font-weight: 800; cursor: pointer; outline: none; }
+        .ai-selector { background: transparent; border: none; color: var(--p-red); font-size: 10px; font-weight: 800; cursor: pointer; outline: none; text-transform: uppercase; }
         #preview-bar { display: none; padding: 10px; gap: 10px; max-width: 850px; margin: 0 auto; align-items: center; }
         .p-img { height: 60px; border-radius: 8px; border: 1px solid var(--p-red); }
         .new-chat-btn { padding: 12px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 30px; }
@@ -52,6 +52,7 @@
     <div id="sidebar">
         <div class="new-chat-btn" onclick="createNewChat()">+ NEW CHAT</div>
         <div id="chat-list"></div>
+        <div style="margin-top: auto; font-size: 9px; color: #444;">PHOENIX_ARCHITECT_OS</div>
     </div>
     <div id="chat-section">
         <div id="chat-container"></div>
@@ -61,9 +62,9 @@
                 <div class="plus-btn" onclick="document.getElementById('file-in').click()">+</div>
                 <input type="file" id="file-in" hidden accept="image/*" onchange="handleFile(event)">
                 <select id="model-select" class="ai-selector">
-                    <option value="llama">Llama (Vision)</option>
+                    <option value="llama">Llama 4 Scout</option>
                     <option value="deepseek">DeepSeek R1</option>
-                    <option value="gemma">Gemma 7B</option>
+                    <option value="gemma">Gemma 4 MoE</option>
                     <option value="flux">Flux (Image)</option>
                 </select>
                 <textarea id="user-input" placeholder="Type or paste image..." rows="1"></textarea>
@@ -73,16 +74,18 @@
     </div>
 </div>
 <script>
-    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
+    const WORKER_URL = "https://workers.dev";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = true;
 
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
     function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI." }] }; save(); renderList(); loadChat(activeChatId); }
-    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => appendMessage(m.role, typeof m.content === 'string' ? m.content : "[Visual Exchange]")); renderList(); }
+    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => {
+        let text = typeof m.content === 'string' ? m.content : m.content.find(c => c.type === 'text')?.text || "[Visual Data]";
+        appendMessage(m.role, text);
+    }); renderList(); }
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
     function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
-    
     function handleFile(e) { if (e.target.files) convertToBase64(e.target.files); }
     document.getElementById('user-input').onpaste = (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile()); };
     function convertToBase64(file) { const r = new FileReader(); r.onload = (e) => { attachedImg = e.target.result; document.getElementById('preview-bar').style.display = 'flex'; document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span style="color:red; cursor:pointer" onclick="clearImg()">✕</span>`; }; r.readAsDataURL(file); }
