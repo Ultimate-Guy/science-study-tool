@@ -25,17 +25,15 @@
         body, html { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
         
         #canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
-        #app-container { display: flex; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+        #app-container { display: flex; position: absolute; inset: 0; z-index: 1; }
 
-        #sidebar { width: 260px; height: 100%; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
-        #chat-section { flex: 1; height: 100%; display: flex; flex-direction: column; background: transparent; position: relative; min-width: 0; }
+        #sidebar { width: 260px; height: 100%; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; }
+        #chat-section { flex: 1; height: 100%; display: flex; flex-direction: column; background: transparent; position: relative; }
         
         #theme-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; border: 1px solid var(--p-red); color: var(--p-red); font-size: 11px; font-weight: 800; cursor: pointer; border-radius: 6px; z-index: 100; background: var(--bg); }
-
         #chat-container { flex: 1; overflow-y: auto; padding: 80px 20px 20px 20px; display: flex; flex-direction: column; }
         .message { width: 100%; max-width: 900px; margin: 0 auto 40px auto; }
         .label { font-size: 10px; font-weight: 800; margin-bottom: 12px; color: var(--p-red); letter-spacing: 2px; }
-        .content { line-height: 1.8; font-size: 15px; word-wrap: break-word; }
 
         #input-wrapper { width: 100%; padding: 20px; background: linear-gradient(transparent, var(--bg) 40%); }
         #input-container { width: 100%; max-width: 900px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
@@ -45,28 +43,23 @@
 
         .new-chat-btn { padding: 12px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 30px; }
         #chat-list { flex: 1; overflow-y: auto; }
-        .chat-item { padding: 12px; border-radius: 8px; cursor: pointer; font-size: 12px; color: #777; margin-bottom: 4px; border: 1px solid transparent; }
-        .chat-item.active { background: rgba(255,26,26,0.1); color: var(--text); border-color: var(--p-red); }
+        .chat-item { padding: 12px; border-radius: 8px; cursor: pointer; font-size: 12px; color: #777; margin-bottom: 4px; }
+        .chat-item.active { background: rgba(255,26,26,0.1); color: var(--text); border: 1px solid var(--p-red); }
         
         .thinking-dots { display: flex; gap: 4px; padding: 10px 0; }
         .thinking-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--p-red); animation: bounce 1.4s infinite ease-in-out; }
-        .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
-        .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
         @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
     </style>
 </head>
 <body>
-
 <canvas id="canvas"></canvas>
 <div id="theme-btn" onclick="toggleTheme()">DARK MODE</div>
-
 <div id="app-container">
     <div id="sidebar">
         <div class="new-chat-btn" onclick="createNewChat()">+ NEW CHAT</div>
         <div id="chat-list"></div>
-        <div style="margin-top: auto; font-size: 9px; color: #444; letter-spacing: 1px;">PHOENIX_ARCHITECT_OS</div>
+        <div style="margin-top: auto; font-size: 9px; color: #444;">PHOENIX_ARCHITECT_OS</div>
     </div>
-
     <div id="chat-section">
         <div id="chat-container"></div>
         <div id="input-wrapper">
@@ -83,31 +76,18 @@
         </div>
     </div>
 </div>
-
 <script>
     const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}');
     let activeChatId = null, isDarkMode = true;
 
     window.onload = () => { renderChatList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
-
-    function createNewChat() {
-        activeChatId = Date.now().toString();
-        chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI." }] };
-        save(); renderChatList(); loadChat(activeChatId);
-    }
-
-    function loadChat(id) {
-        activeChatId = id;
-        document.getElementById('chat-container').innerHTML = '';
-        chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content, false));
-        renderChatList();
-    }
+    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI." }] }; save(); renderChatList(); loadChat(activeChatId); }
+    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content, false)); renderChatList(); }
 
     async function sendMessage() {
         const inputField = document.getElementById('user-input'), text = inputField.value.trim();
         if(!text) return;
-        if(chats[activeChatId].history.length === 1) chats[activeChatId].title = text.substring(0, 20);
         appendMessage('user', text);
         chats[activeChatId].history.push({role: "user", content: text});
         inputField.value = '';
@@ -126,19 +106,14 @@
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split("\n");
-                for (const line of lines) {
+                const chunk = decoder.decode(value).split("\n");
+                for (const line of chunk) {
                     if (line.trim().startsWith("data: ")) {
                         try {
                             const raw = line.replace("data: ", "").trim();
                             const json = JSON.parse(raw);
                             const content = json.response || json.choices?.[0]?.delta?.content || "";
-                            if (content) {
-                                fullResponse += content;
-                                contentDiv.innerHTML = marked.parse(fullResponse);
-                                document.getElementById('chat-container').scrollTop = 1e9;
-                            }
+                            if (content) { fullResponse += content; contentDiv.innerHTML = marked.parse(fullResponse); document.getElementById('chat-container').scrollTop = 1e9; }
                         } catch (e) {}
                     }
                 }
@@ -153,21 +128,18 @@
         try {
             const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: [{content: prompt}], model: 'flux' }) });
             const data = await res.json();
-            if (data.image) {
-                contentDiv.innerHTML = `<img src="${data.image}" style="width:100%; border-radius:14px; border:1px solid var(--p-red); margin-top:10px;">`;
-            } else throw new Error();
+            if (data.image) contentDiv.innerHTML = `<img src="${data.image}" style="width:100%; border-radius:14px; border:1px solid var(--p-red); margin-top:10px;">`;
             chats[activeChatId].history.push({ role: "assistant", content: `[Image]` });
             save();
         } catch(e) { contentDiv.innerText = "Generation failed."; }
     }
 
-    function appendMessage(role, text, anim = true) {
+    function appendMessage(role, text) {
         const div = document.createElement('div'); div.className = 'message';
         div.innerHTML = `<div class="label">>> ${role.toUpperCase()}</div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
         const content = div.querySelector('.content');
-        if(role !== 'ai' || !text.includes('thinking-dots')) content.innerHTML = marked.parse(text);
-        else content.innerHTML = text;
+        content.innerHTML = text.includes('thinking-dots') ? text : marked.parse(text);
         document.getElementById('chat-container').scrollTop = 1e9;
         return div;
     }
@@ -192,7 +164,6 @@
     window.addEventListener('mousemove', e => { for(let i=0; i<3; i++) particles.push(new P(e.x, e.y)); });
     function animate() { ctx.clearRect(0,0,canvas.width,canvas.height); particles.forEach((p,i) => { p.u(); p.d(); if(p.size<=0.1) particles.splice(i,1); }); requestAnimationFrame(animate); }
     animate();
-
     document.getElementById('user-input').addEventListener("keypress", e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 </script>
 </body>
