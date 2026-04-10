@@ -82,19 +82,14 @@
 
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
-    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI. Answer math clearly. Never use $ symbols." }] }; save(); renderList(); loadChat(activeChatId); }
+    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI. Never use $ signs." }] }; save(); renderList(); loadChat(activeChatId); }
     
     function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content)); renderList(); }
 
     async function sendMessage() {
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
-        
-        let content = attachedImg ? [
-            { type: "text", text: text || "Solve this math problem clearly." },
-            { type: "image_url", image_url: { url: attachedImg } }
-        ] : text;
-
+        let content = attachedImg ? [{ type: "text", text: text || "Answer this question based on the image." }, { type: "image_url", image_url: { url: attachedImg } }] : text;
         appendMessage('user', content);
         chats[activeChatId].history.push({ role: "user", content: content });
         f.value = ''; clearImg();
@@ -104,17 +99,25 @@
     async function getAIResponse(model) {
         const div = appendMessage('ai', '<div class="thinking-dots"><span></span><span></span><span></span></div>');
         const contentDiv = div.querySelector('.content');
-        let full = "";
+        
+        // --- PAYLOAD PROTECTION ---
+        // Strip all images except the one in the very last message to prevent "Failed to fetch"
+        const cleanHistory = chats[activeChatId].history.map((m, idx) => {
+            if (idx === chats[activeChatId].history.length - 1) return m;
+            if (typeof m.content === 'string') return m;
+            return { role: m.role, content: m.content.find(c => c.type === 'text')?.text || "[Image]" };
+        });
+
         try {
-            const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model: model }) });
+            const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: cleanHistory, model: model }) });
             if (model === 'flux') { 
-                const d = await res.json(); 
-                contentDiv.innerHTML = `<img src="${d.image}" class="chat-img">`; 
+                const d = await res.json(); contentDiv.innerHTML = `<img src="${d.image}" class="chat-img">`; 
                 chats[activeChatId].history.push({ role: "assistant", content: `[Generated]` }); 
                 save(); return; 
             }
             const reader = res.body.getReader(), decoder = new TextDecoder();
             contentDiv.innerHTML = "";
+            let full = "";
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -123,7 +126,7 @@
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: cleanMath(full) }); save();
-        } catch(e) { contentDiv.innerText = "Error: Connection Timeout. Try again."; }
+        } catch(e) { contentDiv.innerText = "Error: Payload too large. Start a New Chat."; }
     }
 
     function appendMessage(role, content) {
@@ -137,8 +140,8 @@
         return div;
     }
 
-    function handleFile(e) { if (e.target.files[0]) compressImage(e.target.files[0]); }
-    document.getElementById('user-input').onpaste = (e) => { const items = (e.clipboardData).items; for (let i of items) if (i.type.indexOf("image") !== -1) compressImage(i.getAsFile()); };
+    function handleFile(e) { if (e.target.files) compressImage(e.target.files[0]); }
+    document.getElementById('user-input').onpaste = (e) => { const items = e.clipboardData.items; for (let i of items) if (i.type.indexOf("image") !== -1) compressImage(i.getAsFile()); };
 
     function compressImage(file) {
         const reader = new FileReader();
@@ -146,15 +149,13 @@
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                // Resize to max 800px to keep payload small
-                const scale = Math.min(1, 800 / Math.max(img.width, img.height));
-                canvas.width = img.width * scale;
-                canvas.height = img.height * scale;
+                const scale = Math.min(1, 600 / Math.max(img.width, img.height));
+                canvas.width = img.width * scale; canvas.height = img.height * scale;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                attachedImg = canvas.toDataURL('image/jpeg', 0.6); // Compress to 60% quality
+                attachedImg = canvas.toDataURL('image/jpeg', 0.5);
                 document.getElementById('preview-bar').style.display = 'flex';
-                document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span style="color:red; cursor:pointer;" onclick="clearImg()">✕</span>`;
+                document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span onclick="clearImg()" style="color:red;cursor:pointer">✕</span>`;
             };
             img.src = event.target.result;
         };
