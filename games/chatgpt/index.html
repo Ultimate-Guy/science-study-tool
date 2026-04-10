@@ -63,7 +63,7 @@
                 <select id="model-select" class="ai-selector">
                     <option value="llama">Llama (Vision)</option>
                     <option value="deepseek">DeepSeek R1</option>
-                    <option value="gemma">Gemma 2</option>
+                    <option value="gemma">Gemma 7B</option>
                     <option value="flux">Flux (Image)</option>
                 </select>
                 <textarea id="user-input" placeholder="Type or paste image..." rows="1"></textarea>
@@ -73,17 +73,17 @@
     </div>
 </div>
 <script>
-    const WORKER_URL = "https://workers.dev";
+    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = true;
 
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
     function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI." }] }; save(); renderList(); loadChat(activeChatId); }
-    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => appendMessage(m.role, typeof m.content === 'string' ? m.content : "[Vision Exchange]")); renderList(); }
+    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => appendMessage(m.role, typeof m.content === 'string' ? m.content : "[Visual Exchange]")); renderList(); }
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
     function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
     
-    function handleFile(e) { if (e.target.files) convertToBase64(e.target.files[0]); }
+    function handleFile(e) { if (e.target.files) convertToBase64(e.target.files); }
     document.getElementById('user-input').onpaste = (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile()); };
     function convertToBase64(file) { const r = new FileReader(); r.onload = (e) => { attachedImg = e.target.result; document.getElementById('preview-bar').style.display = 'flex'; document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span style="color:red; cursor:pointer" onclick="clearImg()">✕</span>`; }; r.readAsDataURL(file); }
     function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
@@ -92,10 +92,10 @@
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
         let content = text;
-        if (attachedImg) { content = [{type: "text", text: text || "Analyze this image."}, {type: "image_url", image_url: {url: attachedImg}}]; }
+        if (attachedImg) { content = [{type: "text", text: text || "Analyze image."}, {type: "image_url", image_url: {url: attachedImg}}]; }
         appendMessage('user', text || "[Image Sent]");
         chats[activeChatId].history.push({ role: "user", content: content });
-        if(chats[activeChatId].history.length === 2) chats[activeChatId].title = text.substring(0, 15) || "Visual Analysis";
+        if(chats[activeChatId].history.length === 2) chats[activeChatId].title = text.substring(0, 15) || "Phoenix Vision";
         f.value = ''; clearImg();
         await getAIResponse(document.getElementById('model-select').value);
     }
@@ -106,7 +106,12 @@
         let full = "";
         try {
             const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model: model }) });
-            if (model === 'flux') { const d = await res.json(); content.innerHTML = `<img src="${d.image}" style="width:100%; border-radius:14px; border:1px solid var(--p-red); margin-top:10px;">`; chats[activeChatId].history.push({ role: "assistant", content: "[Image Generated]" }); save(); return; }
+            if (model === 'flux') { 
+                const d = await res.json(); 
+                content.innerHTML = `<img src="${d.image}" style="width:100%; border-radius:14px; border:1px solid var(--p-red); margin-top:10px;">`; 
+                chats[activeChatId].history.push({ role: "assistant", content: "[Image Generated]" }); 
+                save(); return; 
+            }
             const reader = res.body.getReader(), decoder = new TextDecoder();
             content.innerHTML = "";
             while (true) {
@@ -117,7 +122,7 @@
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: full }); save();
-        } catch(e) { content.innerText = "Connection lost. Refresh and check Neurons."; }
+        } catch(e) { content.innerText = "Error: Check Cloudflare AI Binding."; }
     }
 
     function appendMessage(role, text) {
