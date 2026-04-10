@@ -31,7 +31,6 @@
         .label { font-size: 10px; font-weight: 800; margin-bottom: 12px; color: var(--p-red); letter-spacing: 2px; }
         .chat-img { max-width: 100%; max-height: 400px; border-radius: 12px; margin-top: 10px; border: 1px solid var(--border); }
         
-        /* CLEAN NORMAL INPUT */
         #input-wrapper { width: 100%; padding: 20px; background: linear-gradient(transparent, var(--bg) 40%); }
         #input-container { width: 100%; max-width: 850px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 12px 18px; display: flex; align-items: center; gap: 15px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         .plus-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; color: var(--text); background: rgba(255,255,255,0.05); border-radius: 50%; cursor: pointer; font-size: 22px; border: 1px solid var(--border); }
@@ -45,6 +44,7 @@
         .chat-item { padding: 12px; border-radius: 8px; cursor: pointer; font-size: 12px; color: #777; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
         .chat-item.active { background: rgba(255,26,26,0.08); color: var(--text); border: 1px solid var(--p-red); }
         .chat-options { padding: 4px 8px; cursor: pointer; font-weight: bold; opacity: 0.5; }
+
         .thinking-dots { display: flex; gap: 4px; padding: 10px 0; }
         .thinking-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--p-red); animation: bounce 1.4s infinite ease-in-out; }
         @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
@@ -66,7 +66,7 @@
                 <div class="plus-btn" onclick="document.getElementById('file-in').click()">+</div>
                 <input type="file" id="file-in" hidden accept="image/*" onchange="handleFile(event)">
                 <select id="model-select" class="ai-selector">
-                    <option value="llama">Llama 4 Scout</option>
+                    <option value="glm">GLM-4.7 Flash</option>
                     <option value="kimi">Kimi-K2.5</option>
                     <option value="gemma">Gemma 4 MoE</option>
                     <option value="flux">Flux (Image)</option>
@@ -78,9 +78,8 @@
     </div>
 </div>
 <script>
-    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
+    const WORKER_URL = "https://workers.dev";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = true;
-
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
     function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI assistant." }] }; save(); renderList(); loadChat(activeChatId); }
@@ -88,12 +87,11 @@
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
     function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
     
-    function handleFile(e) { if (e.target.files) convertToBase64(e.target.files[0]); }
+    function handleFile(e) { if (e.target.files) convertToBase64(e.target.files); }
     document.getElementById('user-input').onpaste = (e) => {
         const items = (e.clipboardData || e.originalEvent.clipboardData).items;
         for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile());
     };
-
     function convertToBase64(file) {
         const r = new FileReader();
         r.onload = (e) => { attachedImg = e.target.result; document.getElementById('preview-bar').style.display = 'flex'; document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span style="color:red; cursor:pointer; font-weight:bold; margin-left:10px;" onclick="clearImg()">✕</span>`; };
@@ -105,10 +103,10 @@
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
         let content = text;
-        if (attachedImg) { content = [{type: "text", text: text || "Analyze this image."}, {type: "image_url", image_url: {url: attachedImg}}]; }
+        if (attachedImg) content = [{type: "text", text: text || "Describe this."}, {type: "image_url", image_url: {url: attachedImg}}];
         appendMessage('user', content);
         chats[activeChatId].history.push({ role: "user", content: content });
-        if(chats[activeChatId].history.length === 2) chats[activeChatId].title = text.substring(0, 15) || "Visual Architect";
+        if(chats[activeChatId].history.length === 2) chats[activeChatId].title = (typeof content === 'string' ? content : "Vision").substring(0, 15);
         f.value = ''; clearImg();
         await getAIResponse(document.getElementById('model-select').value);
     }
@@ -135,7 +133,7 @@
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: full }); save();
-        } catch(e) { contentDiv.innerText = "Error: Model unavailable."; }
+        } catch(e) { contentDiv.innerText = "Error: System overload. Ensure AI Binding is correct."; }
     }
 
     function appendMessage(role, content) {
@@ -143,14 +141,8 @@
         div.innerHTML = `<div class="label">>> ${role.toUpperCase()}</div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
         const cDiv = div.querySelector('.content');
-        if (typeof content === 'string') {
-            cDiv.innerHTML = content.includes('thinking-dots') ? content : marked.parse(content);
-        } else {
-            content.forEach(part => {
-                if (part.type === 'text') cDiv.innerHTML += marked.parse(part.text);
-                if (part.type === 'image_url') cDiv.innerHTML += `<img src="${part.image_url.url}" class="chat-img">`;
-            });
-        }
+        if (typeof content === 'string') { cDiv.innerHTML = content.includes('thinking-dots') ? content : marked.parse(content); }
+        else { content.forEach(p => { if (p.type === 'text') cDiv.innerHTML += marked.parse(p.text); if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" class="chat-img">`; }); }
         document.getElementById('chat-container').scrollTop = 1e9;
         return div;
     }
