@@ -19,34 +19,44 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
     <style>
         :root { --p-red: #ff1a1a; --bg: #050202; --sidebar-bg: #0a0a0a; --border: #1a1a1a; --text: #e0e0e0; --input-bg: #0d0d0d; }
-        body.light-mode { --bg: #ffffff; --sidebar-bg: #f5f5f5; --border: #eee; --text: #111; --input-bg: #ffffff; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
-        #canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        
+        #canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
         #app-container { display: flex; position: absolute; inset: 0; z-index: 1; }
-        #sidebar { width: 280px; height: 100%; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
-        #chat-section { flex: 1; height: 100%; display: flex; flex-direction: column; position: relative; }
-        #theme-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; border: 1px solid var(--p-red); color: var(--p-red); font-size: 11px; font-weight: 800; cursor: pointer; border-radius: 6px; z-index: 100; background: var(--bg); }
-        #chat-container { flex: 1; overflow-y: auto; padding: 80px 20px 20px 20px; display: flex; flex-direction: column; }
+
+        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
+        #chat-section { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+        
+        #chat-container { flex: 1; overflow-y: auto; padding: 80px 20px 20px 20px; display: flex; flex-direction: column; scroll-behavior: smooth; }
         .message { width: 100%; max-width: 850px; margin: 0 auto 40px auto; }
         .label { font-size: 10px; font-weight: 800; margin-bottom: 12px; color: var(--p-red); letter-spacing: 2px; }
+
         #input-wrapper { width: 100%; padding: 20px; background: linear-gradient(transparent, var(--bg) 40%); }
-        #input-container { width: 100%; max-width: 850px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        #input-container { width: 100%; max-width: 850px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 15px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        
+        .plus-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--text); background: rgba(255,255,255,0.05); border-radius: 50%; cursor: pointer; font-size: 20px; border: 1px solid var(--border); }
+        .plus-btn:hover { color: var(--p-red); border-color: var(--p-red); }
+
+        textarea { flex: 1; background: transparent; border: none; color: var(--text); font-size: 15px; outline: none; resize: none; max-height: 200px; padding: 5px 0; }
         .ai-selector { background: transparent; border: none; color: var(--p-red); font-size: 10px; font-weight: 800; cursor: pointer; outline: none; }
-        textarea { flex: 1; background: transparent; border: none; color: var(--text); font-size: 15px; outline: none; resize: none; max-height: 200px; }
+
+        #preview-bar { display: none; padding: 10px; gap: 10px; max-width: 850px; margin: 0 auto; align-items: center; }
+        .p-img { height: 60px; border-radius: 8px; border: 1px solid var(--p-red); }
+
         .new-chat-btn { padding: 12px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 30px; }
         #chat-list { flex: 1; overflow-y: auto; }
         .chat-item { padding: 12px; border-radius: 8px; cursor: pointer; font-size: 12px; color: #777; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
         .chat-item.active { background: rgba(255,26,26,0.08); color: var(--text); border: 1px solid var(--p-red); }
-        .chat-options { padding: 4px 8px; cursor: pointer; font-weight: bold; }
+        
         .thinking-dots { display: flex; gap: 4px; padding: 10px 0; }
         .thinking-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--p-red); animation: bounce 1.4s infinite ease-in-out; }
         @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
     </style>
 </head>
 <body>
+
 <canvas id="canvas"></canvas>
-<div id="theme-btn" onclick="toggleTheme()">DARK MODE</div>
 <div id="app-container">
     <div id="sidebar">
         <div class="new-chat-btn" onclick="createNewChat()">+ NEW CHAT</div>
@@ -55,131 +65,116 @@
     </div>
     <div id="chat-section">
         <div id="chat-container"></div>
+        <div id="preview-bar"></div>
         <div id="input-wrapper">
             <div id="input-container">
+                <div class="plus-btn" onclick="document.getElementById('file-in').click()">+</div>
+                <input type="file" id="file-in" hidden accept="image/*" onchange="handleFile(event)">
                 <select id="model-select" class="ai-selector">
-                    <option value="llama">Llama 3.1</option>
+                    <option value="llama">Llama 4 Vision</option>
                     <option value="deepseek">DeepSeek R1</option>
-                    <option value="gemma">Gemma 2</option>
-                    <option value="flux">Flux (Image)</option>
+                    <option value="flux">Flux 2 Klein</option>
                 </select>
-                <textarea id="user-input" placeholder="Architecting thoughts..." rows="1" autofocus></textarea>
-                <div style="color:var(--p-red); cursor:pointer; font-weight: 900; font-size: 20px;" onclick="sendMessage()">➔</div>
+                <textarea id="user-input" placeholder="Type or paste image..." rows="1"></textarea>
+                <div style="color:var(--p-red); cursor:pointer; font-weight:900; font-size:22px;" onclick="sendMessage()">➔</div>
             </div>
         </div>
     </div>
 </div>
+
 <script>
-    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
-    let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}');
-    let activeChatId = null, isDarkMode = true;
+    const WORKER_URL = "https://workers.dev";
+    let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null;
 
-    window.onload = () => { renderChatList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
+    window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
+    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI." }] }; save(); renderList(); loadChat(activeChatId); }
+    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => appendMessage(m.role, typeof m.content === 'string' ? m.content : "[Image Interaction]")); renderList(); }
 
-    function createNewChat() {
-        activeChatId = Date.now().toString();
-        chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI." }] };
-        save(); renderChatList(); loadChat(activeChatId);
-    }
+    function handleFile(e) { if (e.target.files[0]) convertToBase64(e.target.files[0]); }
+    document.getElementById('user-input').onpaste = (e) => {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile());
+    };
 
-    function loadChat(id) {
-        activeChatId = id;
-        document.getElementById('chat-container').innerHTML = '';
-        chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content));
-        renderChatList();
+    function convertToBase64(file) {
+        const r = new FileReader();
+        r.onload = (e) => {
+            attachedImg = e.target.result;
+            const bar = document.getElementById('preview-bar');
+            bar.style.display = 'flex';
+            bar.innerHTML = `<img src="${attachedImg}" class="p-img"><span style="color:red; cursor:pointer" onclick="clearImg()">✕</span>`;
+        };
+        r.readAsDataURL(file);
     }
-
-    function openChatOptions(e, id) {
-        e.stopPropagation();
-        const action = prompt("Type 'rename' or 'delete':", "rename");
-        if (action === 'rename') {
-            const t = prompt("New title:", chats[id].title);
-            if (t) { chats[id].title = t; save(); renderChatList(); }
-        } else if (action === 'delete') {
-            delete chats[id]; save();
-            const r = Object.keys(chats);
-            if (r.length) loadChat(r.pop()); else createNewChat();
-        }
-    }
+    function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
 
     async function sendMessage() {
-        const inputField = document.getElementById('user-input'), text = inputField.value.trim();
-        if(!text) return;
-        if(chats[activeChatId].history.length === 1) chats[activeChatId].title = text.substring(0, 15);
-        appendMessage('user', text);
-        chats[activeChatId].history.push({role: "user", content: text});
-        inputField.value = '';
-        const model = document.getElementById('model-select').value;
-        if(model === 'flux') await generateImage(text); else await getAIResponse(model);
+        const f = document.getElementById('user-input'), text = f.value.trim();
+        if(!text && !attachedImg) return;
+
+        let userContent = [];
+        if (text) userContent.push({ type: "text", text: text });
+        if (attachedImg) userContent.push({ type: "image_url", image_url: { url: attachedImg } });
+
+        appendMessage('user', text || "[Image Sent]");
+        chats[activeChatId].history.push({ role: "user", content: userContent.length > 1 ? userContent : (text || userContent) });
+        if(chats[activeChatId].history.length === 2) chats[activeChatId].title = text.substring(0, 15) || "Image Search";
+        
+        f.value = ''; clearImg();
+        await getAIResponse(document.getElementById('model-select').value);
     }
 
     async function getAIResponse(model) {
-        const messageDiv = appendMessage('ai', '<div class="thinking-dots"><span></span><span></span><span></span></div>');
-        const contentDiv = messageDiv.querySelector('.content');
-        let fullResponse = "";
+        const div = appendMessage('ai', '<div class="thinking-dots"><span></span><span></span><span></span></div>');
+        const content = div.querySelector('.content');
+        let full = "";
         try {
-            const response = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model: model }) });
-            const reader = response.body.getReader(), decoder = new TextDecoder();
-            contentDiv.innerHTML = "";
+            const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model: model }) });
+            const reader = res.body.getReader(), decoder = new TextDecoder();
+            content.innerHTML = "";
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 let chunk = decoder.decode(value);
-                
-                // If DeepSeek, hide the thinking process
                 if (model === 'deepseek') chunk = chunk.replace(/<think>[\s\S]*?<\/think>/g, '');
-                
-                fullResponse += chunk;
-                contentDiv.innerHTML = marked.parse(fullResponse);
+                full += chunk;
+                content.innerHTML = marked.parse(full);
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
-            chats[activeChatId].history.push({ role: "assistant", content: fullResponse });
+            chats[activeChatId].history.push({ role: "assistant", content: full });
             save();
-        } catch(e) { contentDiv.innerText = "Error: Check Worker URL."; }
-    }
-
-    async function generateImage(prompt) {
-        const messageDiv = appendMessage('ai', '<div class="thinking-dots"><span></span><span></span><span></span></div>'), contentDiv = messageDiv.querySelector('.content');
-        try {
-            const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: [{content: prompt}], model: 'flux' }) });
-            const data = await res.json();
-            contentDiv.innerHTML = `<img src="${data.image}" style="width:100%; border-radius:14px; border:1px solid var(--p-red); margin-top:10px;">`;
-            chats[activeChatId].history.push({ role: "assistant", content: `[Image]` });
-            save();
-        } catch(e) { contentDiv.innerText = "Image failed."; }
+        } catch(e) { content.innerText = "Connection lost."; }
     }
 
     function appendMessage(role, text) {
         const div = document.createElement('div'); div.className = 'message';
         div.innerHTML = `<div class="label">>> ${role.toUpperCase()}</div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
-        const content = div.querySelector('.content');
-        content.innerHTML = text.includes('thinking-dots') ? text : marked.parse(text);
+        const c = div.querySelector('.content');
+        c.innerHTML = text.includes('thinking-dots') ? text : marked.parse(text);
         document.getElementById('chat-container').scrollTop = 1e9;
         return div;
     }
 
-    function renderChatList() {
-        const list = document.getElementById('chat-list'); list.innerHTML = '';
+    function renderList() {
+        const l = document.getElementById('chat-list'); l.innerHTML = '';
         Object.keys(chats).sort().reverse().forEach(id => {
-            const div = document.createElement('div');
-            div.className = `chat-item ${id === activeChatId ? 'active' : ''}`;
-            div.onclick = () => loadChat(id);
-            div.innerHTML = `<span>${chats[id].title}</span><span class="chat-options" onclick="openChatOptions(event, '${id}')">⋮</span>`;
-            list.appendChild(div);
+            const d = document.createElement('div');
+            d.className = `chat-item ${id === activeChatId ? 'active' : ''}`;
+            d.onclick = () => loadChat(id);
+            d.innerHTML = `<span>${chats[id].title}</span><span style="opacity:0.5" onclick="event.stopPropagation(); delete chats['${id}']; save(); renderList(); createNewChat();">✕</span>`;
+            l.appendChild(d);
         });
     }
 
-    function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
-
-    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d'); let particles = [];
+    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d'); let p = [];
     window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }; window.onresize();
     class P { constructor(x,y) { this.x=x; this.y=y; this.size=Math.random()*1.5; this.sx=(Math.random()-0.5)*0.8; this.sy=(Math.random()-0.5)*0.8; } u() { this.x+=this.sx; this.y+=this.sy; if(this.size>0.1) this.size-=0.01; } d() { ctx.fillStyle = 'rgba(255,26,26,0.3)'; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,6.28); ctx.fill(); } }
-    window.addEventListener('mousemove', e => { for(let i=0; i<3; i++) particles.push(new P(e.x, e.y)); });
-    function animate() { ctx.clearRect(0,0,canvas.width,canvas.height); particles.forEach((p,i) => { p.u(); p.d(); if(p.size<=0.1) particles.splice(i,1); }); requestAnimationFrame(animate); }
+    window.addEventListener('mousemove', e => { for(let i=0; i<3; i++) p.push(new P(e.x, e.y)); });
+    function animate() { ctx.clearRect(0,0,canvas.width,canvas.height); p.forEach((_p,i) => { _p.u(); _p.d(); if(_p.size<=0.1) p.splice(i,1); }); requestAnimationFrame(animate); }
     animate();
-    document.getElementById('user-input').addEventListener("keypress", e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+    document.getElementById('user-input').onkeypress = (e) => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 </script>
 </body>
 </html>
