@@ -74,14 +74,14 @@
     </div>
 </div>
 <script>
-    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
+    const WORKER_URL = "https://workers.dev";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = true;
 
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
-    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI." }] }; save(); renderList(); loadChat(activeChatId); }
+    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI assistant." }] }; save(); renderList(); loadChat(activeChatId); }
     function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => {
-        let text = typeof m.content === 'string' ? m.content : m.content.find(c => c.type === 'text')?.text || "[Visual Data]";
+        let text = typeof m.content === 'string' ? m.content : m.content.find(c => c.type === 'text')?.text || "[Visual Session]";
         appendMessage(m.role, text);
     }); renderList(); }
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
@@ -95,10 +95,10 @@
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
         let content = text;
-        if (attachedImg) { content = [{type: "text", text: text || "Analyze image."}, {type: "image_url", image_url: {url: attachedImg}}]; }
+        if (attachedImg) { content = [{type: "text", text: text || "Describe this."}, {type: "image_url", image_url: {url: attachedImg}}]; }
         appendMessage('user', text || "[Image Sent]");
         chats[activeChatId].history.push({ role: "user", content: content });
-        if(chats[activeChatId].history.length === 2) chats[activeChatId].title = text.substring(0, 15) || "Phoenix Vision";
+        if(chats[activeChatId].history.length === 2) chats[activeChatId].title = text.substring(0, 15) || "Architect Session";
         f.value = ''; clearImg();
         await getAIResponse(document.getElementById('model-select').value);
     }
@@ -125,7 +125,7 @@
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: full }); save();
-        } catch(e) { content.innerText = "Error: Check Cloudflare AI Binding."; }
+        } catch(e) { content.innerText = "Error: System overload. Refresh and try again."; }
     }
 
     function appendMessage(role, text) {
