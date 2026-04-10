@@ -105,11 +105,6 @@
 
         appendMessage('user', content);
         chats[activeChatId].history.push({ role: "user", content: content });
-        
-        if(chats[activeChatId].history.length === 2) {
-            chats[activeChatId].title = (typeof content === 'string' ? content : "Vision Session").substring(0, 15);
-        }
-
         f.value = ''; clearImg();
         await getAIResponse(document.getElementById('model-select').value);
     }
@@ -140,8 +135,7 @@
                 contentDiv.innerHTML = marked.parse(full);
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
-            chats[activeChatId].history.push({ role: "assistant", content: full }); 
-            save();
+            chats[activeChatId].history.push({ role: "assistant", content: full }); save();
         } catch(e) { contentDiv.innerText = "Error: " + e.message; }
     }
 
@@ -150,7 +144,6 @@
         div.innerHTML = `<div class="label">>> ${role.toUpperCase()}</div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
         const cDiv = div.querySelector('.content');
-        
         if (typeof content === 'string') { 
             cDiv.innerHTML = content.includes('thinking-dots') ? content : marked.parse(content); 
         } else { 
@@ -175,17 +168,11 @@
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
     function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
     
-    function handleFile(e) { 
-        if (e.target.files && e.target.files[0]) {
-            convertToBase64(e.target.files[0]); 
-        }
-    }
-    
+    function handleFile(e) { if (e.target.files && e.target.files[0]) convertToBase64(e.target.files[0]); }
     document.getElementById('user-input').onpaste = (e) => { 
         const items = (e.clipboardData || e.originalEvent.clipboardData).items; 
         for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile()); 
     };
-    
     function convertToBase64(file) { 
         const r = new FileReader(); 
         r.onload = (e) => { 
@@ -195,7 +182,6 @@
         }; 
         r.readAsDataURL(file); 
     }
-    
     function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
     document.getElementById('user-input').onkeypress = (e) => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 </script>
