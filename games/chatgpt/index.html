@@ -78,7 +78,7 @@
     </div>
 </div>
 <script>
-    const WORKER_URL = "https://workers.dev";
+    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = true;
 
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
