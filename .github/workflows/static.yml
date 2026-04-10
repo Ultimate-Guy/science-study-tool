@@ -23,10 +23,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # 'treeless' clone is often faster than 'blobless' for massive static file counts
           filter: 'tree:0'
           fetch-depth: 1
-          persist-credentials: false
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -35,8 +33,9 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
-          # CRITICAL: Compression level 0 is mandatory for 2GB+ to prevent runner timeout
-          compression-level: 0
+          # Level 1 is 'fastest compression'. 
+          # It makes the upload smaller, making the 'Deploy' step finish faster.
+          compression-level: 1
 
       - name: Deploy to GitHub Pages
         id: deployment
