@@ -75,7 +75,7 @@
     </div>
 </div>
 <script>
-    const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
+    const WORKER_URL = "https://workers.dev";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = true;
     
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
@@ -92,11 +92,24 @@
     async function sendMessage() {
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
-        let content = text;
-        if (attachedImg) content = [{type: "text", text: text || "Analyze this."}, {type: "image_url", image_url: {url: attachedImg}}];
+        
+        let content;
+        if (attachedImg) {
+            content = [
+                { type: "text", text: text || "Analyze this image." },
+                { type: "image_url", image_url: { url: attachedImg } }
+            ];
+        } else {
+            content = text;
+        }
+
         appendMessage('user', content);
         chats[activeChatId].history.push({ role: "user", content: content });
-        if(chats[activeChatId].history.length === 2) chats[activeChatId].title = (typeof content === 'string' ? content : "Vision").substring(0, 15);
+        
+        if(chats[activeChatId].history.length === 2) {
+            chats[activeChatId].title = (typeof content === 'string' ? content : "Vision Session").substring(0, 15);
+        }
+
         f.value = ''; clearImg();
         await getAIResponse(document.getElementById('model-select').value);
     }
@@ -106,14 +119,18 @@
         const contentDiv = div.querySelector('.content');
         let full = "";
         try {
-            const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model: model }) });
+            const res = await fetch(WORKER_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ messages: chats[activeChatId].history, model: model }) 
+            });
+            
             if (model === 'flux') { 
                 const d = await res.json(); 
-                if (d.error) throw new Error(d.error);
                 contentDiv.innerHTML = `<img src="${d.image}" class="chat-img">`; 
                 chats[activeChatId].history.push({ role: "assistant", content: `[Image Generated]` }); 
                 save(); return; 
             }
+            
             const reader = res.body.getReader(), decoder = new TextDecoder();
             contentDiv.innerHTML = "";
             while (true) {
@@ -123,7 +140,8 @@
                 contentDiv.innerHTML = marked.parse(full);
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
-            chats[activeChatId].history.push({ role: "assistant", content: full }); save();
+            chats[activeChatId].history.push({ role: "assistant", content: full }); 
+            save();
         } catch(e) { contentDiv.innerText = "Error: " + e.message; }
     }
 
@@ -132,8 +150,15 @@
         div.innerHTML = `<div class="label">>> ${role.toUpperCase()}</div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
         const cDiv = div.querySelector('.content');
-        if (typeof content === 'string') { cDiv.innerHTML = content.includes('thinking-dots') ? content : marked.parse(content); }
-        else { content.forEach(p => { if (p.type === 'text') cDiv.innerHTML += marked.parse(p.text); if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" class="chat-img">`; }); }
+        
+        if (typeof content === 'string') { 
+            cDiv.innerHTML = content.includes('thinking-dots') ? content : marked.parse(content); 
+        } else { 
+            content.forEach(p => { 
+                if (p.type === 'text') cDiv.innerHTML += marked.parse(p.text); 
+                if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" class="chat-img">`; 
+            }); 
+        }
         document.getElementById('chat-container').scrollTop = 1e9;
         return div;
     }
@@ -149,9 +174,28 @@
 
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
     function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
-    function handleFile(e) { if (e.target.files) convertToBase64(e.target.files); }
-    document.getElementById('user-input').onpaste = (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile()); };
-    function convertToBase64(file) { const r = new FileReader(); r.onload = (e) => { attachedImg = e.target.result; document.getElementById('preview-bar').style.display = 'flex'; document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span style="color:red; cursor:pointer; font-weight:bold; margin-left:10px;" onclick="clearImg()">✕</span>`; }; r.readAsDataURL(file); }
+    
+    function handleFile(e) { 
+        if (e.target.files && e.target.files[0]) {
+            convertToBase64(e.target.files[0]); 
+        }
+    }
+    
+    document.getElementById('user-input').onpaste = (e) => { 
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items; 
+        for (let i of items) if (i.type.indexOf("image") !== -1) convertToBase64(i.getAsFile()); 
+    };
+    
+    function convertToBase64(file) { 
+        const r = new FileReader(); 
+        r.onload = (e) => { 
+            attachedImg = e.target.result; 
+            document.getElementById('preview-bar').style.display = 'flex'; 
+            document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span style="color:red; cursor:pointer; font-weight:bold; margin-left:10px;" onclick="clearImg()">✕</span>`; 
+        }; 
+        r.readAsDataURL(file); 
+    }
+    
     function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
     document.getElementById('user-input').onkeypress = (e) => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 </script>
