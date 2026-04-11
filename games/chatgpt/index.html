@@ -23,14 +23,13 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; transition: 0.3s; }
         #app-container { display: flex; height: 100vh; width: 100vw; }
-        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; transition: all 0.4s ease; z-index: 200; }
-        .sidebar-header { font-size: 10px; font-weight: 800; color: #888; margin: 20px 0 10px 10px; letter-spacing: 1px; text-transform: uppercase; }
-        #neuron-gauge-container { margin-top: 20px; padding: 15px; background: rgba(255, 26, 26, 0.05); border-radius: 12px; border: 1px solid rgba(255, 26, 26, 0.1); position: relative; }
+        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; z-index: 200; }
+        #neuron-gauge-container { margin-top: auto; padding: 15px; background: rgba(255, 26, 26, 0.05); border-radius: 12px; border: 1px solid rgba(255, 26, 26, 0.1); }
         .gauge-header { display: flex; justify-content: space-between; font-size: 10px; font-weight: 900; color: var(--p-red); text-transform: uppercase; }
         .gauge-bar-fill { height: 6px; width: 0%; background: var(--p-red); border-radius: 3px; transition: 0.5s; margin: 8px 0; }
         .landing-view #sidebar { transform: translateX(-100%); width: 0; padding: 0; opacity: 0; visibility: hidden; }
-        .landing-view #landing-header { display: block; text-align: center; margin-bottom: 40px; width: 90%; animation: fadeIn 0.8s ease; }
-        #landing-header { display: none; }
+        #landing-header { display: none; text-align: center; margin-bottom: 40px; }
+        .landing-view #landing-header { display: block; }
         .landing-view #chat-container { display: none; }
         .landing-view #input-wrapper { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #chat-section { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
@@ -46,15 +45,11 @@
         .action-btn { font-size: 10px; cursor: pointer; color: #888; font-weight: 800; }
         .message .content { padding: 16px 20px; border-radius: 18px; line-height: 1.6; border: 1px solid var(--border); font-size: 16px; }
         .message.user .content { background: var(--bubble-user); align-self: flex-end; }
-        .code-wrapper { position: relative; margin: 15px 0; border-radius: 8px; background: var(--code-bg); border: 1px solid var(--border); overflow: hidden; }
-        .code-header { display: flex; justify-content: space-between; padding: 8px 16px; background: rgba(255,255,255,0.05); font-size: 11px; color: #b4b4b4; }
         #input-container { width: 100%; max-width: 800px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 20px; padding: 10px 18px; display: flex; align-items: center; gap: 12px; }
         textarea { flex: 1; background: transparent; border: none; font-size: 16px; outline: none; resize: none; max-height: 200px; color: var(--text); font-family: inherit; }
         .sidebar-btn { padding: 12px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 8px; }
         .thinking-txt { font-size: 14px; opacity: 0.6; padding: 10px 0; animation: pulse 1.5s infinite; color: var(--p-red); font-weight: 900; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .limit-reached #input-container { opacity: 0.3; pointer-events: none; }
     </style>
 </head>
 <body class="light-mode">
@@ -73,9 +68,9 @@
     <div id="chat-section">
         <div id="chat-header-brand">PHOENIX AI</div>
         <div id="chat-container"></div>
-        <div id="input-wrapper" style="padding: 20px; width: 100%;">
+        <div id="input-wrapper" style="padding:20px; width:100%">
             <div id="landing-header"><h1>Where should we begin?</h1></div>
-            <div id="preview-bar" style="display:none; padding:10px; gap:10px; max-width:800px; margin:0 auto; align-items: center;"></div>
+            <div id="preview-bar" style="display:none; padding:10px; gap:10px; max-width:800px; margin:0 auto; align-items:center;"></div>
             <div id="input-container">
                 <div style="cursor:pointer; font-size:22px" onclick="document.getElementById('file-in').click()">+</div>
                 <input type="file" id="file-in" hidden onchange="handleFile(event)">
@@ -108,7 +103,8 @@
 
     function updateClock() {
         const now = new Date(), reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
-        const diff = reset - now, h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+        const diff = reset - now;
+        const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
         document.getElementById('reset-clock').innerText = `Reset in: ${h}h ${m}m ${s}s`;
     }
 
@@ -116,108 +112,98 @@
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
         document.getElementById('app-container').classList.remove('landing-view');
+        
         let content = attachedImg ? [{ type: "text", text: text || "Image" }, { type: "image_url", image_url: { url: attachedImg } }] : text;
         appendMessage('user', content, null, chats[activeChatId].history.length);
         chats[activeChatId].history.push({ role: "user", content: content });
+        
         if (chats[activeChatId].title === "New Session") { chats[activeChatId].title = text.substring(0, 25); renderList(); }
-        f.value = ''; clearImg(); getAIResponse(document.getElementById('model-select').value);
+        f.value = ''; clearImg(); 
+        getAIResponse(document.getElementById('model-select').value);
     }
 
     async function getAIResponse(model) {
-        const historyIdx = chats[activeChatId].history.length;
-        const div = appendMessage('ai', '<div id="think" class="thinking-txt">Thinking...</div>', model, historyIdx);
+        const idx = chats[activeChatId].history.length;
+        const div = appendMessage('ai', '<div id="think" class="thinking-txt">Thinking...</div>', model, idx);
         const contentDiv = div.querySelector('.content');
+        let full = "", firstWord = true, seconds = 0;
+
+        const timer = setInterval(() => {
+            seconds++;
+            const t = div.querySelector('#think');
+            if (t && seconds === 10) t.innerText = "One moment...";
+            if (t && seconds === 20) t.innerText = "Processing request...";
+        }, 1000);
 
         try {
             const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model }) });
             const reader = res.body.getReader(), decoder = new TextDecoder();
-            let full = "", firstWord = true;
 
             while (true) {
                 const { done, value } = await reader.read(); if (done) break;
-                if (firstWord) { div.querySelector('#think')?.remove(); firstWord = false; }
                 const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
-                for (const line of lines) {
+                
+                // UNIVERSAL SSE PARSER
+                chunk.split('\n').forEach(line => {
                     if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                         try {
                             const d = JSON.parse(line.replace('data: ', ''));
-                            const text = d.choices ? (d.choices[0]?.delta?.content || "") : (d.response || "");
-                            full += text;
-                            if (!['gpt-oss', 'llama-instant', 'deepseek-r1'].includes(model)) { 
-                                neuronStats.count += (text.length * 0.45); updateGauge(); 
+                            // Check ALL common fields
+                            const txt = d.choices?.[0]?.delta?.content || d.choices?.[0]?.text || d.response || d.text || "";
+                            if (txt) {
+                                if (firstWord) { clearInterval(timer); div.querySelector('#think')?.remove(); firstWord = false; }
+                                full += txt;
+                                if (!['gpt-oss', 'llama-instant', 'deepseek-r1'].includes(model)) { 
+                                    neuronStats.count += (txt.length * 0.45); updateGauge(); 
+                                }
                             }
                         } catch(e) {}
+                    } else if (!line.startsWith('data: ')) { // Handle raw text fallback
+                        if (firstWord && line.trim()) { clearInterval(timer); div.querySelector('#think')?.remove(); firstWord = false; }
+                        full += line;
                     }
-                }
+                });
                 contentDiv.innerHTML = marked.parse(full.replace(/\$/g, ''));
-                addCopyButtons(contentDiv);
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: full, modelUsed: model }); save();
-        } catch(e) { contentDiv.innerHTML = "Server Busy. Please Retry."; }
+        } catch(e) { clearInterval(timer); contentDiv.innerHTML = "System Busy. Please retry."; }
     }
 
-    function appendMessage(role, content, model, idx) {
+    function appendMessage(role, content, model, historyIdx) {
         const div = document.createElement('div'); div.className = `message ${role}`;
         let badge = (role === 'ai' && model) ? `<span class="model-badge">${model.toUpperCase()}</span>` : '';
         div.innerHTML = `<div class="label-row"><div style="display:flex;align-items:center"><div class="label">${role.toUpperCase()}</div>${badge}</div>
-            <div class="msg-actions"><span class="action-btn" onclick="copyMsg(this)">COPY</span><span class="action-btn" onclick="deleteMsg(${idx})">✕</span></div></div><div class="content"></div>`;
+            <div class="msg-actions"><span class="action-btn" onclick="copyMsg(this)">COPY</span><span class="action-btn" onclick="deleteMsg(${historyIdx})">✕</span></div></div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
-        const cDiv = div.querySelector('.content');
-        if (typeof content === 'string') cDiv.innerHTML = marked.parse(content);
-        else content.forEach(p => { 
-            if (p.type === 'text') cDiv.innerHTML += marked.parse(p.text); 
-            if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" style="max-width:100%; border-radius:12px; margin-top:10px">`; 
-        });
-        document.getElementById('chat-container').scrollTop = 1e9;
+        if (typeof content === 'string') div.querySelector('.content').innerHTML = marked.parse(content);
+        else content.forEach(p => { if (p.type === 'text') div.querySelector('.content').innerHTML += marked.parse(p.text); if (p.type === 'image_url') div.querySelector('.content').innerHTML += `<img src="${p.image_url.url}" style="max-width:100%; border-radius:12px; margin-top:10px">`; });
         return div;
     }
 
     function copyMsg(btn) { navigator.clipboard.writeText(btn.closest('.message').querySelector('.content').innerText); btn.innerText = "COPIED"; setTimeout(()=>btn.innerText="COPY", 2000); }
     function deleteMsg(idx) { if(confirm("Delete message?")) { chats[activeChatId].history.splice(idx, 1); save(); loadChat(activeChatId); } }
     function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "Phoenix" }] }; save(); loadChat(activeChatId); }
-    function loadChat(id) { 
-        activeChatId = id; document.getElementById('chat-container').innerHTML = ''; 
-        const app = document.getElementById('app-container');
-        if (chats[id].history.length <= 1) app.classList.add('landing-view'); 
-        else { app.classList.remove('landing-view'); chats[id].history.slice(1).forEach((m, i) => appendMessage(m.role, m.content, m.modelUsed, i+1)); } 
-        renderList(); 
-    }
+    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; if (chats[id].history.length <= 1) document.getElementById('app-container').classList.add('landing-view'); else { document.getElementById('app-container').classList.remove('landing-view'); chats[id].history.slice(1).forEach((m, i) => appendMessage(m.role, m.content, m.modelUsed, i+1)); } renderList(); }
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
     function renderList() { 
         const l = document.getElementById('chat-list'); l.innerHTML = ''; 
         Object.keys(chats).reverse().forEach(id => { 
             const d = document.createElement('div'); d.className = `chat-item ${id === activeChatId ? 'active' : ''}`; 
             d.onclick = () => loadChat(id); 
-            d.innerHTML = `<span>${chats[id].title}</span><span style="opacity:0.3" onclick="openChatOptions(event, '${id}')">⋮</span>`;
+            d.innerHTML = `<span>${chats[id].title}</span><span style="opacity:0.3" onclick="e=event;e.stopPropagation();prompt('rename' or 'delete'?)==='delete'?delete chats['${id}']:chats['${id}'].title=prompt('Title?');save();renderList();">⋮</span>`;
             l.appendChild(d); 
         }); 
-    }
-    function openChatOptions(e, id) {
-        e.stopPropagation();
-        const action = prompt("'rename' or 'delete'?", "rename");
-        if (action === 'rename') {
-            const t = prompt("New Title?", chats[id].title);
-            if (t) { chats[id].title = t; save(); renderList(); }
-        } else if (action === 'delete') {
-            if (confirm("Delete this session?")) { delete chats[id]; save(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); }
-        }
     }
     function toggleTheme() { document.body.classList.toggle('dark-mode'); document.getElementById('theme-btn').innerText = document.body.classList.contains('dark-mode') ? "LIGHT MODE" : "DARK MODE"; }
     function handleFile(e) { const r = new FileReader(); r.onload = (ev) => { attachedImg = ev.target.result; document.getElementById('preview-bar').style.display='flex'; document.getElementById('preview-bar').innerHTML=`<img src="${attachedImg}" style="height:60px; border-radius:8px">`; }; r.readAsDataURL(e.target.files); }
     function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
-    function clearHistory() { if(confirm("Clear current chat?")) { chats[activeChatId].history = [chats[activeChatId].history[0]]; save(); loadChat(activeChatId); } }
-    function addCopyButtons(c) { c.querySelectorAll('pre').forEach(pre => { if (pre.querySelector('.copy-btn')) return; const b = document.createElement('button'); b.className = 'copy-btn'; b.innerText = 'Copy'; b.onclick = () => navigator.clipboard.writeText(pre.innerText); pre.appendChild(b); }); Prism.highlightAllUnder(c); }
-
-    document.getElementById('send-btn').onclick = sendMessage;
+    function clearHistory() { if (confirm("Clear messages?")) { chats[activeChatId].history = chats[activeChatId].history.slice(0, 1); save(); loadChat(activeChatId); } }
+    
     document.getElementById('user-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+    document.getElementById('send-btn').addEventListener('click', sendMessage);
 
-    window.onload = () => { 
-        const today = new Date().getUTCDate(); if (neuronStats.day !== today) { neuronStats = { count: 0, day: today }; }
-        renderList(); updateGauge(); updateClock(); 
-        const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); 
-    };
+    window.onload = () => { renderList(); updateGauge(); updateClock(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     setInterval(updateClock, 1000);
 </script>
 </body>
