@@ -22,16 +22,27 @@
         body.light-mode { --bg: #ffffff; --sidebar-bg: #f5f5f5; --border: #eee; --text: #111; --input-bg: #ffffff; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; transition: 0.3s; }
-        #app-container { display: flex; position: absolute; inset: 0; z-index: 1; }
-        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
+        #app-container { display: flex; height: 100vh; }
+        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; transition: 0.3s; }
         #chat-section { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
-        #theme-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; border: 1px solid var(--p-red); color: var(--p-red); font-size: 11px; font-weight: 800; cursor: pointer; border-radius: 6px; z-index: 100; background: var(--bg); }
+        #chat-header-brand { position: absolute; top: 20px; right: 30px; font-size: 14px; font-weight: 900; color: var(--p-red); letter-spacing: 2px; z-index: 100; }
+        #theme-btn { position: absolute; top: 20px; left: 300px; padding: 8px 12px; border: 1px solid var(--border); font-size: 10px; cursor: pointer; border-radius: 4px; z-index: 100; background: var(--bg); color: var(--text); }
+        
+        /* Landing View Logic */
+        #landing-header { display: none; text-align: center; margin-bottom: 40px; animation: fadeIn 0.8s ease; }
+        .landing-view #sidebar { transform: translateX(-100%); width: 0; padding: 0; opacity: 0; border: none; }
+        .landing-view #theme-btn { left: 20px; }
+        .landing-view #landing-header { display: block; }
+        .landing-view #chat-container { display: none; }
+        .landing-view #input-wrapper { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding-bottom: 15vh; }
+        .landing-view #input-container { max-width: 720px; box-shadow: 0 0 50px rgba(255,26,26,0.1); }
+        
         #chat-container { flex: 1; overflow-y: auto; padding: 80px 20px 20px 20px; display: flex; flex-direction: column; scroll-behavior: smooth; }
         .message { width: 100%; max-width: 850px; margin: 0 auto 40px auto; }
         .label { font-size: 10px; font-weight: 800; margin-bottom: 12px; color: var(--p-red); letter-spacing: 2px; }
         .chat-img { max-width: 100%; max-height: 400px; border-radius: 12px; margin-top: 10px; border: 1px solid var(--border); }
-        #input-wrapper { width: 100%; padding: 20px; background: linear-gradient(transparent, var(--bg) 40%); }
-        #input-container { width: 100%; max-width: 850px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 12px 18px; display: flex; align-items: center; gap: 15px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        #input-wrapper { width: 100%; padding: 20px; transition: 0.5s ease-in-out; }
+        #input-container { width: 100%; max-width: 850px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 12px 18px; display: flex; align-items: center; gap: 15px; position: relative; }
         .plus-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; color: var(--text); background: rgba(255,255,255,0.05); border-radius: 50%; cursor: pointer; font-size: 22px; border: 1px solid var(--border); }
         textarea { flex: 1; background: transparent; border: none; color: var(--text); font-size: 16px; outline: none; resize: none; max-height: 150px; padding: 8px 0; line-height: 1.5; }
         .ai-selector { background: transparent; border: none; color: var(--p-red); font-size: 11px; font-weight: 800; cursor: pointer; outline: none; text-transform: uppercase; }
@@ -41,23 +52,26 @@
         #chat-list { flex: 1; overflow-y: auto; }
         .chat-item { padding: 12px; border-radius: 8px; cursor: pointer; font-size: 12px; color: #777; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
         .chat-item.active { background: rgba(255,26,26,0.08); color: var(--text); border: 1px solid var(--p-red); }
-        .chat-options { padding: 4px 8px; cursor: pointer; font-weight: bold; }
+        .chat-options { padding: 4px 8px; cursor: pointer; }
         .thinking-txt { font-size: 12px; color: var(--p-red); font-weight: 800; letter-spacing: 1px; animation: pulse 1.5s infinite; padding: 10px 0; }
         @keyframes pulse { 0%, 100% { opacity: 1; transform: translateX(0); } 50% { opacity: 0.4; transform: translateX(5px); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="dark-mode">
 <div id="theme-btn" onclick="toggleTheme()">DARK MODE</div>
-<div id="app-container">
+<div id="app-container" class="landing-view">
     <div id="sidebar">
         <div class="new-chat-btn" onclick="createNewChat()">+ NEW CHAT</div>
         <div id="chat-list"></div>
         <div style="margin-top:auto; font-size:9px; opacity:0.3;">PHOENIX_ARCHITECT_OS</div>
     </div>
     <div id="chat-section">
+        <div id="chat-header-brand">PHOENIX AI</div>
         <div id="chat-container"></div>
-        <div id="preview-bar"></div>
         <div id="input-wrapper">
+            <div id="landing-header"><h1>Where should we begin?</h1></div>
+            <div id="preview-bar"></div>
             <div id="input-container">
                 <div class="plus-btn" onclick="document.getElementById('file-in').click()">+</div>
                 <input type="file" id="file-in" hidden accept="image/*" onchange="handleFile(event)">
@@ -78,19 +92,32 @@
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = true;
     
     function cleanMath(t) { return t.replace(/\$/g, ''); }
-
     window.onload = () => { renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
-    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI. Never use dollar signs." }] }; save(); renderList(); loadChat(activeChatId); }
     
-    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content)); renderList(); }
+    function createNewChat() { 
+        activeChatId = Date.now().toString(); 
+        chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "You are Phoenix AI. Never use dollar signs." }] }; 
+        save(); renderList(); loadChat(activeChatId); 
+    }
+    
+    function loadChat(id) { 
+        activeChatId = id; 
+        const app = document.getElementById('app-container');
+        document.getElementById('chat-container').innerHTML = '';
+        if (chats[id].history.length <= 1) app.classList.add('landing-view');
+        else { app.classList.remove('landing-view'); chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content)); }
+        renderList(); 
+    }
 
     async function sendMessage() {
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
+        document.getElementById('app-container').classList.remove('landing-view');
         let content = attachedImg ? [{ type: "text", text: text || "Analyze this image." }, { type: "image_url", image_url: { url: attachedImg } }] : text;
         appendMessage('user', content);
         chats[activeChatId].history.push({ role: "user", content: content });
+        if (chats[activeChatId].title === "New Session") chats[activeChatId].title = (text || "Image Query").substring(0, 20) + "...";
         f.value = ''; clearImg();
         await getAIResponse(document.getElementById('model-select').value);
     }
@@ -98,21 +125,17 @@
     async function getAIResponse(model) {
         const div = appendMessage('ai', '<div class="thinking-txt">Thinking...</div>');
         const contentDiv = div.querySelector('.content');
-        
-        const cleanHistory = chats[activeChatId].history.map((m, idx) => {
-            if (idx === chats[activeChatId].history.length - 1) return m;
+        const cleanHistory = chats[activeChatId].history.map((m) => {
             if (typeof m.content === 'string') return m;
             return { role: m.role, content: m.content.find(c => c.type === 'text')?.text || "[Image]" };
         });
-
         try {
             const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: cleanHistory, model: model }) });
             if (model === 'flux') { 
                 const d = await res.json(); 
                 contentDiv.innerHTML = `<img src="${d.image}" class="chat-img">`;
                 div.querySelector('.thinking-txt').remove();
-                chats[activeChatId].history.push({ role: "assistant", content: `[Generated]` }); 
-                save(); return; 
+                chats[activeChatId].history.push({ role: "assistant", content: `[Generated Image]` }); save(); return; 
             }
             const reader = res.body.getReader(), decoder = new TextDecoder();
             let full = "", firstWord = true;
@@ -125,9 +148,7 @@
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: cleanMath(full) }); save();
-        } catch(e) { 
-            if(div.querySelector('.thinking-txt')) div.querySelector('.thinking-txt').innerText = "Error: System Busy.";
-        }
+        } catch(e) { if(div.querySelector('.thinking-txt')) div.querySelector('.thinking-txt').innerText = "Error: System Busy."; }
     }
 
     function appendMessage(role, content) {
@@ -135,18 +156,14 @@
         div.innerHTML = `<div class="label">>> ${role.toUpperCase()}</div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
         const cDiv = div.querySelector('.content');
-        if (typeof content === 'string') { 
-            if (content.includes('Thinking...')) div.insertAdjacentHTML('beforeend', content);
-            else cDiv.innerHTML = marked.parse(cleanMath(content)); 
-        }
+        if (typeof content === 'string') { if (content.includes('Thinking...')) div.insertAdjacentHTML('beforeend', content); else cDiv.innerHTML = marked.parse(cleanMath(content)); }
         else { content.forEach(p => { if (p.type === 'text') cDiv.innerHTML += marked.parse(cleanMath(p.text)); if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" class="chat-img">`; }); }
         document.getElementById('chat-container').scrollTop = 1e9;
         return div;
     }
 
-    function handleFile(e) { if (e.target.files) compressImage(e.target.files); }
-    document.getElementById('user-input').onpaste = (e) => { const items = e.clipboardData.items; for (let i of items) if (i.type.indexOf("image") !== -1) compressImage(i.getAsFile()); };
-
+    function handleFile(e) { if (e.target.files) compressImage(e.target.files[0]); }
+    document.getElementById('user-input').onpaste = (e) => { for (let i of e.clipboardData.items) if (i.type.indexOf("image") !== -1) compressImage(i.getAsFile()); };
     function compressImage(file) {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -155,8 +172,7 @@
                 const canvas = document.createElement('canvas');
                 const scale = Math.min(1, 450 / Math.max(img.width, img.height));
                 canvas.width = img.width * scale; canvas.height = img.height * scale;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
                 attachedImg = canvas.toDataURL('image/jpeg', 0.3);
                 document.getElementById('preview-bar').style.display = 'flex';
                 document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900;">✕</span>`;
@@ -165,7 +181,6 @@
         };
         reader.readAsDataURL(file);
     }
-
     function renderList() {
         const l = document.getElementById('chat-list'); l.innerHTML = '';
         Object.keys(chats).sort().reverse().forEach(id => {
@@ -174,7 +189,6 @@
             l.appendChild(d);
         });
     }
-
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('light-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
     function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
     function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
