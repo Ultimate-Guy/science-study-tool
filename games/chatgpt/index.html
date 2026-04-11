@@ -64,6 +64,10 @@
         textarea { flex: 1; background: transparent; border: none; color: var(--text); font-size: 16px; outline: none; resize: none; max-height: 150px; padding: 10px 0; line-height: 1.5; }
         .ai-selector { background: transparent; border: none; color: var(--p-red); font-size: 10px; font-weight: 900; cursor: pointer; outline: none; text-transform: uppercase; }
         
+        /* Preview Bar */
+        #preview-bar { display: none; padding: 10px; gap: 10px; max-width: 800px; margin: 0 auto; align-items: center; }
+        .p-img { height: 60px; border-radius: 8px; border: 1px solid var(--p-red); }
+
         .new-chat-btn { padding: 14px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 10px; }
         .chat-item { padding: 12px; border-radius: 10px; cursor: pointer; font-size: 13px; color: #888; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
         .chat-item.active { background: rgba(255,26,26,0.06); color: var(--text); border: 1px solid rgba(255,26,26,0.1); }
@@ -78,7 +82,7 @@
         .thinking-txt { font-size: 11px; color: var(--p-red); font-weight: 900; letter-spacing: 1px; animation: pulse 1.5s infinite; }
     </style>
 </head>
-<body class="light-mode"> <!-- Defaulted to light-mode -->
+<body class="light-mode">
 <div id="theme-btn" onclick="toggleTheme()">LIGHT MODE</div>
 <div id="app-container" class="landing-view">
     <div id="sidebar">
@@ -110,7 +114,6 @@
 </div>
 <script>
     const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
-    // isDarkMode starts false for Light Mode default
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = null, attachedImg = null, isDarkMode = false;
     
     function cleanMath(t) { return t.replace(/\$/g, ''); }
@@ -184,8 +187,18 @@
         return div;
     }
 
-    function handleFile(e) { if (e.target.files) compressImage(e.target.files); }
-    document.getElementById('user-input').onpaste = (e) => { for (let i of e.clipboardData.items) if (i.type.indexOf("image") !== -1) compressImage(i.getAsFile()); };
+    function handleFile(e) { 
+        if (e.target.files && e.target.files.length > 0) {
+            compressImage(e.target.files[0]); 
+        }
+    }
+    
+    document.getElementById('user-input').onpaste = (e) => { 
+        for (let i of e.clipboardData.items) {
+            if (i.type.indexOf("image") !== -1) compressImage(i.getAsFile()); 
+        }
+    };
+
     function compressImage(file) {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -196,13 +209,16 @@
                 canvas.width = img.width * scale; canvas.height = img.height * scale;
                 canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
                 attachedImg = canvas.toDataURL('image/jpeg', 0.4);
-                document.getElementById('preview-bar').style.display = 'flex';
-                document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" class="p-img"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900;">✕</span>`;
+                
+                const previewBar = document.getElementById('preview-bar');
+                previewBar.style.display = 'flex';
+                previewBar.innerHTML = `<img src="${attachedImg}" class="p-img"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900;">✕</span>`;
             };
             img.src = event.target.result;
         };
         reader.readAsDataURL(file);
     }
+
     function renderList() {
         const l = document.getElementById('chat-list'); l.innerHTML = '';
         Object.keys(chats).sort().reverse().forEach(id => {
@@ -213,7 +229,13 @@
     }
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('dark-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
     function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
-    function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
+    
+    function clearImg() { 
+        attachedImg = null; 
+        document.getElementById('preview-bar').style.display = 'none'; 
+        document.getElementById('file-in').value = ""; // Clear input so same file can be selected again
+    }
+    
     document.getElementById('user-input').onkeypress = (e) => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 </script>
 </body>
