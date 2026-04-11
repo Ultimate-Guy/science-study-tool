@@ -18,88 +18,54 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
     <style>
-        :root { 
-            --p-red: #ff1a1a; --bg: #ffffff; --sidebar-bg: #f9f9f9; --border: #e5e5e5; 
-            --text: #000000; --input-bg: #f4f4f4; --bubble-ai: transparent; --bubble-user: #f4f4f4;
-            --code-bg: #2d2d2d; 
-        }
-        body.dark-mode { 
-            --bg: #0d0d0d; --sidebar-bg: #000000; --border: #262626; 
-            --text: #ececec; --input-bg: #171717; --bubble-ai: transparent; --bubble-user: #212121;
-            --code-bg: #1a1a1a;
-        }
-        
+        :root { --p-red: #ff1a1a; --bg: #fff; --sidebar-bg: #f9f9f9; --border: #e5e5e5; --text: #000; --input-bg: #f4f4f4; --bubble-user: #f4f4f4; --code-bg: #2d2d2d; }
+        body.dark-mode { --bg: #0d0d0d; --sidebar-bg: #000; --border: #262626; --text: #ececec; --input-bg: #171717; --bubble-user: #212121; --code-bg: #1a1a1a; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; transition: 0.3s; }
         
         #app-container { display: flex; height: 100vh; width: 100vw; }
-        
-        /* Sidebar */
         #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; transition: all 0.4s ease; z-index: 200; }
-        .sidebar-header { font-size: 10px; font-weight: 800; color: #888; margin: 20px 0 10px 10px; letter-spacing: 1px; text-transform: uppercase; }
-
-        /* Neuron Gauge UI */
+        
+        /* Neuron Gauge */
         #neuron-gauge-container { margin-top: 20px; padding: 15px; background: rgba(255, 26, 26, 0.05); border-radius: 12px; border: 1px solid rgba(255, 26, 26, 0.1); position: relative; }
         .gauge-header { display: flex; justify-content: space-between; font-size: 10px; font-weight: 900; color: var(--p-red); margin-bottom: 8px; text-transform: uppercase; }
-        .gauge-bar-bg { width: 100%; height: 6px; background: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden; }
-        .gauge-bar-fill { height: 100%; width: 0%; background: var(--p-red); transition: width 0.5s ease; }
+        .gauge-bar-fill { height: 6px; width: 0%; background: var(--p-red); border-radius: 3px; transition: 0.5s; }
         .reset-timer { font-size: 9px; opacity: 0.5; margin-top: 8px; text-align: center; }
-        #status-tag { display: none; position: absolute; top: -8px; right: 10px; background: var(--p-red); color: white; font-size: 8px; padding: 2px 6px; border-radius: 10px; font-weight: 900; }
+        #status-tag { display: none; position: absolute; top: -8px; right: 10px; background: var(--p-red); color: #fff; font-size: 8px; padding: 2px 6px; border-radius: 10px; font-weight: 900; }
 
-        /* Security States */
+        /* Security/Landing States */
         .limit-reached #input-container { opacity: 0.3; pointer-events: none; }
-        .limit-reached textarea::placeholder { color: var(--p-red); }
-
-        #chat-section { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; height: 100%; }
-        #chat-header-brand { position: absolute; top: 20px; left: 30px; font-size: 14px; font-weight: 900; color: var(--p-red); letter-spacing: 2px; z-index: 100; }
-        #theme-btn { position: absolute; top: 20px; right: 30px; padding: 8px 12px; border: 1px solid var(--border); font-size: 10px; cursor: pointer; border-radius: 6px; z-index: 100; background: var(--bg); color: var(--text); font-weight: 700; }
-        
-        /* Landing View Logic */
-        #landing-header { display: none; text-align: center; margin-bottom: 40px; width: 90%; animation: fadeIn 0.8s ease; }
         .landing-view #sidebar { transform: translateX(-100%); width: 0; padding: 0; opacity: 0; visibility: hidden; }
-        .landing-view #chat-header-brand { left: 20px; }
-        .landing-view #landing-header { display: block; }
+        .landing-view #landing-header { display: block; text-align: center; margin-bottom: 40px; width: 90%; }
+        #landing-header { display: none; }
         .landing-view #chat-container { display: none; }
-        .landing-view #input-wrapper { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding-bottom: 10vh; }
+        .landing-view #input-wrapper { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+
+        /* Chat Layout */
+        #chat-section { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
+        #chat-header-brand { position: absolute; top: 20px; left: 30px; font-size: 14px; font-weight: 900; color: var(--p-red); letter-spacing: 2px; }
+        #theme-btn { position: absolute; top: 20px; right: 30px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 700; z-index: 100; background: var(--bg); color: var(--text); }
+        #chat-container { flex: 1; overflow-y: auto; padding: 80px 20px; display: flex; flex-direction: column; scroll-behavior: smooth; }
         
-        /* Chat Area */
-        #chat-container { flex: 1; overflow-y: auto; padding: 80px 20px 40px 20px; display: flex; flex-direction: column; scroll-behavior: smooth; }
-        .message { width: 100%; max-width: 800px; margin: 0 auto 24px auto; display: flex; flex-direction: column; }
-        
-        /* Model Badge Styles */
-        .label-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding-left: 12px; }
+        /* Messages & Delete Feature */
+        .message { width: 100%; max-width: 800px; margin: 0 auto 24px auto; display: flex; flex-direction: column; position: relative; group; }
+        .label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 0 12px; }
+        .label-group { display: flex; align-items: center; gap: 8px; }
         .label { font-size: 9px; font-weight: 900; color: var(--p-red); letter-spacing: 1px; }
-        .model-badge { font-size: 8px; font-weight: 900; background: rgba(0,0,0,0.05); color: #888; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid var(--border); }
-        .dark-mode .model-badge { background: rgba(255,255,255,0.05); }
-
+        .model-badge { font-size: 8px; font-weight: 900; background: rgba(0,0,0,0.05); color: #888; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+        .delete-msg-btn { font-size: 12px; cursor: pointer; opacity: 0; transition: 0.2s; color: #888; }
+        .message:hover .delete-msg-btn { opacity: 1; }
         .message .content { padding: 16px 20px; border-radius: 18px; line-height: 1.6; font-size: 16px; border: 1px solid var(--border); }
-        .message.user .content { background: var(--bubble-user); border-bottom-right-radius: 4px; align-self: flex-end; }
-        .message.ai .content { background: var(--bubble-ai); border: none; padding-left: 0; }
-
-        /* Code Blocks */
-        .code-wrapper { position: relative; margin: 15px 0; border-radius: 8px; background: var(--code-bg); overflow: hidden; border: 1px solid var(--border); }
-        .code-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: rgba(255,255,255,0.05); font-size: 11px; color: #b4b4b4; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .copy-btn { background: transparent; border: none; color: #b4b4b4; cursor: pointer; font-size: 11px; }
-        pre { padding: 16px; margin: 0; overflow-x: auto; font-family: 'Fira Code', monospace; font-size: 14px; }
-
-        /* Input Area */
-        #input-wrapper { width: 100%; padding: 20px; transition: 0.5s ease; }
-        #input-container { width: 100%; max-width: 800px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 20px; padding: 10px 18px; display: flex; align-items: center; gap: 12px; position: relative; }
-        textarea { flex: 1; background: transparent; border: none; color: var(--text); font-family: 'Inter', sans-serif; font-size: 16px; outline: none; resize: none; max-height: 200px; padding: 10px 0; line-height: 1.5; letter-spacing: normal; }
-        .ai-selector { background: transparent; border: none; color: var(--p-red); font-size: 10px; font-weight: 900; cursor: pointer; outline: none; text-transform: uppercase; }
+        .message.user .content { background: var(--bubble-user); align-self: flex-end; }
         
-        #preview-bar { display: none; padding: 10px; gap: 10px; max-width: 800px; margin: 0 auto; align-items: center; }
-        .p-img { height: 60px; border-radius: 8px; border: 1px solid var(--p-red); }
-
-        /* Sidebar Buttons */
-        .sidebar-btn { padding: 14px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 10px; transition: 0.2s; }
-        .sidebar-btn:hover { background: var(--p-red); color: white; }
-        .chat-item { padding: 12px; border-radius: 10px; cursor: pointer; font-size: 13px; color: #888; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
-        .chat-item.active { background: rgba(255,26,26,0.06); color: var(--text); border: 1px solid rgba(255,26,26,0.1); }
-
-        .thinking-txt { font-size: 14px; color: var(--text); opacity: 0.6; padding: 10px 0; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        /* Thinking & UI Components */
+        .thinking-txt { font-size: 14px; opacity: 0.6; padding: 10px 0; animation: pulse 1.5s infinite; color: var(--p-red); font-weight: 900; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .retry-btn { margin-top: 10px; padding: 6px 12px; border: 1px solid var(--p-red); color: var(--p-red); border-radius: 6px; font-size: 11px; font-weight: 900; cursor: pointer; width: fit-content; }
+        #input-wrapper { width: 100%; padding: 20px; }
+        #input-container { width: 100%; max-width: 800px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 20px; padding: 10px 18px; display: flex; align-items: center; gap: 12px; }
+        textarea { flex: 1; background: transparent; border: none; font-size: 16px; outline: none; resize: none; max-height: 200px; color: var(--text); font-family: inherit; }
+        .sidebar-btn { padding: 12px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 8px; }
     </style>
 </head>
 <body class="light-mode">
@@ -108,39 +74,31 @@
     <div id="sidebar">
         <div class="sidebar-btn" onclick="createNewChat()">+ NEW CHAT</div>
         <div class="sidebar-btn" style="border-color: #555; color: #555;" onclick="clearHistory()">CLEAR HISTORY</div>
-        <div class="sidebar-header">Recent</div>
-        <div id="chat-list" style="flex:1; overflow-y:auto;"></div>
-
+        <div class="sidebar-header">Recent</div><div id="chat-list" style="flex:1; overflow-y:auto"></div>
         <div id="neuron-gauge-container">
-            <div id="status-tag">SAFE</div>
-            <div class="gauge-header">
-                <span>Neurons</span>
-                <span id="neuron-value">0 / 10k</span>
-            </div>
-            <div class="gauge-bar-bg"><div id="gauge-fill" class="gauge-bar-fill"></div></div>
-            <div id="reset-clock" class="reset-timer">Reset in: --:--:--</div>
+            <div id="status-tag" style="position:absolute; top:-8px; right:10px; background:var(--p-red); color:#fff; font-size:8px; padding:2px 6px; border-radius:10px; font-weight:900; display:none">ECO MODE</div>
+            <div class="gauge-header"><span>Neurons</span><span id="neuron-value">0 / 10k</span></div>
+            <div style="background:rgba(0,0,0,0.1); border-radius:3px; overflow:hidden;"><div id="gauge-fill" class="gauge-bar-fill"></div></div>
+            <div id="reset-clock" style="font-size:9px; opacity:0.5; margin-top:8px; text-align:center">Reset in: --:--:--</div>
         </div>
-
-        <div style="margin-top:auto; font-size:9px; opacity:0.3; padding-left: 10px;">PHOENIX_ARCHITECT_OS</div>
     </div>
     <div id="chat-section">
         <div id="chat-header-brand">PHOENIX AI</div>
         <div id="chat-container"></div>
         <div id="input-wrapper">
             <div id="landing-header"><h1>Where should we begin?</h1></div>
-            <div id="preview-bar"></div>
+            <div id="preview-bar" style="display:none; padding: 10px; gap: 10px; max-width: 800px; margin: 0 auto; align-items: center;"></div>
             <div id="input-container">
-                <div class="plus-btn" onclick="document.getElementById('file-in').click()" style="cursor:pointer;">+</div>
-                <input type="file" id="file-in" hidden accept="image/*" onchange="handleFile(event)">
-                <select id="model-select" class="ai-selector">
+                <div style="cursor:pointer; font-size:22px" onclick="document.getElementById('file-in').click()">+</div>
+                <input type="file" id="file-in" hidden onchange="handleFile(event)">
+                <select id="model-select" style="background:transparent; border:none; color:var(--p-red); font-size:10px; font-weight:900; cursor:pointer; outline:none; text-transform:uppercase">
                     <option value="gpt-5-mini" selected>GPT-5 mini (Free)</option>
                     <option value="llama">Llama 3.2 Vision</option>
-                    <option value="glm">GLM-4.7 Flash</option>
                     <option value="kimi">Kimi-K2.5</option>
-                    <option value="gemma">Gemma 4</option>
+                    <option value="glm">GLM-4.7</option>
                 </select>
                 <textarea id="user-input" placeholder="Message Phoenix..." rows="1"></textarea>
-                <div id="send-btn" style="color:var(--p-red); cursor:pointer; font-weight:900; font-size:24px;" onclick="sendMessage()">➔</div>
+                <div id="send-btn" style="color:var(--p-red); cursor:pointer; font-size:24px" onclick="sendMessage()">➔</div>
             </div>
         </div>
     </div>
@@ -152,216 +110,92 @@
 
     function checkReset() {
         const today = new Date().getUTCDate();
-        if (neuronStats.day !== today) { 
-            neuronStats = { count: 0, day: today }; 
-            document.body.classList.remove('limit-reached');
-            updateGauge(); 
-        }
+        if (neuronStats.day !== today) { neuronStats = { count: 0, day: today }; document.body.classList.remove('limit-reached'); updateGauge(); }
     }
 
     function updateGauge() {
-        const percent = Math.min((neuronStats.count / 10000) * 100, 100);
-        document.getElementById('gauge-fill').style.width = percent + '%';
+        const p = Math.min((neuronStats.count / 10000) * 100, 100);
+        document.getElementById('gauge-fill').style.width = p + '%';
         document.getElementById('neuron-value').innerText = `${Math.round(neuronStats.count)} / 10k`;
-        
-        const statusTag = document.getElementById('status-tag');
-        const selector = document.getElementById('model-select');
-        const input = document.getElementById('user-input');
-
-        if (percent >= 99) {
-            statusTag.innerText = "HARD STOP";
-            statusTag.style.display = 'block';
-            document.body.classList.add('limit-reached');
-            input.placeholder = "Daily limit reached.";
-        } else if (percent >= 80) {
-            statusTag.innerText = "ECO MODE";
-            statusTag.style.display = 'block';
-            if (selector.value !== 'gpt-5-mini' && selector.value !== 'llama') selector.value = 'gpt-5-mini';
-        } else {
-            statusTag.style.display = 'none';
-        }
+        if (p >= 99) document.body.classList.add('limit-reached');
+        document.getElementById('status-tag').style.display = (p >= 80) ? 'block' : 'none';
         localStorage.setItem('phoenix_neurons', JSON.stringify(neuronStats));
     }
 
     function updateClock() {
-        const now = new Date();
-        const reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
-        const diff = reset - now;
-        const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
+        const now = new Date(), reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+        const diff = reset - now, h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
         document.getElementById('reset-clock').innerText = `Reset in: ${h}h ${m}m ${s}s`;
     }
 
     setInterval(() => { checkReset(); updateClock(); }, 1000);
-    function cleanMath(t) { return t.replace(/\$/g, ''); }
-    window.onload = () => { renderList(); checkReset(); updateGauge(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
-    function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
-    
-    function createNewChat() { 
-        activeChatId = Date.now().toString(); 
-        chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "Phoenix" }] }; 
-        save(); renderList(); loadChat(activeChatId); 
-    }
-    
-    function loadChat(id) { 
-        activeChatId = id; 
-        const app = document.getElementById('app-container');
-        document.getElementById('chat-container').innerHTML = '';
-        if (chats[id].history.length <= 1) app.classList.add('landing-view');
-        else { app.classList.remove('landing-view'); chats[id].history.slice(1).forEach(m => appendMessage(m.role, m.content, m.modelUsed)); }
-        renderList(); 
-    }
 
-    function clearHistory() {
-        if (!activeChatId || !confirm("Clear messages in this session?")) return;
-        chats[activeChatId].history = chats[activeChatId].history.slice(0, 1);
-        save(); loadChat(activeChatId);
-    }
-
-    async function sendMessage() {
-        if (document.body.classList.contains('limit-reached')) return;
+    function sendMessage() {
         const f = document.getElementById('user-input'), text = f.value.trim();
         if(!text && !attachedImg) return;
-        
         document.getElementById('app-container').classList.remove('landing-view');
         let content = attachedImg ? [{ type: "text", text: text || "Image" }, { type: "image_url", image_url: { url: attachedImg } }] : text;
-        
-        appendMessage('user', content);
+        appendMessage('user', content, null, chats[activeChatId].history.length);
         chats[activeChatId].history.push({ role: "user", content: content });
-        if (chats[activeChatId].title === "New Session") chats[activeChatId].title = (text || "Query").substring(0, 30);
-        
-        f.value = ''; clearImg(); f.style.height = 'auto';
-        const model = document.getElementById('model-select').value;
-        await getAIResponse(model);
+        if (chats[activeChatId].title === "New Session") chats[activeChatId].title = text.substring(0, 30);
+        f.value = ''; clearImg(); getAIResponse(document.getElementById('model-select').value);
     }
 
     async function getAIResponse(model) {
-        const div = appendMessage('ai', '<div id="think" class="thinking-txt">Thinking...</div>', model);
-        const contentDiv = div.querySelector('.content');
-        const statusDiv = div.querySelector('#think');
-        document.getElementById('app-container').classList.remove('landing-view');
-
+        const idx = chats[activeChatId].history.length;
+        const div = appendMessage('ai', '<div id="think" class="thinking-txt">Thinking...</div>', model, idx);
         try {
             const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model }) });
-            
-            if (res.status !== 200) {
-                const errData = await res.json();
-                if (errData.error && errData.error.includes("4006")) {
-                    statusDiv.remove(); contentDiv.innerHTML = `<b style="color:var(--p-red)">⚠️ LIMIT REACHED (4006)</b>`;
-                    neuronStats.count = 10000; updateGauge(); return;
-                }
-            }
-
             const reader = res.body.getReader(), decoder = new TextDecoder();
-            let full = "", firstWord = true;
-            
+            let full = "", first = true;
             while (true) {
                 const { done, value } = await reader.read(); if (done) break;
-                if (firstWord) { if(statusDiv) statusDiv.remove(); firstWord = false; }
+                if (first) { div.querySelector('#think').remove(); first = false; }
                 const chunk = decoder.decode(value);
-                
                 if (model === "gpt-5-mini") {
-                    chunk.split('\n').forEach(line => {
-                        if (line.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(line.slice(6));
-                                if (data.message) full += data.message;
-                            } catch(e) {}
-                        }
-                    });
-                } else {
-                    full += chunk;
-                    neuronStats.count += (chunk.length * 0.45); updateGauge();
-                    if (neuronStats.count >= 9950) break;
-                }
-                
-                contentDiv.innerHTML = marked.parse(cleanMath(full));
-                addCopyButtons(contentDiv);
+                    chunk.split('\n').forEach(line => { if (line.startsWith('data: ')) { try { const d = JSON.parse(line.slice(6)); if (d.message) full += d.message; } catch(e) {} } });
+                } else { full += chunk; neuronStats.count += (chunk.length * 0.45); updateGauge(); }
+                div.querySelector('.content').innerHTML = marked.parse(full); addCopyButtons(div.querySelector('.content'));
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
-            chats[activeChatId].history.push({ role: "assistant", content: cleanMath(full), modelUsed: model }); save();
-        } catch(e) { if(statusDiv) statusDiv.innerText = "System Busy."; }
+            chats[activeChatId].history.push({ role: "assistant", content: full, modelUsed: model }); save();
+        } catch(e) { 
+            div.querySelector('#think').innerHTML = "System Busy.";
+            const b = document.createElement('div'); b.className = "retry-btn"; b.innerText = "↻ RETRY";
+            b.onclick = () => { div.remove(); getAIResponse(model); }; div.appendChild(b);
+        }
     }
 
-    function appendMessage(role, content, modelName = null) {
-        const div = document.createElement('div'); div.className = `message ${role}`;
-        
-        let badgeHtml = '';
-        if (role === 'ai' && modelName) {
-            badgeHtml = `<span class="model-badge">${modelName.replace('-mini', '').replace('-instruct', '')}</span>`;
-        }
+    function deleteMessage(idx) {
+        if (!confirm("Delete this message?")) return;
+        chats[activeChatId].history.splice(idx, 1);
+        save(); loadChat(activeChatId);
+    }
 
+    function appendMessage(role, content, modelName, historyIdx) {
+        const div = document.createElement('div'); div.className = `message ${role}`;
+        let badge = (role === 'ai' && modelName) ? `<span class="model-badge">${modelName.toUpperCase()}</span>` : '';
         div.innerHTML = `
             <div class="label-row">
-                <div class="label">${role.toUpperCase()}</div>
-                ${badgeHtml}
+                <div class="label-group"><div class="label">${role.toUpperCase()}</div>${badge}</div>
+                <div class="delete-msg-btn" onclick="deleteMessage(${historyIdx})">✕</div>
             </div>
-            <div class="content"></div>
-        `;
-        
+            <div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
-        const cDiv = div.querySelector('.content');
-        
-        if (typeof content === 'string') { 
-            if (content.includes('Thinking...')) div.insertAdjacentHTML('beforeend', content); 
-            else { cDiv.innerHTML = marked.parse(cleanMath(content)); addCopyButtons(cDiv); }
-        } else { 
-            content.forEach(p => { 
-                if (p.type === 'text') { cDiv.innerHTML += marked.parse(cleanMath(p.text)); addCopyButtons(cDiv); }
-                if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" style="max-width:100%; border-radius:12px; border: 1px solid var(--border)">`; 
-            }); 
-        }
-        document.getElementById('chat-container').scrollTop = 1e9;
+        if (typeof content === 'string') div.querySelector('.content').innerHTML = marked.parse(content);
+        else content.forEach(p => { if (p.type === 'text') div.querySelector('.content').innerHTML += marked.parse(p.text); if (p.type === 'image_url') div.querySelector('.content').innerHTML += `<img src="${p.image_url.url}" style="max-width:100%; border-radius:12px; margin-top:10px">`; });
         return div;
     }
 
-    function addCopyButtons(container) {
-        container.querySelectorAll('pre').forEach(pre => {
-            if (pre.parentElement.classList.contains('code-wrapper')) return;
-            const lang = pre.querySelector('code')?.className.replace('language-', '') || 'code';
-            const wrapper = document.createElement('div'); wrapper.className = 'code-wrapper';
-            const header = document.createElement('div'); header.className = 'code-header';
-            header.innerHTML = `<span>${lang}</span><button class="copy-btn">Copy code</button>`;
-            pre.parentNode.insertBefore(wrapper, pre);
-            wrapper.appendChild(header); wrapper.appendChild(pre);
-            const btn = header.querySelector('.copy-btn');
-            btn.onclick = () => {
-                navigator.clipboard.writeText(pre.innerText);
-                btn.innerText = 'Copied!'; setTimeout(() => btn.innerText = 'Copy code', 2000);
-            };
-        });
-        Prism.highlightAllUnder(container);
-    }
-
-    function handleFile(e) { if (e.target.files && e.target.files.length > 0) compressImage(e.target.files); }
-    document.getElementById('user-input').onpaste = (e) => { for (let i of e.clipboardData.items) if (i.type.indexOf("image") !== -1) compressImage(i.getAsFile()); };
-    
-    function compressImage(file) {
-        const reader = new FileReader(); reader.onload = (ev) => {
-            const img = new Image(); img.onload = () => {
-                const canvas = document.createElement('canvas'); const scale = Math.min(1, 450 / Math.max(img.width, img.height));
-                canvas.width = img.width * scale; canvas.height = img.height * scale;
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                attachedImg = canvas.toDataURL('image/jpeg', 0.4);
-                neuronStats.count += 500; 
-                updateGauge();
-                const pb = document.getElementById('preview-bar'); pb.style.display = 'flex';
-                pb.innerHTML = `<img src="${attachedImg}" class="p-img"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900;">✕</span>`;
-            }; img.src = ev.target.result;
-        }; reader.readAsDataURL(file);
-    }
-
-    function renderList() {
-        const l = document.getElementById('chat-list'); l.innerHTML = '';
-        Object.keys(chats).sort().reverse().forEach(id => {
-            const d = document.createElement('div'); d.className = `chat-item ${id === activeChatId ? 'active' : ''}`;
-            d.onclick = () => loadChat(id); d.innerHTML = `<span>${chats[id].title}</span><span style="opacity:0.3" onclick="openChatOptions(event, '${id}')">⋮</span>`;
-            l.appendChild(d);
-        });
-    }
-
+    function addCopyButtons(c) { c.querySelectorAll('pre').forEach(pre => { if (pre.querySelector('.copy-btn')) return; const b = document.createElement('button'); b.className = 'copy-btn'; b.innerText = 'Copy'; b.onclick = () => navigator.clipboard.writeText(pre.innerText); pre.appendChild(b); }); }
+    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "Phoenix" }] }; save(); loadChat(activeChatId); }
+    function loadChat(id) { activeChatId = id; document.getElementById('chat-container').innerHTML = ''; if (chats[id].history.length <= 1) document.getElementById('app-container').classList.add('landing-view'); else { document.getElementById('app-container').classList.remove('landing-view'); chats[id].history.slice(1).forEach((m, i) => appendMessage(m.role, m.content, m.modelUsed, i+1)); } renderList(); }
+    function clearHistory() { if (confirm("Clear all messages?")) { chats[activeChatId].history = chats[activeChatId].history.slice(0, 1); save(); loadChat(activeChatId); } }
+    function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
+    function renderList() { const l = document.getElementById('chat-list'); l.innerHTML = ''; Object.keys(chats).reverse().forEach(id => { const d = document.createElement('div'); d.className = `chat-item ${id === activeChatId ? 'active' : ''}`; d.onclick = () => loadChat(id); d.innerText = chats[id].title; l.appendChild(d); }); }
     function toggleTheme() { isDarkMode = !isDarkMode; document.body.classList.toggle('dark-mode'); document.getElementById('theme-btn').innerText = isDarkMode ? "DARK MODE" : "LIGHT MODE"; }
-    function openChatOptions(e, id) { e.stopPropagation(); const a = prompt("'rename' or 'delete'?", "rename"); if (a === 'rename') { const t = prompt("Title?", chats[id].title); if (t) { chats[id].title = t; save(); renderList(); } } else if (a === 'delete') { delete chats[id]; save(); const r = Object.keys(chats); if (r.length) loadChat(r.pop()); else createNewChat(); } }
-    function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; document.getElementById('file-in').value = ""; }
+    function handleFile(e) { const r = new FileReader(); r.onload = (ev) => { attachedImg = ev.target.result; document.getElementById('preview-bar').style.display = 'flex'; document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" style="height:60px; border-radius:8px">`; }; r.readAsDataURL(e.target.files); }
+    function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
     const ui = document.getElementById('user-input');
     ui.oninput = () => { ui.style.height = 'auto'; ui.style.height = ui.scrollHeight + 'px'; };
     ui.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
