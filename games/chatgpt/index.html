@@ -28,13 +28,12 @@
         .chat-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 13px; margin-bottom: 4px; transition: 0.2s; color: var(--text); }
         .chat-item:hover { background: rgba(255,26,26,0.04); }
         .chat-item.active { background: rgba(255,26,26,0.08); font-weight: 700; color: var(--p-red); }
-        .chat-dots { opacity: 0.3; padding: 0 5px; cursor: pointer; font-size: 16px; }
         #neuron-gauge-container { margin-top: auto; padding: 15px; background: rgba(255, 26, 26, 0.05); border-radius: 12px; border: 1px solid rgba(255, 26, 26, 0.1); }
         .gauge-header { display: flex; justify-content: space-between; font-size: 10px; font-weight: 900; color: var(--p-red); text-transform: uppercase; }
         .gauge-bar-fill { height: 6px; width: 0%; background: var(--p-red); border-radius: 3px; transition: 0.5s; margin: 8px 0; }
-        .landing-view #sidebar { transform: translateX(-100%); width: 0; padding: 0; visibility: hidden; }
-        #landing-header { display: none; text-align: center; margin-bottom: 40px; width: 90%; }
-        .landing-view #landing-header { display: block; animation: fadeIn 0.8s ease; }
+        .landing-view #sidebar { transform: translateX(-100%); width: 0; padding: 0; opacity: 0; visibility: hidden; }
+        .landing-view #landing-header { display: block; text-align: center; margin-bottom: 40px; width: 90%; }
+        #landing-header { display: none; }
         .landing-view #chat-container { display: none; }
         .landing-view #input-wrapper { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #chat-section { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
@@ -50,16 +49,9 @@
         .action-btn { font-size: 10px; cursor: pointer; color: #888; font-weight: 800; }
         .message .content { padding: 16px 20px; border-radius: 18px; line-height: 1.6; border: 1px solid var(--border); font-size: 16px; }
         .message.user .content { background: var(--bubble-user); align-self: flex-end; }
-        .code-wrapper { margin: 15px 0; border-radius: 8px; background: var(--code-bg); border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; }
-        .code-header { display: flex; justify-content: space-between; padding: 8px 16px; background: rgba(255,255,255,0.05); font-size: 11px; color: #b4b4b4; border-bottom: 1px solid rgba(0,0,0,0.1); }
-        .code-body { display: flex; overflow-x: auto; }
-        .line-numbers { padding: 16px 12px; border-right: 1px solid rgba(255,255,255,0.1); color: #666; font-family: monospace; font-size: 13px; text-align: right; background: rgba(0,0,0,0.1); min-width: 40px; user-select: none; }
-        pre { padding: 16px; margin: 0; flex: 1; font-family: 'Fira Code', monospace; font-size: 14px; color: #e0e0e0; }
-        #input-wrapper { width: 100%; padding: 20px; }
         #input-container { width: 100%; max-width: 800px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 20px; padding: 10px 18px; display: flex; align-items: center; gap: 12px; }
         textarea { flex: 1; background: transparent; border: none; font-size: 16px; outline: none; resize: none; max-height: 250px; color: var(--text); font-family: inherit; }
-        .sidebar-btn { padding: 12px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 8px; transition: 0.2s; }
-        .sidebar-btn:hover { background: var(--p-red); color: #fff; }
+        .sidebar-btn { padding: 12px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 8px; }
         .thinking-txt { font-size: 14px; opacity: 0.6; padding: 10px 0; animation: pulse 1.5s infinite; color: var(--p-red); font-weight: 900; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
@@ -146,30 +138,17 @@
                 full += text;
                 if (!['gpt-oss', 'llama-versatile', 'llama-instant'].includes(model)) { neuronStats.count += (text.length * 0.45); updateGauge(); }
                 contentDiv.innerHTML = marked.parse(full.replace(/\$/g, ''));
-                addCodeFeatures(contentDiv); document.getElementById('chat-container').scrollTop = 1e9;
+                document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: full, modelUsed: model }); save();
         } catch(e) { clearInterval(timer); contentDiv.innerHTML = "Error. Please retry."; }
-    }
-
-    function addCodeFeatures(container) {
-        container.querySelectorAll('pre').forEach(pre => {
-            if (pre.parentElement.classList.contains('code-body')) return;
-            const wrapper = document.createElement('div'); wrapper.className = 'code-wrapper';
-            const header = document.createElement('div'); header.className = 'code-header';
-            header.innerHTML = `<span>Code</span><span class="action-btn" onclick="navigator.clipboard.writeText(this.closest('.code-wrapper').querySelector('pre').innerText); this.innerText='COPIED'; setTimeout(()=>this.innerText='Copy', 2000)">Copy</span>`;
-            const body = document.createElement('div'); body.className = 'code-body';
-            const nums = document.createElement('div'); nums.className = 'line-numbers';
-            pre.parentNode.insertBefore(wrapper, pre); wrapper.appendChild(header); wrapper.appendChild(body); body.appendChild(nums); body.appendChild(pre);
-            nums.innerHTML = Array.from({length: pre.innerText.split('\n').length}, (_, i) => i + 1).join('<br>');
-        }); Prism.highlightAllUnder(container);
     }
 
     function appendMessage(role, content, model, historyIdx) {
         const div = document.createElement('div'); div.className = `message ${role}`;
         let badge = (role === 'ai' && model) ? `<span class="model-badge">${model.toUpperCase()}</span>` : '';
         div.innerHTML = `<div class="label-row"><div><span style="font-size:9px;font-weight:900;color:var(--p-red)">${role.toUpperCase()}</span>${badge}</div>
-            <div class="msg-actions"><span class="action-btn" onclick="copyMsg(this)">COPY</span><span class="action-btn" onclick="deleteMsg(${historyIdx})">✕</span></div></div><div class="content"></div>`;
+            <div class="msg-actions"><span class="action-btn" onclick="copyMsg(this)">COPY</span><span class="action-btn" onclick="chats['${activeChatId}'].history.splice(${historyIdx}, 1); save(); loadChat('${activeChatId}')">✕</span></div></div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
         const cDiv = div.querySelector('.content');
         if (typeof content === 'string') cDiv.innerHTML = marked.parse(content);
@@ -182,8 +161,6 @@
         for (const item of items) if (item.type.indexOf("image") !== -1) compressImage(item.getAsFile());
     };
 
-    function handleFile(e) { if (e.target.files.length) compressImage(e.target.files[0]); }
-
     function compressImage(file) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -192,10 +169,12 @@
                 const canvas = document.createElement('canvas');
                 const scale = Math.min(1, 600 / Math.max(img.width, img.height));
                 canvas.width = img.width * scale; canvas.height = img.height * scale;
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 attachedImg = canvas.toDataURL('image/jpeg', 0.6);
-                document.getElementById('preview-bar').style.display = 'flex';
-                document.getElementById('preview-bar').innerHTML = `<img src="${attachedImg}" style="height:60px; border-radius:8px"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900">✕</span>`;
+                const pb = document.getElementById('preview-bar');
+                pb.style.display = 'flex';
+                pb.innerHTML = `<img src="${attachedImg}" style="height:60px; border-radius:8px"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900">✕</span>`;
             }; img.src = ev.target.result;
         }; reader.readAsDataURL(file);
     }
@@ -207,18 +186,18 @@
         const l = document.getElementById('chat-list'); l.innerHTML = ''; 
         Object.keys(chats).reverse().forEach(id => { 
             const d = document.createElement('div'); d.className = `chat-item ${id === activeChatId ? 'active' : ''}`; d.onclick = () => loadChat(id); 
-            d.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${chats[id].title}</span><span class="chat-dots" onclick="event.stopPropagation();const a=prompt('rename or delete?','rename');if(a==='delete'){delete chats['${id}'];save();location.reload()}else if(a==='rename'){const t=prompt('Name?');if(t){chats['${id}'].title=t;save();renderList();}}">⋮</span>`;
+            d.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${chats[id].title}</span><span onclick="event.stopPropagation();const a=prompt('rename or delete?','rename');if(a==='delete'){delete chats['${id}'];save();location.reload()}else if(a==='rename'){const t=prompt('Name?');if(t){chats['${id}'].title=t;save();renderList();}}">⋮</span>`;
             l.appendChild(d); 
         }); 
     }
     function toggleTheme() { document.body.classList.toggle('dark-mode'); document.getElementById('theme-btn').innerText = document.body.classList.contains('dark-mode') ? "LIGHT MODE" : "DARK MODE"; }
     function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; document.getElementById('file-in').value = ""; }
-    function clearHistory() { if (confirm("Clear?")) { chats[activeChatId].history = [chats[activeChatId].history[0]]; save(); loadChat(activeChatId); } }
+    function clearHistory() { if (confirm("Clear?")) { chats[activeChatId].history = [chats[activeChatId].history]; save(); loadChat(activeChatId); } }
     
     document.getElementById('user-input').addEventListener('input', function() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; });
     document.getElementById('user-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     document.getElementById('send-btn').addEventListener('click', sendMessage);
-    window.onload = () => { updateGauge(); updateClock(); renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
+    window.onload = () => { const today = new Date().getUTCDate(); if (neuronStats.day !== today) { neuronStats = { count: 0, day: today }; } updateGauge(); updateClock(); renderList(); const ids = Object.keys(chats); if(ids.length) loadChat(ids.sort().pop()); else createNewChat(); };
     setInterval(updateClock, 1000);
 </script>
 </body>
