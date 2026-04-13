@@ -189,6 +189,11 @@
             "path": "brawl-stars-project-laser",
             "aliases": [],
             "categories": []
+       },
+        "Brawl Stars": {
+            "path": "brawl-stars",
+            "aliases": [],
+            "categories": []
         },
         "Breaklock": {
             "path": "breaklock",
@@ -579,6 +584,11 @@
             "path": "goated-games",
             "aliases": [],
             "categories": []
+       },
+        "Godzilla": {
+            "path": "godzilla",
+            "aliases": [],
+            "categories": []
         },
         "Gons io": {
             "path": "gons-io",
@@ -763,6 +773,11 @@
         },
         "Planet Life": {
             "path": "planet-life",
+            "aliases": [],
+            "categories": []
+       },
+        "Plants VS Brainrots": {
+            "path": "plants-vs-zombies",
             "aliases": [],
             "categories": []
         },
