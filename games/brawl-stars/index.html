@@ -423,7 +423,7 @@ window.InitGame = function() {
             payingStatus: "unknown",
           }),
         );
-        ygGameInstance.SendMessage("YG2Instance", "SetLoadSaves", "no data");
+        const saved = loadGameData(); ygGameInstance.SendMessage(   "YG2Instance",   "SetLoadSaves",   saved ? saved : "no data" );
         ygGameInstance.SendMessage("YG2Instance", "InitSDKComplete");
 
         setTimeout(function () {
@@ -1010,103 +1010,232 @@ window.RequestingEnvironmentData = function() {
             else
                 browser = 'Other';
 
-            let jsonEnvir = {
-                "language": "en",
-                "domain": "com",
-                "deviceType": ysdk.deviceInfo.type,
-                "isMobile": ysdk.deviceInfo.isMobile(),
-                "isDesktop": ysdk.deviceInfo.isDesktop(),
-                "isTablet": ysdk.deviceInfo.isTablet(),
-                "isTV": ysdk.deviceInfo.isTV(),
-                "appID": ysdk.environment.app.id,
-                "browserLang": "en",
-                "payload": ysdk.environment.payload,
-                "platform": navigator.platform,
-                "browser": browser
-            };
+// ==========================
+// 🔐 SIMPLE "ACCOUNT" SYSTEM
+// ==========================
+window.getPlayerName = function() {
+    let name = localStorage.getItem("brawl_player");
 
-            Final(JSON.stringify(jsonEnvir));
-            LogStyledMessage("Environment Data: " + JSON.stringify(jsonEnvir));
-        }
-        catch (e) {
-            console.error('CRASH Requesting Environment Data: ', e.message);
-            Final(NO_DATA);
-        }
+    if (!name) {
+        name = prompt("Enter your username:");
+        if (!name) name = "Player";
 
-        function Final(res) {
-            environmentData = res;
-            YG2Instance('SetEnvirData', res);
-            resolve(res);
-        }
-    });
-}
+        localStorage.setItem("brawl_player", name);
+    }
 
-window.playerData = NO_DATA;
-window.player = null;
+    return name;
+};
 
-window.InitPlayer = async function() {
-    return new Promise(async (resolve) => {
-        try {
-            if (!ysdk)
-                return Final(NotAuthorized(false));
+window.switchAccount = function() {
+    let name = prompt("Enter new username:");
+    if (!name) return;
 
-            player = await ysdk.getPlayer();
+    localStorage.setItem("brawl_player", name);
+    location.reload();
+};
 
-            if (!player.isAuthorized())
-                return Final(NotAuthorized());
+// ==========================
+// 🔒 ENCRYPTION FUNCTIONS
+// ==========================
+const SECRET_KEY = "brawl_secret_key";
 
-            const authJson = {
-                "playerAuth": "resolved",
-                "playerName": player.getName(),
-                "playerId": player.getUniqueID(),
-                "playerPhoto": player.getPhoto('medium'),
-                "payingStatus": player.getPayingStatus()
-            };
-
-            return Final(JSON.stringify(authJson));
-        } catch (e) {
-            console.error('CRASH init Player: ', e.message);
-            return Final(NotAuthorized(false));
-        }
-
-        function Final(res) {
-            playerData = res;
-            YG2Instance('SetAuth', res);
-            resolve(res);
-        }
-    });
-}
-
-
-window.NotAuthorized = async function(isInitSDK = true) {
-    let authJson = {
-        "playerAuth": "rejected",
-        "playerName": "unauthorized",
-        "playerId": isInitSDK ? player.getUniqueID() : "unauthorized",
-        "playerPhoto": "no data",
-        "payingStatus": "unknown"
-    };
-    return JSON.stringify(authJson);
-}
-
-window.OpenAuthDialog = function() {
-    if (ysdk !== null) {
-        try {
-            ysdk.auth.openAuthDialog().then(() => {
-                InitPlayer()
-                    .then(() => {
-                        YG2Instance('LoggedIn');
-                    });
-            });
-        }
-        catch (e) {
-            LogStyledMessage('CRASH Open Auth Dialog: ', e.message);
-        }
+function encrypt(data) {
+    try {
+        return btoa(unescape(encodeURIComponent(data + SECRET_KEY)));
+    } catch (e) {
+        console.error("Encrypt failed:", e);
+        return data;
     }
 }
 
+function decrypt(data) {
+    try {
+        let decoded = decodeURIComponent(escape(atob(data)));
+        return decoded.replace(SECRET_KEY, "");
+    } catch (e) {
+        console.error("Decrypt failed:", e);
+        return null;
+    }
+}
+
+// ==========================
+// 💾 SAVE SYSTEM
+// ==========================
+window.saveGameData = function(data) {
+    try {
+        const player = getPlayerName();
+        const encrypted = encrypt(data);
+
+        localStorage.setItem("brawl_save_" + player, encrypted);
+        console.log("Game saved for", player);
+    } catch (e) {
+        console.error("Save failed:", e);
+    }
+};
+
+window.loadGameData = function() {
+    try {
+        const player = getPlayerName();
+        const saved = localStorage.getItem("brawl_save_" + player);
+
+        if (!saved) return null;
+
+        return decrypt(saved);
+    } catch (e) {
+        console.error("Load failed:", e);
+        return null;
+    }
+};
+
+// ==========================
+// 📤 EXPORT SAVE
+// ==========================
+window.exportSave = function() {
+    const player = getPlayerName();
+    const data = localStorage.getItem("brawl_save_" + player);
+
+    if (!data) {
+        alert("No save found!");
+        return;
+    }
+
+    const blob = new Blob([data], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = player + "_save.txt";
+    a.click();
+};
+
+// ==========================
+// 📥 IMPORT SAVE
+// ==========================
+window.importSave = function() {
+    const input = document.createElement("input");
+    input.type = "file";
+
+    input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(event) {
+            const player = getPlayerName();
+            localStorage.setItem("brawl_save_" + player, event.target.result);
+            alert("Save imported! Reloading...");
+            location.reload();
+        };
+
+        reader.readAsText(file);
+    };
+
+    input.click();
+};
+
+// ==========================
+// 🔁 OVERRIDE CLOUD SAVE
+// ==========================
+window.SaveCloud = function(jsonData, flush) {
+    console.log("Saving data:", jsonData);
+    saveGameData(jsonData);
+};
+
+// ==========================
+// 🚀 LOAD INTO GAME
+// ==========================
+window.InitGame = function() {
+    loadingText.remove();
+    initGame = true;
+
+    const playerName = getPlayerName();
+    const saved = loadGameData();
+
+    // 🎮 Create UI buttons
+    createUIButtons();
+
+    ygGameInstance.SendMessage(
+        "YG2Instance",
+        "SetEnvirData",
+        JSON.stringify({
+            language: "en",
+            domain: "com",
+            deviceType: "desktop",
+            isMobile: false,
+            isDesktop: true,
+            isTablet: false,
+            isTV: false,
+            appID: "local",
+            browserLang: "en",
+            payload: null,
+            platform: navigator.platform,
+            browser: "Chrome",
+        })
+    );
+
+    ygGameInstance.SendMessage(
+        "YG2Instance",
+        "SetAuth",
+        JSON.stringify({
+            playerAuth: "resolved",
+            playerName: playerName,
+            playerId: playerName,
+            playerPhoto: "no data",
+            payingStatus: "unknown",
+        })
+    );
+
+    ygGameInstance.SendMessage(
+        "YG2Instance",
+        "SetLoadSaves",
+        saved ? saved : "no data"
+    );
+
+    ygGameInstance.SendMessage("YG2Instance", "InitSDKComplete");
+};
+
+// ==========================
+// 🎛️ UI BUTTONS
+// ==========================
+function createUIButtons() {
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.top = "10px";
+    container.style.right = "10px";
+    container.style.zIndex = "9999";
+
+    function makeButton(text, onClick) {
+        const btn = document.createElement("button");
+        btn.textContent = text;
+        btn.style.display = "block";
+        btn.style.margin = "5px";
+        btn.style.padding = "8px";
+        btn.style.cursor = "pointer";
+        btn.onclick = onClick;
+        return btn;
+    }
+
+    container.appendChild(makeButton("Switch Account", switchAccount));
+    container.appendChild(makeButton("Export Save", exportSave));
+    container.appendChild(makeButton("Import Save", importSave));
+
+    document.body.appendChild(container);
+}
+
+// ==========================
+// 🚫 DISABLE OLD AUTH
+// ==========================
+window.NotAuthorized = async function() {
+    return JSON.stringify({
+        playerAuth: "resolved",
+        playerName: getPlayerName(),
+        playerId: getPlayerName(),
+        playerPhoto: "no data",
+        payingStatus: "unknown"
+    });
+};
+
+window.OpenAuthDialog = function() {};
+
+// ==========================
+// FINAL LINE (KEEP LAST)
+// ==========================
 document.body.appendChild(script);
 })();
-    </script>
-</body>
-</html>
