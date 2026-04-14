@@ -59,9 +59,8 @@
         .thinking-txt { font-size: 14px; opacity: 0.6; padding: 10px 0; animation: pulse 1.5s infinite; color: var(--p-red); font-weight: 900; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* Phoenix UI Custom Modals */
         #phoenix-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; }
-        .modal-box { background: var(--bg); padding: 30px; border-radius: 20px; border: 1px solid var(--p-red); width: 350px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .modal-box { background: var(--bg); padding: 30px; border-radius: 20px; border: 1px solid var(--p-red); width: 350px; text-align: center; }
         .modal-box h3 { font-size: 14px; margin-bottom: 8px; color: var(--p-red); text-transform: uppercase; font-weight: 900; }
         .modal-box p { font-size: 13px; margin-bottom: 20px; opacity: 0.8; }
         .modal-box input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 20px; background: var(--input-bg); color: var(--text); outline: none; }
@@ -105,7 +104,7 @@
                 <div style="cursor:pointer; font-size:22px" onclick="document.getElementById('file-in').click()">+</div>
                 <input type="file" id="file-in" hidden onchange="handleFileDirect(this.files)">
                 <select id="model-select" style="background:transparent; border:none; color:var(--p-red); font-size:10px; font-weight:900; outline:none; text-transform:uppercase; cursor:pointer">
-                    <option value="gpt-4o-turbo">GPT-4o-turbo</option>
+                    <option value="gpt-4o-turbo">GPT-4o-turbo (Vision)</option>
                     <option value="llama-versatile">Llama 3 70B</option>
                     <option value="llama-instant">Llama 3 8B</option>
                     <option value="gemma-moe">Gemma 2 27B</option>
@@ -122,18 +121,14 @@
 
 <script>
     const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
-    let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), 
-        activeChatId = localStorage.getItem('phoenix_active_id'),
-        attachedImg = null,
-        isThinking = false;
+    let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = localStorage.getItem('phoenix_active_id'), attachedImg = null, isThinking = false;
     let neuronStats = JSON.parse(localStorage.getItem('phoenix_neurons') || '{"count":0}');
 
     function openModal(desc, callback, hasInput = false, initial = "") {
         document.getElementById('phoenix-modal').style.display = 'flex';
         document.getElementById('modal-desc').innerText = desc;
         const inp = document.getElementById('modal-input');
-        inp.style.display = hasInput ? 'block' : 'none';
-        inp.value = initial;
+        inp.style.display = hasInput ? 'block' : 'none'; inp.value = initial;
         document.getElementById('modal-ok').onclick = () => { callback(hasInput ? inp.value : true); closeModal(); };
     }
     function closeModal() { document.getElementById('phoenix-modal').style.display = 'none'; }
@@ -148,56 +143,36 @@
     function sendMessage() {
         const f = document.getElementById('user-input'), text = f.value.trim();
         if((!text && !attachedImg) || isThinking) return;
-        
         isThinking = true;
         document.getElementById('app-container').classList.remove('landing-view');
-        
         let content = attachedImg ? [{ type: "text", text: text || "Analyze image." }, { type: "image_url", image_url: { url: attachedImg } }] : text;
-        
         appendMessage('user', content, null, chats[activeChatId].history.length);
         chats[activeChatId].history.push({ role: "user", content: content });
-        
-        if (chats[activeChatId].title === "New Session") { 
-            chats[activeChatId].title = text.substring(0, 25) || "Session"; 
-            renderList(); 
-        }
-        
-        f.value = ''; f.style.height = 'auto'; clearImg(); save(); 
-        getAIResponse(document.getElementById('model-select').value);
+        if (chats[activeChatId].title === "New Session") { chats[activeChatId].title = text.substring(0, 25) || "Session"; renderList(); }
+        f.value = ''; f.style.height = 'auto'; clearImg(); save(); getAIResponse(document.getElementById('model-select').value);
     }
 
     async function getAIResponse(model) {
         const idx = chats[activeChatId].history.length;
         const div = appendMessage('ai', '<div id="think" class="thinking-txt">Thinking...</div>', model, idx);
         const contentDiv = div.querySelector('.content');
-        
         try {
             const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model }) });
             const reader = res.body.getReader(), decoder = new TextDecoder();
             let full = "";
-            
             while (true) {
-                const { done, value } = await reader.read(); 
-                if (done) break;
-                
+                const { done, value } = await reader.read(); if (done) break;
                 const chunk = decoder.decode(value);
                 if (full === "" && chunk.trim()) div.querySelector('#think')?.remove();
                 full += chunk;
-                
-                neuronStats.count += (chunk.length * 0.4); 
-                updateGauge();
-                
+                neuronStats.count += (chunk.length * 0.4); updateGauge();
                 contentDiv.innerHTML = marked.parse(full);
                 addCodeFeatures(contentDiv);
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
-            chats[activeChatId].history.push({ role: "assistant", content: full, modelUsed: model }); 
-            save();
-        } catch(e) { 
-            contentDiv.innerHTML = "Phoenix connection failed. Check Worker URL."; 
-        } finally {
-            isThinking = false;
-        }
+            chats[activeChatId].history.push({ role: "assistant", content: full, modelUsed: model }); save();
+        } catch(e) { contentDiv.innerHTML = "Connection failed. Please retry."; }
+        finally { isThinking = false; }
     }
 
     function addCodeFeatures(container) {
@@ -218,7 +193,6 @@
         let badge = (role === 'ai' && model) ? `<span class="model-badge">${model.toUpperCase()}</span>` : '';
         div.innerHTML = `<div class="label-row"><div style="display:flex;align-items:center"><span class="label-text">${role.toUpperCase()}</span>${badge}</div><div class="chat-dots" onclick="event.stopPropagation(); msgOptions('${activeChatId}', ${historyIdx})">⋮</div></div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
-        
         const cDiv = div.querySelector('.content');
         if (typeof content === 'string') cDiv.innerHTML = marked.parse(content);
         else content.forEach(p => { 
@@ -228,71 +202,21 @@
         return div;
     }
 
-    function msgOptions(cid, hIdx) {
-        openModal("Delete this message?", (ok) => { if(ok) { chats[cid].history.splice(hIdx, 1); loadChat(cid); save(); } });
-    }
-
-    function createNewChat() { 
-        activeChatId = Date.now().toString(); 
-        chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "Phoenix" }] }; 
-        save(); loadChat(activeChatId); 
-    }
-    
-    function loadChat(id) { 
-        activeChatId = id; 
-        localStorage.setItem('phoenix_active_id', id); 
-        document.getElementById('chat-container').innerHTML = ''; 
-        if (chats[id].history.length > 1) { 
-            document.getElementById('app-container').classList.remove('landing-view'); 
-            chats[id].history.slice(1).forEach((m, i) => appendMessage(m.role, m.content, m.modelUsed, i+1)); 
-        } else {
-            document.getElementById('app-container').classList.add('landing-view');
-        }
-        renderList(); 
-    }
-    
-    function renderList() { 
-        const l = document.getElementById('chat-list'); l.innerHTML = ''; 
-        Object.keys(chats).reverse().forEach(id => { 
-            l.innerHTML += `<div class="chat-item ${id === activeChatId ? 'active' : ''}" onclick="loadChat('${id}')">
-                <span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${chats[id].title}</span>
-                <span onclick="event.stopPropagation(); deletePrompt('${id}')" style="margin-left:8px">✕</span>
-                <span onclick="event.stopPropagation(); renamePrompt('${id}')" style="margin-left:8px">✎</span>
-            </div>`; 
-        }); 
-    }
-    
-    function deletePrompt(id) { openModal("Delete this session?", (ok) => { if(ok) { delete chats[id]; loadChat(Object.keys(chats).pop() || createNewChat()); save(); } }); }
+    function msgOptions(cid, hIdx) { openModal("Delete message?", (ok) => { if(ok) { chats[cid].history.splice(hIdx, 1); loadChat(cid); save(); } }); }
+    function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "Phoenix" }] }; save(); loadChat(activeChatId); }
+    function loadChat(id) { activeChatId = id; localStorage.setItem('phoenix_active_id', id); document.getElementById('chat-container').innerHTML = ''; if (chats[id].history.length > 1) { document.getElementById('app-container').classList.remove('landing-view'); chats[id].history.slice(1).forEach((m, i) => appendMessage(m.role, m.content, m.modelUsed, i+1)); } else document.getElementById('app-container').classList.add('landing-view'); renderList(); }
+    function renderList() { const l = document.getElementById('chat-list'); l.innerHTML = ''; Object.keys(chats).reverse().forEach(id => { l.innerHTML += `<div class="chat-item ${id === activeChatId ? 'active' : ''}" onclick="loadChat('${id}')"><span style="flex:1;overflow:hidden">${chats[id].title}</span><span onclick="event.stopPropagation(); deletePrompt('${id}')">✕</span><span onclick="event.stopPropagation(); renamePrompt('${id}')">✎</span></div>`; }); }
+    function deletePrompt(id) { openModal("Delete session?", (ok) => { if(ok) { delete chats[id]; loadChat(Object.keys(chats).pop() || createNewChat()); save(); } }); }
     function renamePrompt(id) { openModal("Rename session:", (val) => { if(val) { chats[id].title = val; renderList(); save(); } }, true, chats[id].title); }
-    function clearAllPrompt() { openModal("Wipe all history?", (ok) => { if(ok) { localStorage.removeItem('phoenix_chats'); chats = {}; createNewChat(); } }); }
+    function clearAllPrompt() { openModal("Wipe history?", (ok) => { if(ok) { localStorage.removeItem('phoenix_chats'); chats = {}; createNewChat(); } }); }
 
-    function handleFileDirect(f) { 
-        const reader = new FileReader(); 
-        reader.onload = (e) => { 
-            attachedImg = e.target.result; 
-            const pb = document.getElementById('preview-bar');
-            pb.style.display='flex'; 
-            pb.innerHTML=`<img src="${attachedImg}" style="height:60px; border-radius:8px; border:1px solid var(--p-red)"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900">✕</span>`; 
-        }; 
-        reader.readAsDataURL(f instanceof FileList ? f[0] : f); 
-    }
-    
+    function handleFileDirect(f) { const file = (f instanceof FileList) ? f[0] : f; if (!file || !file.type.startsWith('image/')) return; const reader = new FileReader(); reader.onload = (e) => { attachedImg = e.target.result; const pb = document.getElementById('preview-bar'); pb.style.display='flex'; pb.innerHTML=`<img src="${attachedImg}" style="height:60px; border-radius:8px; border:1px solid var(--p-red)"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px">✕</span>`; }; reader.readAsDataURL(file); }
     function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display='none'; }
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
 
-    // KEYBOARD LISTENER FIXED
-    document.getElementById('user-input').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-
-    window.onload = () => { 
-        updateGauge(); 
-        if(activeChatId && chats[activeChatId]) loadChat(activeChatId); 
-        else createNewChat(); 
-    };
+    window.addEventListener('paste', (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let i in items) if (items[i].kind === 'file' && items[i].type.startsWith('image/')) handleFileDirect(items[i].getAsFile()); });
+    document.getElementById('user-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+    window.onload = () => { updateGauge(); if(activeChatId && chats[activeChatId]) loadChat(activeChatId); else createNewChat(); };
 </script>
 </body>
 </html>
