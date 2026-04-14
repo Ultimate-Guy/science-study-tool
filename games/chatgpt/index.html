@@ -23,42 +23,34 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; transition: 0.3s; }
         #app-container { display: flex; height: 100vh; width: 100vw; }
-        
         #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; z-index: 200; }
         .sidebar-header { font-size: 10px; font-weight: 800; color: #888; margin: 20px 0 10px 0; text-transform: uppercase; }
         .chat-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 13px; margin-bottom: 4px; color: var(--text); }
         .chat-item.active { background: rgba(255,26,26,0.08); font-weight: 700; color: var(--p-red); }
-
         #neuron-gauge-container { margin-top: auto; padding: 15px; background: rgba(255, 26, 26, 0.05); border-radius: 12px; border: 1px solid rgba(255, 26, 26, 0.1); }
         .gauge-bar-fill { height: 6px; width: 0%; background: var(--p-red); border-radius: 3px; transition: 0.5s; margin: 8px 0; }
-
         .landing-view #sidebar { transform: translateX(-100%); width: 0; padding: 0; visibility: hidden; }
         .landing-view #chat-container { display: none; }
         .landing-view #input-wrapper { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #landing-header { display: none; text-align: center; margin-bottom: 40px; }
         .landing-view #landing-header { display: block; }
-
         #chat-section { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
         #chat-header-brand { position: absolute; top: 20px; left: 30px; font-size: 14px; font-weight: 900; color: var(--p-red); }
         #chat-container { flex: 1; overflow-y: auto; padding: 80px 20px; display: flex; flex-direction: column; scroll-behavior: smooth; }
-
         .message { width: 100%; max-width: 800px; margin: 0 auto 24px auto; }
         .label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 0 12px; }
         .label-text { font-size: 9px; font-weight: 900; color: var(--p-red); }
         .model-badge { font-size: 8px; font-weight: 900; background: #e0e0e0; color: #777; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 8px; }
-
         .code-wrapper { margin: 15px 0; border-radius: 8px; background: #222; border: 1px solid #444; overflow: hidden; display: flex; flex-direction: column; }
         .code-header { display: flex; justify-content: space-between; padding: 8px 16px; background: rgba(255,255,255,0.05); font-size: 11px; color: #aaa; border-bottom: 1px solid #333; }
         .code-body { display: flex; overflow-x: auto; }
         .line-numbers { padding: 16px 12px; color: #555; font-family: monospace; font-size: 13px; text-align: right; background: rgba(0,0,0,0.2); min-width: 40px; }
         pre { padding: 16px; margin: 0; flex: 1; font-family: monospace; font-size: 14px; color: #ddd; }
-
         #input-container { width: 100%; max-width: 800px; margin: 0 auto; background: var(--input-bg); border: 1px solid var(--border); border-radius: 20px; padding: 10px 18px; display: flex; align-items: center; gap: 12px; }
         textarea { flex: 1; background: transparent; border: none; font-size: 16px; outline: none; resize: none; max-height: 250px; color: var(--text); }
         .sidebar-btn { padding: 12px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 8px; }
         .thinking-txt { font-size: 14px; opacity: 0.6; padding: 10px 0; animation: pulse 1.5s infinite; color: var(--p-red); font-weight: 900; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
         #phoenix-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; }
         .modal-box { background: var(--bg); padding: 30px; border-radius: 20px; border: 1px solid var(--p-red); width: 350px; text-align: center; }
         .modal-box h3 { font-size: 14px; margin-bottom: 8px; color: var(--p-red); text-transform: uppercase; font-weight: 900; }
@@ -71,19 +63,7 @@
     </style>
 </head>
 <body class="light-mode">
-
-<div id="phoenix-modal">
-    <div class="modal-box">
-        <h3 id="modal-title">Phoenix AI says</h3>
-        <p id="modal-desc"></p>
-        <input type="text" id="modal-input" style="display:none">
-        <div class="modal-footer">
-            <button class="btn-m red" id="modal-ok">Confirm</button>
-            <button class="btn-m grey" onclick="closeModal()">Cancel</button>
-        </div>
-    </div>
-</div>
-
+<div id="phoenix-modal"><div class="modal-box"><h3 id="modal-title">Phoenix AI says</h3><p id="modal-desc"></p><input type="text" id="modal-input" style="display:none"><div class="modal-footer"><button class="btn-m red" id="modal-ok">Confirm</button><button class="btn-m grey" onclick="closeModal()">Cancel</button></div></div></div>
 <div id="app-container" class="landing-view">
     <div id="sidebar">
         <div class="sidebar-btn" onclick="createNewChat()">+ NEW CHAT</div>
@@ -118,102 +98,27 @@
         </div>
     </div>
 </div>
-
 <script>
     const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = localStorage.getItem('phoenix_active_id'), attachedImg = null, isThinking = false;
     let neuronStats = JSON.parse(localStorage.getItem('phoenix_neurons') || '{"count":0}');
-
-    function openModal(desc, callback, hasInput = false, initial = "") {
-        document.getElementById('phoenix-modal').style.display = 'flex';
-        document.getElementById('modal-desc').innerText = desc;
-        const inp = document.getElementById('modal-input');
-        inp.style.display = hasInput ? 'block' : 'none'; inp.value = initial;
-        document.getElementById('modal-ok').onclick = () => { callback(hasInput ? inp.value : true); closeModal(); };
-    }
+    function openModal(desc, callback, hasInput = false, initial = "") { document.getElementById('phoenix-modal').style.display = 'flex'; document.getElementById('modal-desc').innerText = desc; const inp = document.getElementById('modal-input'); inp.style.display = hasInput ? 'block' : 'none'; inp.value = initial; document.getElementById('modal-ok').onclick = () => { callback(hasInput ? inp.value : true); closeModal(); }; }
     function closeModal() { document.getElementById('phoenix-modal').style.display = 'none'; }
-
-    function updateGauge() {
-        const p = Math.min((neuronStats.count / 10000) * 100, 100);
-        document.getElementById('gauge-fill').style.width = p + '%';
-        document.getElementById('neuron-value').innerText = `${Math.round(neuronStats.count)} / 10k`;
-        localStorage.setItem('phoenix_neurons', JSON.stringify(neuronStats));
-    }
-
-    function sendMessage() {
-        const f = document.getElementById('user-input'), text = f.value.trim();
-        if((!text && !attachedImg) || isThinking) return;
-        isThinking = true;
-        document.getElementById('app-container').classList.remove('landing-view');
-        let content = attachedImg ? [{ type: "text", text: text || "Analyze image." }, { type: "image_url", image_url: { url: attachedImg } }] : text;
-        appendMessage('user', content, null, chats[activeChatId].history.length);
-        chats[activeChatId].history.push({ role: "user", content: content });
-        if (chats[activeChatId].title === "New Session") { chats[activeChatId].title = text.substring(0, 25) || "Session"; renderList(); }
-        f.value = ''; f.style.height = 'auto'; clearImg(); save(); getAIResponse(document.getElementById('model-select').value);
-    }
-
-    async function getAIResponse(model) {
-        const idx = chats[activeChatId].history.length;
-        const div = appendMessage('ai', '<div id="think" class="thinking-txt">Thinking...</div>', model, idx);
-        const contentDiv = div.querySelector('.content');
-        try {
-            const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model }) });
-            const reader = res.body.getReader(), decoder = new TextDecoder();
-            let full = "";
-            while (true) {
-                const { done, value } = await reader.read(); if (done) break;
-                const chunk = decoder.decode(value);
-                if (full === "" && chunk.trim()) div.querySelector('#think')?.remove();
-                full += chunk;
-                neuronStats.count += (chunk.length * 0.4); updateGauge();
-                contentDiv.innerHTML = marked.parse(full);
-                addCodeFeatures(contentDiv);
-                document.getElementById('chat-container').scrollTop = 1e9;
-            }
-            chats[activeChatId].history.push({ role: "assistant", content: full, modelUsed: model }); save();
-        } catch(e) { contentDiv.innerHTML = "Connection failed. Please retry."; }
-        finally { isThinking = false; }
-    }
-
-    function addCodeFeatures(container) {
-        container.querySelectorAll('pre').forEach(pre => {
-            if (pre.parentElement.classList.contains('code-body')) return;
-            const wrapper = document.createElement('div'); wrapper.className = 'code-wrapper';
-            const header = document.createElement('div'); header.className = 'code-header';
-            header.innerHTML = `<span>Code</span><span onclick="navigator.clipboard.writeText(this.closest('.code-wrapper').querySelector('pre').innerText); this.innerText='COPIED'" style="cursor:pointer">Copy</span>`;
-            const body = document.createElement('div'); body.className = 'code-body';
-            const nums = document.createElement('div'); nums.className = 'line-numbers';
-            pre.parentNode.insertBefore(wrapper, pre); wrapper.appendChild(header); wrapper.appendChild(body); body.appendChild(nums); body.appendChild(pre);
-            nums.innerHTML = Array.from({length: pre.innerText.split('\n').length}, (_, i) => i + 1).join('<br>');
-        });
-    }
-
-    function appendMessage(role, content, model, historyIdx) {
-        const div = document.createElement('div'); div.className = `message ${role}`;
-        let badge = (role === 'ai' && model) ? `<span class="model-badge">${model.toUpperCase()}</span>` : '';
-        div.innerHTML = `<div class="label-row"><div style="display:flex;align-items:center"><span class="label-text">${role.toUpperCase()}</span>${badge}</div><div class="chat-dots" onclick="event.stopPropagation(); msgOptions('${activeChatId}', ${historyIdx})">⋮</div></div><div class="content"></div>`;
-        document.getElementById('chat-container').appendChild(div);
-        const cDiv = div.querySelector('.content');
-        if (typeof content === 'string') cDiv.innerHTML = marked.parse(content);
-        else content.forEach(p => { 
-            if (p.type === 'text') cDiv.innerHTML += marked.parse(p.text); 
-            if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" style="max-width:100%; border-radius:12px; margin-top:10px">`; 
-        });
-        return div;
-    }
-
+    function updateGauge() { const p = Math.min((neuronStats.count / 10000) * 100, 100); document.getElementById('gauge-fill').style.width = p + '%'; document.getElementById('neuron-value').innerText = `${Math.round(neuronStats.count)} / 10k`; localStorage.setItem('phoenix_neurons', JSON.stringify(neuronStats)); }
+    function sendMessage() { const f = document.getElementById('user-input'), text = f.value.trim(); if((!text && !attachedImg) || isThinking) return; isThinking = true; document.getElementById('app-container').classList.remove('landing-view'); let content = attachedImg ? [{ type: "text", text: text || "Analyze image." }, { type: "image_url", image_url: { url: attachedImg } }] : text; appendMessage('user', content, null, chats[activeChatId].history.length); chats[activeChatId].history.push({ role: "user", content: content }); if (chats[activeChatId].title === "New Session") { chats[activeChatId].title = text.substring(0, 25) || "Session"; renderList(); } f.value = ''; f.style.height = 'auto'; clearImg(); save(); getAIResponse(document.getElementById('model-select').value); }
+    async function getAIResponse(model) { const idx = chats[activeChatId].history.length; const div = appendMessage('ai', '<div id="think" class="thinking-txt">Thinking...</div>', model, idx); const contentDiv = div.querySelector('.content'); try { const res = await fetch(WORKER_URL, { method: "POST", body: JSON.stringify({ messages: chats[activeChatId].history, model }) }); const reader = res.body.getReader(), decoder = new TextDecoder(); let full = ""; while (true) { const { done, value } = await reader.read(); if (done) break; const chunk = decoder.decode(value); if (full === "" && chunk.trim()) div.querySelector('#think')?.remove(); full += chunk; neuronStats.count += (chunk.length * 0.4); updateGauge(); contentDiv.innerHTML = marked.parse(full); addCodeFeatures(contentDiv); document.getElementById('chat-container').scrollTop = 1e9; } chats[activeChatId].history.push({ role: "assistant", content: full, modelUsed: model }); save(); } catch(e) { contentDiv.innerHTML = "Connection failed. Please retry."; } finally { isThinking = false; } }
+    function addCodeFeatures(container) { container.querySelectorAll('pre').forEach(pre => { if (pre.parentElement.classList.contains('code-body')) return; const wrapper = document.createElement('div'); wrapper.className = 'code-wrapper'; const header = document.createElement('div'); header.className = 'code-header'; header.innerHTML = `<span>Code</span><span onclick="navigator.clipboard.writeText(this.closest('.code-wrapper').querySelector('pre').innerText); this.innerText='COPIED'" style="cursor:pointer">Copy</span>`; const body = document.createElement('div'); body.className = 'code-body'; const nums = document.createElement('div'); nums.className = 'line-numbers'; pre.parentNode.insertBefore(wrapper, pre); wrapper.appendChild(header); wrapper.appendChild(body); body.appendChild(nums); body.appendChild(pre); nums.innerHTML = Array.from({length: pre.innerText.split('\n').length}, (_, i) => i + 1).join('<br>'); }); }
+    function appendMessage(role, content, model, historyIdx) { const div = document.createElement('div'); div.className = `message ${role}`; let badge = (role === 'ai' && model) ? `<span class="model-badge">${model.toUpperCase()}</span>` : ''; div.innerHTML = `<div class="label-row"><div style="display:flex;align-items:center"><span class="label-text">${role.toUpperCase()}</span>${badge}</div><div class="chat-dots" onclick="event.stopPropagation(); msgOptions('${activeChatId}', ${historyIdx})">⋮</div></div><div class="content"></div>`; document.getElementById('chat-container').appendChild(div); const cDiv = div.querySelector('.content'); if (typeof content === 'string') cDiv.innerHTML = marked.parse(content); else content.forEach(p => { if (p.type === 'text') cDiv.innerHTML += marked.parse(p.text); if (p.type === 'image_url') cDiv.innerHTML += `<img src="${p.image_url.url}" style="max-width:100%; border-radius:12px; margin-top:10px">`; }); return div; }
     function msgOptions(cid, hIdx) { openModal("Delete message?", (ok) => { if(ok) { chats[cid].history.splice(hIdx, 1); loadChat(cid); save(); } }); }
     function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "Phoenix" }] }; save(); loadChat(activeChatId); }
     function loadChat(id) { activeChatId = id; localStorage.setItem('phoenix_active_id', id); document.getElementById('chat-container').innerHTML = ''; if (chats[id].history.length > 1) { document.getElementById('app-container').classList.remove('landing-view'); chats[id].history.slice(1).forEach((m, i) => appendMessage(m.role, m.content, m.modelUsed, i+1)); } else document.getElementById('app-container').classList.add('landing-view'); renderList(); }
-    function renderList() { const l = document.getElementById('chat-list'); l.innerHTML = ''; Object.keys(chats).reverse().forEach(id => { l.innerHTML += `<div class="chat-item ${id === activeChatId ? 'active' : ''}" onclick="loadChat('${id}')"><span style="flex:1;overflow:hidden">${chats[id].title}</span><span onclick="event.stopPropagation(); deletePrompt('${id}')">✕</span><span onclick="event.stopPropagation(); renamePrompt('${id}')">✎</span></div>`; }); }
+    function renderList() { const l = document.getElementById('chat-list'); l.innerHTML = ''; Object.keys(chats).reverse().forEach(id => { l.innerHTML += `<div class="chat-item ${id === activeChatId ? 'active' : ''}" onclick="loadChat('${id}')"><span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${chats[id].title}</span><span onclick="event.stopPropagation(); deletePrompt('${id}')">✕</span><span onclick="event.stopPropagation(); renamePrompt('${id}')">✎</span></div>`; }); }
     function deletePrompt(id) { openModal("Delete session?", (ok) => { if(ok) { delete chats[id]; loadChat(Object.keys(chats).pop() || createNewChat()); save(); } }); }
     function renamePrompt(id) { openModal("Rename session:", (val) => { if(val) { chats[id].title = val; renderList(); save(); } }, true, chats[id].title); }
     function clearAllPrompt() { openModal("Wipe history?", (ok) => { if(ok) { localStorage.removeItem('phoenix_chats'); chats = {}; createNewChat(); } }); }
-
     function handleFileDirect(f) { const file = (f instanceof FileList) ? f[0] : f; if (!file || !file.type.startsWith('image/')) return; const reader = new FileReader(); reader.onload = (e) => { attachedImg = e.target.result; const pb = document.getElementById('preview-bar'); pb.style.display='flex'; pb.innerHTML=`<img src="${attachedImg}" style="height:60px; border-radius:8px; border:1px solid var(--p-red)"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px">✕</span>`; }; reader.readAsDataURL(file); }
     function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display='none'; }
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
-
     window.addEventListener('paste', (e) => { const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let i in items) if (items[i].kind === 'file' && items[i].type.startsWith('image/')) handleFileDirect(items[i].getAsFile()); });
     document.getElementById('user-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     window.onload = () => { updateGauge(); if(activeChatId && chats[activeChatId]) loadChat(activeChatId); else createNewChat(); };
