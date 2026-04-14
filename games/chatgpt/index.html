@@ -24,19 +24,16 @@
         body, html { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; transition: 0.3s; }
         #app-container { display: flex; height: 100vh; width: 100vw; }
         
-        /* Sidebar Menu */
-        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; z-index: 200; }
+        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; z-index: 200; transition: 0.3s ease; }
         .sidebar-header { font-size: 10px; font-weight: 800; color: #888; margin: 20px 0 10px 0; text-transform: uppercase; }
         .chat-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 13px; margin-bottom: 4px; color: var(--text); }
         .chat-item.active { background: rgba(255,26,26,0.08); font-weight: 700; color: var(--p-red); }
         .chat-dots { opacity: 0.3; padding: 5px; font-size: 16px; cursor: pointer; }
         .chat-item:hover .chat-dots { opacity: 1; }
 
-        /* Neuron Gauge */
         #neuron-gauge-container { margin-top: auto; padding: 15px; background: rgba(255, 26, 26, 0.05); border-radius: 12px; border: 1px solid rgba(255, 26, 26, 0.1); }
         .gauge-bar-fill { height: 6px; width: 0%; background: var(--p-red); border-radius: 3px; transition: 0.5s; margin: 8px 0; }
 
-        /* Persistence & Landing */
         .landing-view #sidebar { transform: translateX(-100%); width: 0; padding: 0; visibility: hidden; }
         .landing-view #chat-container { display: none; }
         .landing-view #input-wrapper { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -46,14 +43,12 @@
         #chat-section { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
         #chat-header-brand { position: absolute; top: 20px; left: 30px; font-size: 14px; font-weight: 900; color: var(--p-red); }
         #chat-container { flex: 1; overflow-y: auto; padding: 80px 20px; display: flex; flex-direction: column; scroll-behavior: smooth; }
-        
-        /* Tiny Grey Model Tags */
+
         .message { width: 100%; max-width: 800px; margin: 0 auto 24px auto; display: flex; flex-direction: column; }
         .label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 0 12px; }
         .label-text { font-size: 9px; font-weight: 900; color: var(--p-red); }
         .model-badge { font-size: 8px; font-weight: 900; background: #e0e0e0; color: #777; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 8px; }
 
-        /* Dark Grey Code Blocks + Line Numbers */
         .code-wrapper { margin: 15px 0; border-radius: 8px; background: #222; border: 1px solid #444; overflow: hidden; display: flex; flex-direction: column; }
         .code-header { display: flex; justify-content: space-between; padding: 8px 16px; background: rgba(255,255,255,0.05); font-size: 11px; color: #aaa; border-bottom: 1px solid #333; }
         .code-body { display: flex; overflow-x: auto; }
@@ -65,13 +60,35 @@
         .sidebar-btn { padding: 12px; border: 1px solid var(--p-red); color: var(--p-red); text-align: center; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 800; margin-bottom: 8px; }
         .thinking-txt { font-size: 14px; opacity: 0.6; padding: 10px 0; animation: pulse 1.5s infinite; color: var(--p-red); font-weight: 900; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* Custom Phoenix Modal System */
+        #phoenix-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: var(--bg); border: 1px solid var(--p-red); padding: 30px; border-radius: 15px; width: 350px; text-align: center; }
+        .modal-title { font-weight: 900; color: var(--p-red); margin-bottom: 15px; font-size: 16px; }
+        .modal-input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px; background: var(--input-bg); color: var(--text); outline: none; }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; }
+        .m-btn { padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 800; border: none; font-size: 12px; }
+        .m-btn.confirm { background: var(--p-red); color: #fff; }
+        .m-btn.cancel { background: #555; color: #fff; }
     </style>
 </head>
 <body class="light-mode">
+<div id="phoenix-modal">
+    <div class="modal-content">
+        <div class="modal-title" id="m-title">Phoenix AI says</div>
+        <p id="m-text" style="margin-bottom: 15px; font-size: 14px; opacity: 0.8;"></p>
+        <input type="text" id="m-input" class="modal-input" style="display:none">
+        <div class="modal-btns">
+            <button class="m-btn confirm" id="m-confirm">Confirm</button>
+            <button class="m-btn cancel" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <div id="app-container" class="landing-view">
     <div id="sidebar">
         <div class="sidebar-btn" onclick="createNewChat()">+ NEW CHAT</div>
-        <div class="sidebar-btn" style="border-color:#555; color:#555" onclick="clearAllHistory()">CLEAR HISTORY</div>
+        <div class="sidebar-btn" style="border-color:#555; color:#555" onclick="promptClearAll()">CLEAR HISTORY</div>
         <div class="sidebar-header">Recent</div><div id="chat-list" style="flex:1; overflow-y:auto"></div>
         <div id="neuron-gauge-container">
             <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:900;color:var(--p-red)"><span>Neurons</span><span id="neuron-value">0 / 10k</span></div>
@@ -89,9 +106,9 @@
                 <input type="file" id="file-in" hidden onchange="handleFileDirect(this.files)">
                 <select id="model-select" style="background:transparent; border:none; color:var(--p-red); font-size:10px; font-weight:900; outline:none; text-transform:uppercase; cursor:pointer">
                     <option value="gpt-4o-turbo" selected>GPT-4o-turbo (Non Neurons)</option>
-                    <option value="llama-versatile">Llama 3 8B Versatile (Non Neurons)</option>
-                    <option value="llama-instant">Llama 3 8B Instant (Non Neurons)</option>
-                    <option value="gemma-moe">Gemma 4 26B MoE</option>
+                    <option value="llama-versatile">Llama 3 8B Versatile</option>
+                    <option value="llama-instant">Llama 3 8B Instant</option>
+                    <option value="gemma-moe">Gemma 2 27B</option>
                     <option value="llama-vision">Llama 3.2 Vision</option>
                     <option value="glm">GLM-4.7 Flash</option>
                     <option value="kimi">Kimi-K2.5</option>
@@ -106,6 +123,14 @@
     const WORKER_URL = "https://phoenix-ai-proxy.prabhavd75.workers.dev/";
     let chats = JSON.parse(localStorage.getItem('phoenix_chats') || '{}'), activeChatId = localStorage.getItem('phoenix_active_id'), attachedImg = null;
     let neuronStats = JSON.parse(localStorage.getItem('phoenix_neurons') || '{"count":0, "day":' + new Date().getUTCDate() + '}');
+
+    function openModal(text, callback, isInput = false, initialVal = "") {
+        const m = document.getElementById('phoenix-modal'), inp = document.getElementById('m-input');
+        m.style.display = 'flex'; document.getElementById('m-text').innerText = text;
+        inp.style.display = isInput ? 'block' : 'none'; inp.value = initialVal;
+        document.getElementById('m-confirm').onclick = () => { callback(isInput ? inp.value : true); closeModal(); };
+    }
+    function closeModal() { document.getElementById('phoenix-modal').style.display = 'none'; }
 
     function updateGauge() {
         const p = Math.min((neuronStats.count / 10000) * 100, 100);
@@ -144,7 +169,7 @@
                 document.getElementById('chat-container').scrollTop = 1e9;
             }
             chats[activeChatId].history.push({ role: "assistant", content: full, modelUsed: model }); save();
-        } catch(e) { contentDiv.innerHTML = "Error. Please retry."; }
+        } catch(e) { contentDiv.innerHTML = "Phoenix is experiencing a heavy load. Please retry."; }
     }
 
     function addCodeFeatures(container) {
@@ -163,11 +188,21 @@
     function appendMessage(role, content, model, historyIdx) {
         const div = document.createElement('div'); div.className = `message ${role}`;
         let badge = (role === 'ai' && model) ? `<span class="model-badge">${model.toUpperCase()}</span>` : '';
-        div.innerHTML = `<div class="label-row"><div style="display:flex;align-items:center"><span class="label-text">${role.toUpperCase()}</span>${badge}</div><div class="chat-dots" onclick="event.stopPropagation();const a=prompt('rename or delete?','rename');if(a==='delete'){chats['${activeChatId}'].history.splice(${historyIdx}, 1);loadChat('${activeChatId}')}else if(a==='rename'){chats['${activeChatId}'].title=prompt('Name?');renderList();save();}">⋮</div></div><div class="content"></div>`;
+        div.innerHTML = `<div class="label-row"><div style="display:flex;align-items:center"><span class="label-text">${role.toUpperCase()}</span>${badge}</div><div class="chat-dots" onclick="event.stopPropagation(); menuAction('${activeChatId}', ${historyIdx})">⋮</div></div><div class="content"></div>`;
         document.getElementById('chat-container').appendChild(div);
         if (typeof content === 'string') div.querySelector('.content').innerHTML = marked.parse(content);
-        else content.forEach(p => { if (p.type === 'text') div.querySelector('.content').innerHTML += marked.parse(p.text); if (p.type === 'image_url') div.querySelector('.content').innerHTML += `<img src="${p.image_url.url}" style="max-width:100%; border-radius:12px; margin-top:10px">`; });
+        else content.forEach(p => { 
+            if (p.type === 'text') div.querySelector('.content').innerHTML += marked.parse(p.text); 
+            if (p.type === 'image_url') div.querySelector('.content').innerHTML += `<img src="${p.image_url.url}" style="max-width:100%; border-radius:12px; margin-top:10px">`; 
+        });
         return div;
+    }
+
+    function menuAction(cid, idx) {
+        openModal("Would you like to rename or delete this session?", (action) => {
+            if(action === 'delete') { chats[cid].history.splice(idx, 1); loadChat(cid); }
+            else if(action === 'rename') { openModal("Enter new session name:", (name) => { if(name) { chats[cid].title = name; renderList(); save(); } }, true, chats[cid].title); }
+        }, true, "rename/delete");
     }
 
     document.getElementById('user-input').onpaste = (e) => {
@@ -175,14 +210,23 @@
         for (const item of items) if (item.type.indexOf("image") !== -1) handleFileDirect(item.getAsFile());
     };
 
-    function handleFileDirect(file) { if (file) { 
-        const reader = new FileReader(); reader.onload = (ev) => { attachedImg = ev.target.result; document.getElementById('preview-bar').style.display='flex'; document.getElementById('preview-bar').innerHTML=`<img src="${attachedImg}" style="height:60px; border-radius:8px"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900">✕</span>`; }; reader.readAsDataURL(file instanceof FileList ? file[0] : file);
-    }}
+    function handleFileDirect(file) { 
+        if (!file) return;
+        const reader = new FileReader(); 
+        reader.onload = (ev) => { 
+            attachedImg = ev.target.result; 
+            const pb = document.getElementById('preview-bar');
+            pb.style.display='flex'; 
+            pb.innerHTML=`<img src="${attachedImg}" style="height:60px; border-radius:8px"><span onclick="clearImg()" style="color:red;cursor:pointer;margin-left:10px;font-weight:900">✕</span>`; 
+        }; 
+        reader.readAsDataURL(file instanceof FileList ? file[0] : file);
+    }
 
     function createNewChat() { activeChatId = Date.now().toString(); chats[activeChatId] = { title: "New Session", history: [{ role: "system", content: "Phoenix" }] }; save(); loadChat(activeChatId); }
     function loadChat(id) { activeChatId = id; localStorage.setItem('phoenix_active_id', id); document.getElementById('chat-container').innerHTML = ''; if (chats[id].history.length > 1) { document.getElementById('app-container').classList.remove('landing-view'); chats[id].history.slice(1).forEach((m, i) => appendMessage(m.role, m.content, m.modelUsed, i+1)); } else document.getElementById('app-container').classList.add('landing-view'); renderList(); }
-    function renderList() { const l = document.getElementById('chat-list'); l.innerHTML = ''; Object.keys(chats).reverse().forEach(id => { l.innerHTML += `<div class="chat-item ${id === activeChatId ? 'active' : ''}" onclick="loadChat('${id}')"><span style="flex:1;overflow:hidden">${chats[id].title}</span><span onclick="event.stopPropagation();if(confirm('Delete?')){delete chats['${id}'];loadChat(Object.keys(chats).pop() || createNewChat())}">✕</span></div>`; }); }
-    function clearAllHistory() { if(confirm("Clear ALL?")) { localStorage.removeItem('phoenix_chats'); chats = {}; createNewChat(); } }
+    function renderList() { const l = document.getElementById('chat-list'); l.innerHTML = ''; Object.keys(chats).reverse().forEach(id => { l.innerHTML += `<div class="chat-item ${id === activeChatId ? 'active' : ''}" onclick="loadChat('${id}')"><span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${chats[id].title}</span><span onclick="event.stopPropagation(); deleteChat('${id}')">✕</span></div>`; }); }
+    function deleteChat(id) { openModal("Are you sure you want to delete this session?", (c) => { if(c) { delete chats[id]; loadChat(Object.keys(chats).pop() || createNewChat()); } }); }
+    function promptClearAll() { openModal("Clear ALL chat history? This cannot be undone.", (c) => { if(c) { localStorage.removeItem('phoenix_chats'); chats = {}; createNewChat(); } }); }
     function clearImg() { attachedImg = null; document.getElementById('preview-bar').style.display = 'none'; }
     function save() { localStorage.setItem('phoenix_chats', JSON.stringify(chats)); }
     document.getElementById('user-input').onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
