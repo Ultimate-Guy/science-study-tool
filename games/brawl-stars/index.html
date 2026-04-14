@@ -1,199 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brawl Stars FR</title>
 <script>
 /* =========================================================
-   BRAWL ENGINE STUDIO v4
-   CORE + EVENT SYSTEM
+   BRAWL ENGINE PRODUCTION CORE (REFACORED BASE)
    PART 1/5
    ========================================================= */
 
-const Brawl = window.Brawl = {};
+const BrawlEngine = {
+    version: "3.0-production",
+    
+    instance: null,
+    canvas: null,
+    config: null,
 
-/* =========================
-   ENGINE CORE STATE
-   ========================= */
-
-Brawl.core = {
-    version: "4.0-studio",
-    mode: "production", // dev | production
-
-    ready: false,
-    started: false,
-
-    unity: null,
-    canvas: null
-};
-
-/* =========================
-   EVENT BUS (NEW STUDIO FEATURE)
-   ========================= */
-
-Brawl.events = {
-    listeners: {},
-
-    on(event, fn) {
-        if (!this.listeners[event]) this.listeners[event] = [];
-        this.listeners[event].push(fn);
+    state: {
+        ready: false,
+        paused: false,
+        visible: true,
+        initialized: false
     },
 
-    off(event, fn) {
-        if (!this.listeners[event]) return;
-        this.listeners[event] = this.listeners[event].filter(f => f !== fn);
+    sdk: {
+        ysdk: null,
+        initialized: false
     },
 
-    emit(event, data) {
-        const list = this.listeners[event];
-        if (!list) return;
+    boot: function (config) {
+        this.config = config;
+        this.canvas = document.getElementById("unity-canvas") || document.getElementById("game");
 
-        for (const fn of list) {
-            try { fn(data); } catch (e) {
-                console.warn("[Event Error]", event, e);
-            }
-        }
-    }
-};
+        this._log("Booting engine...");
+        this._bindSystemEvents();
+        this._initLoadingScreen();
+        this._startBootSequence();
+    },
 
-/* =========================
-   UNITY BRIDGE (DECOUPLED)
-   ========================= */
+    /* =========================
+       SYSTEM EVENTS
+       ========================= */
 
-Brawl.bridge = {
-    send(method, data) {
-        if (!Brawl.core.unity) return;
+    _bindSystemEvents: function () {
+        document.addEventListener("visibilitychange", () => {
+            this.state.visible = !document.hidden;
+            this._onVisibilityChange(this.state.visible);
+        });
 
-        const payload = typeof data === "string"
-            ? data
-            : JSON.stringify(data);
+        window.addEventListener("blur", () => {
+            this.state.visible = false;
+            this._onVisibilityChange(false);
+        });
+
+        window.addEventListener("focus", () => {
+            this.state.visible = true;
+            this._onVisibilityChange(true);
+        });
+
+        window.addEventListener("contextmenu", e => e.preventDefault());
+    },
+
+    _onVisibilityChange: function (visible) {
+        this._log("Visibility:", visible);
+        this.sendToGame("SetFocus", visible);
+    },
+
+    /* =========================
+       GAME COMMUNICATION
+       ========================= */
+
+    sendToGame: function (method, data) {
+        if (!this.instance) return;
 
         try {
-            Brawl.core.unity.SendMessage("BrawlSDK", method, payload);
+            this.instance.SendMessage(
+                "BrawlSDK",
+                method,
+                typeof data === "string" ? data : JSON.stringify(data)
+            );
         } catch (e) {
-            console.warn("[Bridge Error]", e);
+            console.warn("SendMessage failed:", e);
         }
+    },
+
+    setInstance: function (unityInstance) {
+        this.instance = unityInstance;
+        this._log("Unity instance attached");
+    },
+
+    /* =========================
+       LOADING SYSTEM
+       ========================= */
+
+    _initLoadingScreen: function () {
+        this.loader = {
+            element: document.getElementById("loading-text"),
+            progress: 0
+        };
+    },
+
+    _startBootSequence: function () {
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 5;
+
+            if (this.loader?.element) {
+                this.loader.element.innerText = LOADING ENGINE... ${progress}%;
+            }
+
+            if (progress >= 100) {
+                clearInterval(interval);
+                this._onBootComplete();
+            }
+        }, 40);
+    },
+
+    _onBootComplete: function () {
+        this.state.ready = true;
+        this._log("Engine boot complete");
+
+        const loader = document.getElementById("loading-text");
+        if (loader) loader.remove();
+    },
+
+    /* =========================
+       UTILITY
+       ========================= */
+
+    _log: function (...args) {
+        console.log("[BrawlEngine]", ...args);
     }
 };
 
-/* =========================
-   ENGINE BOOT
-   ========================= */
+/* =========================================================
+   GLOBAL SAFE API (for Unity calls)
+   ========================================================= */
 
-Brawl.init = function(config) {
-    this.config = config;
+window.BrawlEngine = BrawlEngine;
 
-    this.core.canvas =
-        document.getElementById("unity-canvas") ||
-        document.getElementById("game");
-
-    this._log("Studio v4 initializing...");
-
-    this._bindSystem();
-    this._startLoading();
+/* Called by Unity when ready */
+window.OnUnityReady = function (unityInstance) {
+    BrawlEngine.setInstance(unityInstance);
 };
 
-/* =========================
-   SYSTEM EVENTS
-   ========================= */
-
-Brawl._bindSystem = function() {
-    document.addEventListener("visibilitychange", () => {
-        this.events.emit("visibility", !document.hidden);
-    });
-
-    window.addEventListener("blur", () => {
-        this.events.emit("focus", false);
-    });
-
-    window.addEventListener("focus", () => {
-        this.events.emit("focus", true);
-    });
-
-    window.addEventListener("contextmenu", e => e.preventDefault());
-};
-
-/* =========================
-   LOADING SIMULATION
-   ========================= */
-
-Brawl._startLoading = function() {
-    let p = 0;
-
-    const t = setInterval(() => {
-        p += 10;
-
-        this._log("Loading:", p + "%");
-
-        if (p >= 100) {
-            clearInterval(t);
-            this._onReady();
-        }
-    }, 50);
-};
-
-/* =========================
-   READY STATE
-   ========================= */
-
-Brawl._onReady = function() {
-    this.core.ready = true;
-    this.events.emit("engine_ready", true);
-
-    this._log("Engine ready");
-};
-
-/* =========================
-   UNITY ATTACH
-   ========================= */
-
-Brawl.attachUnity = function(instance) {
-    this.core.unity = instance;
-
-    this._log("Unity attached");
-
-    this.events.emit("unity_ready", true);
-};
-
-/* =========================
-   LOG SYSTEM
-   ========================= */
-
-Brawl._log = function(...args) {
-    console.log("[Brawl v4]", ...args);
-};
-
-/* =========================
-   GLOBAL HOOKS
-   ========================= */
-
-window.OnUnityReady = function(instance) {
-    Brawl.attachUnity(instance);
+/* External bootstrap */
+window.InitBrawlEngine = function (config) {
+    BrawlEngine.boot(config);
 };
 </script>
 <script>
 /* =========================================================
-   SDK LAYER v4
+   BRAWL ENGINE SDK LAYER (PRODUCTION)
    PART 2/5
    ========================================================= */
 
-Brawl.sdk = {
+BrawlEngine.sdk = {
     ysdk: null,
-    player: null,
-    mode: "offline",
-    ready: false,
+    initialized: false,
+    mode: "unknown", // "yandex" | "offline"
 
-    queue: []
+    queue: [],
+    player: null
 };
 
 /* =========================
-   INIT SDK
+   SDK INITIALIZATION
    ========================= */
 
-Brawl.initSDK = async function() {
+BrawlEngine.initSDK = async function () {
     this._log("Initializing SDK...");
 
     try {
         if (!window.ysdk) {
-            this._log("Offline mode enabled");
+            this._log("No YSDK found → switching to offline mode");
             this.sdk.mode = "offline";
-            this.sdk.ready = true;
-            this._flushQueue();
+            this.sdk.initialized = true;
+            this._flushSDKQueue();
             return;
         }
 
@@ -201,257 +185,500 @@ Brawl.initSDK = async function() {
         this.sdk.mode = "yandex";
 
         await this._initPlayer();
+        await this._initEnvironment();
 
-        this.sdk.ready = true;
+        this.sdk.initialized = true;
+        this._log("SDK initialized successfully");
 
-        this._flushQueue();
-
-        this.events.emit("sdk_ready", this.sdk.mode);
-
-        this._log("SDK ready:", this.sdk.mode);
+        this._flushSDKQueue();
 
     } catch (e) {
-        console.error("[SDK ERROR]", e);
+        console.error("[BrawlEngine] SDK init failed:", e);
+
         this.sdk.mode = "offline";
-        this.sdk.ready = true;
+        this.sdk.initialized = true;
+        this._flushSDKQueue();
     }
 };
 
 /* =========================
-   PLAYER
+   PLAYER SYSTEM
    ========================= */
 
-Brawl._initPlayer = async function() {
+BrawlEngine._initPlayer = async function () {
+    if (!this.sdk.ysdk) return;
+
     try {
         this.sdk.player = await this.sdk.ysdk.getPlayer();
+
+        this._log("Player loaded");
+
     } catch (e) {
+        console.warn("[BrawlEngine] Player init failed:", e);
         this.sdk.player = null;
     }
+};
+
+/* =========================
+   ENVIRONMENT DATA
+   ========================= */
+
+BrawlEngine._initEnvironment = async function () {
+    try {
+        const env = {
+            language: navigator.language || "en",
+            platform: navigator.platform,
+            mobile: /Android|iPhone/i.test(navigator.userAgent)
+        };
+
+        this.sendToGame("SetEnvironment", env);
+
+    } catch (e) {
+        console.warn("[BrawlEngine] Environment init failed:", e);
+    }
+};
+
+/* =========================
+   SAFE SDK CALL SYSTEM
+   ========================= */
+
+BrawlEngine.sdkCall = function (fn) {
+    return new Promise((resolve) => {
+
+        const execute = () => {
+            try {
+                if (this.sdk.mode === "offline") {
+                    resolve(null);
+                    return;
+                }
+
+                const result = fn(this.sdk.ysdk, this.sdk.player);
+                resolve(result);
+
+            } catch (e) {
+                console.error("[BrawlEngine] SDK call error:", e);
+                resolve(null);
+            }
+        };
+
+        if (!this.sdk.initialized) {
+            this.sdk.queue.push(execute);
+        } else {
+            execute();
+        }
+    });
 };
 
 /* =========================
    QUEUE SYSTEM
    ========================= */
 
-Brawl._queue = function(fn) {
-    if (!this.sdk.ready) {
-        this.sdk.queue.push(fn);
-        return;
-    }
-    fn();
-};
+BrawlEngine._flushSDKQueue = function () {
+    this._log("Flushing SDK queue:", this.sdk.queue.length);
 
-Brawl._flushQueue = function() {
     for (const fn of this.sdk.queue) {
         try { fn(); } catch (e) {}
     }
+
     this.sdk.queue = [];
 };
 
 /* =========================
-   SAFE CALL WRAPPER
+   PUBLIC SDK WRAPPERS
    ========================= */
 
-Brawl.callSDK = function(fn) {
-    return new Promise(resolve => {
-        const exec = () => {
-            if (this.sdk.mode === "offline") {
-                resolve(null);
-                return;
-            }
+/* Get Player Info */
+BrawlEngine.getPlayerInfo = function () {
+    return this.sdkCall((ysdk, player) => {
+        if (!player) return null;
 
-            try {
-                resolve(fn(this.sdk.ysdk, this.sdk.player));
-            } catch (e) {
-                console.warn("[SDK CALL FAIL]", e);
-                resolve(null);
-            }
+        return {
+            id: player.getUniqueID?.() || "guest",
+            name: player.getName?.() || "Player"
         };
-
-        if (!this.sdk.ready) this.sdk.queue.push(exec);
-        else exec();
     });
 };
 
-/* =========================
-   ADS (BASIC STUBS)
-   ========================= */
+/* Show Interstitial Ad */
+BrawlEngine.showInterstitial = function () {
+    return this.sdkCall((ysdk) => {
+        if (!ysdk?.adv) return;
 
-Brawl.ads = {
-    interstitial() {
-        return Brawl.callSDK(ysdk => {
-            ysdk?.adv?.showFullscreenAdv();
+        ysdk.adv.showFullscreenAdv({
+            callbacks: {
+                onOpen: () => this._log("Ad opened"),
+                onClose: () => this._log("Ad closed"),
+                onError: (e) => console.warn("Ad error:", e)
+            }
         });
-    },
+    });
+};
 
-    rewarded(id) {
-        return Brawl.callSDK(ysdk => {
-            ysdk?.adv?.showRewardedVideo({
-                callbacks: {
-                    onRewarded: () => {
-                        Brawl.bridge.send("Reward", id);
-                    }
-                }
-            });
+/* Show Rewarded Ad */
+BrawlEngine.showRewarded = function (id) {
+    return this.sdkCall((ysdk) => {
+        if (!ysdk?.adv) return;
+
+        ysdk.adv.showRewardedVideo({
+            callbacks: {
+                onRewarded: () => {
+                    this._log("Reward granted:", id);
+                    this.sendToGame("OnReward", id);
+                },
+                onClose: () => this._log("Reward ad closed"),
+                onError: (e) => console.warn("Reward ad error:", e)
+            }
         });
-    }
+    });
+};
+
+/* Save Cloud (stub safe) */
+BrawlEngine.saveCloud = function (data) {
+    return this.sdkCall((ysdk, player) => {
+        if (!player?.setData) return;
+
+        return player.setData({ saves: [data] });
+    });
+};
+
+/* Load Cloud */
+BrawlEngine.loadCloud = function () {
+    return this.sdkCall(async (ysdk, player) => {
+        if (!player?.getData) return null;
+
+        const data = await player.getData(["saves"]);
+        return data?.saves || null;
+    });
 };
 </script>
 <script>
 /* =========================================================
-   SAVE SYSTEM v4 (SECURE BASE)
+   BRAWL ENGINE SAVE + ACCOUNT SYSTEM (PRODUCTION)
    PART 3/5
    ========================================================= */
 
-Brawl.save = {
-    prefix: "brawl_v4_",
-    version: "4.0"
+/* =========================
+   SAVE CONFIG
+   ========================= */
+
+BrawlEngine.save = {
+    version: "1.0.0",
+    prefix: "brawl_save_",
+    activeSlot: 0,
+
+    schema: {
+        player: null,
+        progress: {},
+        settings: {},
+        timestamp: 0,
+        version: "1.0.0"
+    }
 };
 
 /* =========================
-   ACCOUNT SYSTEM
+   ACCOUNT SYSTEM (FIXED)
    ========================= */
 
-Brawl.account = {
-    get() {
-        let n = localStorage.getItem("brawl_user");
-        if (!n) {
-            n = prompt("Username:") || "Player";
-            localStorage.setItem("brawl_user", n);
+BrawlEngine.account = {
+    name: null,
+
+    getName: function () {
+        if (this.name) return this.name;
+
+        let stored = localStorage.getItem("brawl_player_name");
+
+        if (!stored) {
+            stored = prompt("Enter username:") || "Player";
+            localStorage.setItem("brawl_player_name", stored);
         }
-        return n;
+
+        this.name = stored;
+        return stored;
     },
 
-    set(name) {
-        localStorage.setItem("brawl_user", name);
+    setName: function (name) {
+        this.name = name;
+        localStorage.setItem("brawl_player_name", name);
+    },
+
+    switchAccount: function () {
+        const newName = prompt("Enter new username:");
+        if (!newName) return;
+
+        this.setName(newName);
+        location.reload();
     }
 };
 
 /* =========================
-   BASIC ENCODING (UPGRADED)
+   SAFE SERIALIZATION
    ========================= */
 
-Brawl.encode = function(data) {
+BrawlEngine._encode = function (obj) {
     try {
-        return btoa(JSON.stringify(data));
+        const json = JSON.stringify(obj);
+        return btoa(unescape(encodeURIComponent(json)));
     } catch (e) {
+        console.error("[Save Encode Error]", e);
         return null;
     }
 };
 
-Brawl.decode = function(data) {
+BrawlEngine._decode = function (data) {
     try {
-        return JSON.parse(atob(data));
+        const json = decodeURIComponent(escape(atob(data)));
+        return JSON.parse(json);
     } catch (e) {
+        console.warn("[Save Decode Failed] Corrupted save detected");
         return null;
     }
 };
 
 /* =========================
-   SAVE GAME
+   SAVE SYSTEM (LOCAL + CLOUD SAFE MERGE)
    ========================= */
 
-Brawl.saveGame = function(data) {
-    const user = this.account.get();
+BrawlEngine.saveGame = function (data) {
+    const player = this.account.getName();
 
     const payload = {
-        user,
-        data,
-        time: Date.now(),
+        ...this.save.schema,
+        player,
+        progress: data || {},
+        timestamp: Date.now(),
         version: this.save.version
     };
 
-    const encoded = this.encode(payload);
+    const encoded = this._encode(payload);
 
-    localStorage.setItem(this.save.prefix + user, encoded);
+    if (!encoded) return;
 
-    this.bridge.send("Save", payload);
+    localStorage.setItem(this.save.prefix + player, encoded);
+
+    this._log("Game saved for:", player);
+
+    // optional cloud sync
+    this.saveCloud?.(encoded);
 };
 
 /* =========================
-   LOAD GAME
+   LOAD SYSTEM (WITH RECOVERY)
    ========================= */
 
-Brawl.loadGame = function() {
-    const user = this.account.get();
+BrawlEngine.loadGame = function () {
+    const player = this.account.getName();
 
-    const raw = localStorage.getItem(this.save.prefix + user);
+    const raw = localStorage.getItem(this.save.prefix + player);
 
-    if (!raw) return null;
+    if (!raw) {
+        this._log("No save found → creating new");
+        return null;
+    }
 
-    return this.decode(raw);
+    const decoded = this._decode(raw);
+
+    if (!decoded) {
+        this._log("Corrupted save → resetting");
+        return this._createNewSave();
+    }
+
+    return decoded;
 };
 
 /* =========================
-   UI SAVE BUTTONS
+   NEW SAVE GENERATOR
    ========================= */
 
-Brawl.initUI = function() {
-    const box = document.createElement("div");
-    box.style.position = "fixed";
-    box.style.right = "10px";
-    box.style.top = "10px";
-    box.style.zIndex = 9999;
-
-    const btn = (t, f) => {
-        const b = document.createElement("button");
-        b.innerText = t;
-        b.onclick = f;
-        b.style.display = "block";
-        return b;
+BrawlEngine._createNewSave = function () {
+    return {
+        ...this.save.schema,
+        player: this.account.getName(),
+        progress: {},
+        timestamp: Date.now(),
+        version: this.save.version
     };
-
-    box.appendChild(btn("Switch", () => location.reload()));
-    box.appendChild(btn("Export", () => this.exportSave()));
-
-    document.body.appendChild(box);
 };
 
 /* =========================
-   EXPORT
+   EXPORT SAVE (DOWNLOAD FILE)
    ========================= */
 
-Brawl.exportSave = function() {
+BrawlEngine.exportSave = function () {
     const data = this.loadGame();
 
-    const blob = new Blob([JSON.stringify(data)], {
+    if (!data) {
+        alert("No save found!");
+        return;
+    }
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: "application/json"
     });
 
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "brawl_save.json";
+    a.download = brawl_save_${this.account.getName()}.json;
     a.click();
+};
+
+/* =========================
+   IMPORT SAVE (SAFE VALIDATION)
+   ========================= */
+
+BrawlEngine.importSave = function () {
+    const input = document.createElement("input");
+    input.type = "file";
+
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+
+        const reader = new FileReader();
+
+        reader.onload = (ev) => {
+            try {
+                const parsed = JSON.parse(ev.target.result);
+
+                if (!parsed || typeof parsed !== "object") {
+                    alert("Invalid save file");
+                    return;
+                }
+
+                localStorage.setItem(
+                    this.save.prefix + this.account.getName(),
+                    this._encode(parsed)
+                );
+
+                alert("Save imported successfully");
+                location.reload();
+
+            } catch (err) {
+                console.error("Import failed:", err);
+                alert("Corrupted file");
+            }
+        };
+
+        reader.readAsText(file);
+    };
+
+    input.click();
+};
+
+/* =========================
+   UI SYSTEM (FIXED)
+   ========================= */
+
+BrawlEngine.initSaveUI = function () {
+    if (document.getElementById("brawl-ui")) return;
+
+    const box = document.createElement("div");
+    box.id = "brawl-ui";
+    box.style.position = "fixed";
+    box.style.top = "10px";
+    box.style.right = "10px";
+    box.style.zIndex = 99999;
+
+    const btn = (text, fn) => {
+        const b = document.createElement("button");
+        b.innerText = text;
+        b.onclick = fn;
+        b.style.margin = "4px";
+        b.style.padding = "6px";
+        return b;
+    };
+
+    box.appendChild(btn("Switch Account", () => this.account.switchAccount()));
+    box.appendChild(btn("Export Save", () => this.exportSave()));
+    box.appendChild(btn("Import Save", () => this.importSave()));
+
+    document.body.appendChild(box);
+};
+
+/* =========================
+   AUTO SYNC HOOK (UNITY)
+   ========================= */
+
+BrawlEngine.pushSaveToGame = function () {
+    const save = this.loadGame();
+
+    this.sendToGame("LoadSave", save || {});
+};
+
+/* =========================
+   AUTO INIT HOOK
+   ========================= */
+
+BrawlEngine.initSaveSystem = function () {
+    this.initSaveUI();
+
+    const save = this.loadGame();
+
+    this._log("Save system ready");
+
+    return save;
 };
 </script>
 <script>
 /* =========================================================
-   MONETIZATION v4
+   BRAWL ENGINE ADS + PAYMENTS + LEADERBOARD
+   PRODUCTION FIX LAYER
    PART 4/5
    ========================================================= */
 
-Brawl.monetization = {};
-
 /* =========================
-   INTERSTITIAL ADS
+   ADS STATE MACHINE
    ========================= */
 
-Brawl.monetization.interstitial = function() {
-    return Brawl.callSDK(ysdk => {
-        ysdk?.adv?.showFullscreenAdv();
-    });
+BrawlEngine.ads = {
+    interstitialReady: true,
+    rewardedReady: true,
+    cooldown: 30000, // 30 sec anti-spam
+    lastAdTime: 0,
+
+    state: {
+        interstitialOpen: false,
+        rewardedOpen: false
+    }
 };
 
 /* =========================
-   REWARDED ADS SAFE
+   SAFE INTERSTITIAL ADS
    ========================= */
 
-Brawl.monetization.rewarded = function(id) {
-    return Brawl.callSDK(ysdk => {
-        ysdk?.adv?.showRewardedVideo({
+BrawlEngine.showInterstitialAd = function () {
+    const now = Date.now();
+
+    if (now - this.ads.lastAdTime < this.ads.cooldown) {
+        this._log("Ad blocked (cooldown)");
+        return;
+    }
+
+    return this.sdkCall((ysdk) => {
+        if (!ysdk?.adv) return;
+
+        this.ads.state.interstitialOpen = true;
+        this.ads.lastAdTime = now;
+
+        ysdk.adv.showFullscreenAdv({
             callbacks: {
-                onRewarded: () => {
-                    Brawl.bridge.send("Reward", id);
+                onOpen: () => {
+                    this._log("Interstitial opened");
+                    this.sendToGame("AdOpen", "interstitial");
+                },
+
+                onClose: (shown) => {
+                    this._log("Interstitial closed:", shown);
+
+                    this.ads.state.interstitialOpen = false;
+
+                    this.sendToGame("AdClose", {
+                        type: "interstitial",
+                        shown: shown
+                    });
+                },
+
+                onError: (e) => {
+                    console.warn("Interstitial error:", e);
+                    this.ads.state.interstitialOpen = false;
                 }
             }
         });
@@ -459,86 +686,329 @@ Brawl.monetization.rewarded = function(id) {
 };
 
 /* =========================
-   LEADERBOARD
+   REWARDED ADS (SAFE REWARD FLOW)
    ========================= */
 
-Brawl.leaderboard = {};
+BrawlEngine.showRewardedAd = function (rewardId) {
+    return this.sdkCall((ysdk) => {
+        if (!ysdk?.adv) return;
 
-Brawl.leaderboard.submit = function(table, score) {
-    return Brawl.callSDK(ysdk => {
-        ysdk?.leaderboards?.setScore(table, score);
+        if (this.ads.state.rewardedOpen) return;
+
+        this.ads.state.rewardedOpen = true;
+
+        ysdk.adv.showRewardedVideo({
+            callbacks: {
+                onOpen: () => {
+                    this._log("Rewarded ad opened");
+                    this.sendToGame("RewardAdOpen", rewardId);
+                },
+
+                onRewarded: () => {
+                    this._log("Reward granted:", rewardId);
+
+                    // IMPORTANT: only reward here (anti exploit safe point)
+                    this.sendToGame("RewardGranted", {
+                        id: rewardId,
+                        timestamp: Date.now()
+                    });
+                },
+
+                onClose: () => {
+                    this._log("Rewarded ad closed");
+                    this.ads.state.rewardedOpen = false;
+
+                    this.sendToGame("RewardAdClose", rewardId);
+                },
+
+                onError: (e) => {
+                    console.warn("Rewarded ad error:", e);
+                    this.ads.state.rewardedOpen = false;
+
+                    this.sendToGame("RewardFailed", rewardId);
+                }
+            }
+        });
     });
 };
 
-Brawl.leaderboard.get = function(table) {
-    return Brawl.callSDK(async ysdk => {
-        const res = await ysdk.leaderboards.getEntries(table, {
-            quantityTop: 10
-        });
+/* =========================
+   PAYMENTS SYSTEM (SAFE + NON-BREAKING)
+   ========================= */
 
-        const parsed = res.entries.map(e => ({
-            name: e.player.publicName || "anon",
-            score: e.score
-        }));
+BrawlEngine.payments = {
+    catalog: null,
+    purchases: null
+};
 
-        Brawl.bridge.send("Leaderboard", parsed);
+BrawlEngine.initPayments = function () {
+    return this.sdkCall(async (ysdk) => {
+        if (!ysdk?.getPayments) return null;
 
-        return parsed;
+        try {
+            const payments = await ysdk.getPayments();
+
+            this.payments.catalog = await payments.getCatalog();
+            this.payments.purchases = await payments.getPurchases();
+
+            const safeCatalog = this.payments.catalog.map(p => ({
+                id: p.id,
+                title: p.title,
+                price: p.price
+            }));
+
+            this._log("Payments ready");
+
+            return safeCatalog;
+
+        } catch (e) {
+            console.warn("Payments init failed:", e);
+            return null;
+        }
     });
+};
+
+/* =========================
+   PURCHASE HANDLER (FIXED FLOW)
+   ========================= */
+
+BrawlEngine.buyProduct = function (productId) {
+    return this.sdkCall(async (ysdk) => {
+        if (!ysdk?.getPayments) return;
+
+        try {
+            const payments = await ysdk.getPayments();
+
+            await payments.purchase(productId);
+
+            this._log("Purchase success:", productId);
+
+            this.sendToGame("PurchaseSuccess", productId);
+
+        } catch (e) {
+            console.warn("Purchase failed:", e);
+
+            this.sendToGame("PurchaseFailed", productId);
+        }
+    });
+};
+
+/* =========================
+   LEADERBOARD SYSTEM (SAFE)
+   ========================= */
+
+BrawlEngine.leaderboard = {
+    ready: false
+};
+
+/* SUBMIT SCORE */
+BrawlEngine.submitScore = function (table, score) {
+    return this.sdkCall((ysdk) => {
+        if (!ysdk?.leaderboards) return;
+
+        try {
+            ysdk.leaderboards.setScore(table, score);
+
+            this._log("Score submitted:", table, score);
+
+        } catch (e) {
+            console.warn("Leaderboard submit error:", e);
+        }
+    });
+};
+
+/* GET LEADERBOARD */
+BrawlEngine.getLeaderboard = function (table, top = 10) {
+    return this.sdkCall(async (ysdk) => {
+        if (!ysdk?.leaderboards) return null;
+
+        try {
+            const data = await ysdk.leaderboards.getEntries(table, {
+                quantityTop: top
+            });
+
+            const parsed = data.entries.map(e => ({
+                rank: e.rank,
+                name: e.player.publicName || "Anonymous",
+                score: e.score
+            }));
+
+            this.sendToGame("LeaderboardData", parsed);
+
+            return parsed;
+
+        } catch (e) {
+            console.warn("Leaderboard error:", e);
+            return null;
+        }
+    });
+};
+
+/* =========================
+   SAFE INIT HOOK
+   ========================= */
+
+BrawlEngine.initMonetization = function () {
+    this._log("Initializing monetization systems...");
+
+    this.initPayments();
+
+    this._log("Monetization ready");
 };
 </script>
 <script>
 /* =========================================================
-   FINAL BOOT v4
+   BRAWL ENGINE FINAL LAYER
+   UNITY BRIDGE + BOOT STRAP
    PART 5/5
    ========================================================= */
 
-Brawl.start = async function() {
-    this._log("Starting full system...");
+/* =========================
+   UNITY BRIDGE FIX (CRITICAL)
+   ========================= */
 
-    await this.initSDK();
+BrawlEngine.queue = {
+    messages: [],
+    ready: false
+};
 
-    this.initUI();
+/* SAFE SEND MESSAGE (FIXES RACE CONDITIONS) */
+BrawlEngine.sendToGameSafe = function (method, data) {
+    const payload = typeof data === "string" ? data : JSON.stringify(data);
 
-    this._log("Studio v4 fully loaded");
+    if (!this.instance || !this.state.ready) {
+        this.queue.messages.push({ method, payload });
+        return;
+    }
 
-    this.events.emit("boot_complete", true);
+    try {
+        this.instance.SendMessage("BrawlSDK", method, payload);
+    } catch (e) {
+        console.warn("[Bridge Error]", e);
+    }
+};
 
-    this.bridge.send("BootComplete", {
-        version: this.core.version,
-        mode: this.sdk.mode
+/* FLUSH QUEUE WHEN UNITY IS READY */
+BrawlEngine.flushQueue = function () {
+    this._log("Flushing message queue:", this.queue.messages.length);
+
+    for (const msg of this.queue.messages) {
+        try {
+            this.instance.SendMessage("BrawlSDK", msg.method, msg.payload);
+        } catch (e) {
+            console.warn("Queue send failed:", e);
+        }
+    }
+
+    this.queue.messages = [];
+};
+
+/* =========================
+   UNITY INITIALIZATION ENTRY
+   ========================= */
+
+window.OnUnityLoaded = function (unityInstance) {
+    BrawlEngine.setInstance(unityInstance);
+
+    BrawlEngine.state.ready = true;
+
+    BrawlEngine.flushQueue();
+
+    BrawlEngine._log("Unity fully connected");
+
+    BrawlEngine.sendToGameSafe("EngineReady", {
+        version: BrawlEngine.version,
+        sdk: BrawlEngine.sdk.mode
     });
 };
 
 /* =========================
-   PUBLIC API
+   BOOT SEQUENCE CONTROLLER
    ========================= */
 
-window.BrawlAPI = {
-    init: cfg => Brawl.init(cfg),
-    start: () => Brawl.start(),
+BrawlEngine.start = async function () {
+    this._log("Starting full engine bootstrap...");
 
-    save: d => Brawl.saveGame(d),
-    load: () => Brawl.loadGame(),
+    /* STEP 1: SDK */
+    await this.initSDK();
+
+    /* STEP 2: SAVE SYSTEM */
+    this.initSaveSystem();
+
+    /* STEP 3: MONETIZATION */
+    this.initMonetization();
+
+    /* STEP 4: FINAL GAME INIT HOOK */
+    this._finalizeBoot();
+
+    this._log("BOOT COMPLETE");
+};
+
+/* =========================
+   FINAL BOOT HANDLER
+   ========================= */
+
+BrawlEngine._finalizeBoot = function () {
+    this.sendToGameSafe("BootComplete", {
+        time: Date.now(),
+        mode: this.sdk.mode
+    });
+
+    this.state.initialized = true;
+};
+
+/* =========================
+   GLOBAL API CLEAN EXPORT
+   ========================= */
+
+window.Brawl = {
+    init: (cfg) => BrawlEngine.boot(cfg),
+    start: () => BrawlEngine.start(),
+
+    save: (d) => BrawlEngine.saveGame(d),
+    load: () => BrawlEngine.loadGame(),
 
     ad: {
-        interstitial: () => Brawl.monetization.interstitial(),
-        rewarded: id => Brawl.monetization.rewarded(id)
+        interstitial: () => BrawlEngine.showInterstitialAd(),
+        rewarded: (id) => BrawlEngine.showRewardedAd(id)
     },
 
     leaderboard: {
-        submit: (t, s) => Brawl.leaderboard.submit(t, s),
-        get: t => Brawl.leaderboard.get(t)
+        submit: (t, s) => BrawlEngine.submitScore(t, s),
+        get: (t) => BrawlEngine.getLeaderboard(t)
     }
 };
 
 /* =========================
-   AUTO START
+   AUTO START (SAFE)
    ========================= */
 
-window.addEventListener("load", () => {
-    Brawl._log("Auto booting v4...");
+window.addEventListener("load", async () => {
+    BrawlEngine._log("Window loaded → starting engine");
 
-    Brawl.start();
+    try {
+        await BrawlEngine.start();
+    } catch (e) {
+        console.error("[BOOT FAILED]", e);
+    }
 });
+
+/* =========================
+   DEBUG PANEL (OPTIONAL)
+   ========================= */
+
+BrawlEngine.debug = function () {
+    console.table({
+        version: this.version,
+        sdk: this.sdk.mode,
+        ready: this.state.ready,
+        initialized: this.state.initialized
+    });
+};
+
+/* =========================
+   FINAL LOG
+   ========================= */
+
+BrawlEngine._log("Engine core fully loaded (PART 5 complete)");
 </script>
