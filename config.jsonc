@@ -454,6 +454,11 @@
             "path": "evowars",
             "aliases": [],
             "categories": []
+       },
+        "Extreme Run 3d": {
+            "path": "extreme-run-3d",
+            "aliases": [],
+            "categories": []
         },
         "Escape The Car": {
             "path": "flash/?game=escape-the-car",
