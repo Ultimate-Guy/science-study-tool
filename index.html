@@ -626,45 +626,192 @@
         }
     });
         
-    // --- Updated UI & Auth Logic ---
-    const authModal = document.getElementById('auth-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const switchBtn = document.getElementById('modal-switch-btn');
-    const switchText = document.getElementById('modal-switch-text');
-    const loginTrigger = document.getElementById('login-trigger');
-    const authEnterBtn = document.getElementById('auth-enter');
+<script>
+// --- AUTH + ADMIN SYSTEM ---
+const authModal = document.getElementById('auth-modal');
+const modalTitle = document.getElementById('modal-title');
+const switchBtn = document.getElementById('modal-switch-btn');
+const switchText = document.getElementById('modal-switch-text');
+const loginTrigger = document.getElementById('login-trigger');
+const authEnterBtn = document.getElementById('auth-enter');
 
-    let isSignUpMode = true;
+let isSignUpMode = true;
+let currentUser = null;
+let isAdmin = false;
 
-    // This handles the "Swapping" between Sign Up and Login views inside the popup
-    if (switchBtn) {
-        switchBtn.onclick = () => {
-            isSignUpMode = !isSignUpMode;
-            modalTitle.innerText = isSignUpMode ? "Sign Up" : "Login";
-            switchText.innerText = isSignUpMode ? "Have an account already?" : "Need an account?";
-            switchBtn.innerText = isSignUpMode ? "Login" : "Sign Up";
-        };
-    }
+// UI toggle
+if (switchBtn) {
+    switchBtn.onclick = () => {
+        isSignUpMode = !isSignUpMode;
+        modalTitle.innerText = isSignUpMode ? "Sign Up" : "Login";
+        switchText.innerText = isSignUpMode ? "Have an account already?" : "Need an account?";
+        switchBtn.innerText = isSignUpMode ? "Login" : "Sign Up";
+    };
+}
 
-    if (loginTrigger) loginTrigger.onclick = () => authModal.showModal();
+// open modal
+if (loginTrigger) {
+    loginTrigger.onclick = () => authModal.showModal();
+}
 
-    // This is the actual "Enter" button that triggers the GitHub flow
-    if (authEnterBtn) {
-        authEnterBtn.onclick = async (e) => {
-            e.preventDefault();
-            // Since we are using GitHub, both "Login" and "Sign Up" use the same cloud flow
-            const { error } = await supabaseClient.auth.signInWithOAuth({
-                provider: 'github',
-                options: { redirectTo: window.location.href }
+// LOGIN / SIGNUP (EMAIL)
+if (authEnterBtn) {
+    authEnterBtn.onclick = async (e) => {
+        e.preventDefault();
+
+        const email = document.getElementById('auth-username').value;
+        const password = document.getElementById('auth-password').value;
+
+        let result;
+
+        if (isSignUpMode) {
+            result = await supabaseClient.auth.signUp({
+                email,
+                password
             });
-            if (error) alert("Auth Error: " + error.message);
-        };
+        } else {
+            result = await supabaseClient.auth.signInWithPassword({
+                email,
+                password
+            });
+        }
+
+        if (result.error) {
+            alert(result.error.message);
+            return;
+        }
+
+        authModal.close();
+        await updateAuthUI();
+    };
+}
+
+
+// =========================
+// USER + ADMIN CHECK
+// =========================
+async function updateAuthUI() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    currentUser = user;
+
+    if (!user) {
+        isAdmin = false;
+        return;
     }
 
+    const { data } = await supabaseClient
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
 
-    updateAuthUI();
-</script>
+    isAdmin = data?.role === 'admin';
+
+    if (isAdmin) {
+        enableAdminFeatures();
+    }
+}
+
+
+// =========================
+// ADMIN FEATURES (HIDDEN UI)
+// =========================
+function enableAdminFeatures() {
+    console.log("ADMIN MODE ENABLED");
+
+    // Create admin panel button if not exists
+    let btn = document.getElementById("admin-panel-btn");
+
+    if (!btn) {
+        btn = document.createElement("button");
+        btn.id = "admin-panel-btn";
+        btn.innerText = "Admin Panel";
+        btn.style.position = "fixed";
+        btn.style.bottom = "80px";
+        btn.style.right = "30px";
+        btn.style.zIndex = "99999";
+        btn.style.padding = "10px";
+        btn.style.background = "#ff4444";
+        btn.style.color = "white";
+        btn.style.border = "none";
+        btn.style.cursor = "pointer";
+        document.body.appendChild(btn);
+    }
+
+    btn.style.display = "block";
+
+    btn.onclick = () => {
+        openAdminPanel();
+    };
+}
+
+
+// =========================
+// ADMIN PANEL (SECRET UI)
+// =========================
+function openAdminPanel() {
+    let panel = document.getElementById("admin-panel");
+
+    if (!panel) {
+        panel = document.createElement("div");
+        panel.id = "admin-panel";
+        panel.innerHTML = `
+            <h2>Admin Panel</h2>
+            <button id="close-admin">Close</button>
+            <hr>
+
+            <h3>User Tools</h3>
+            <button onclick="listUsers()">List Users</button>
+
+            <h3>Game Tools</h3>
+            <button onclick="unlockAllGames()">Unlock All Games (self)</button>
+        `;
+
+        panel.style.position = "fixed";
+        panel.style.top = "50%";
+        panel.style.left = "50%";
+        panel.style.transform = "translate(-50%, -50%)";
+        panel.style.background = "#222";
+        panel.style.color = "white";
+        panel.style.padding = "20px";
+        panel.style.zIndex = "999999";
+
+        document.body.appendChild(panel);
+
+        document.getElementById("close-admin").onclick = () => {
+            panel.remove();
+        };
+    }
+}
+
+
+// =========================
+// ADMIN ACTIONS
+// =========================
+async function listUsers() {
+    const { data } = await supabaseClient
+        .from('profiles')
+        .select('*');
+
+    console.log("USERS:", data);
+    alert("Check console for users");
+}
+
+async function unlockAllGames() {
+    if (!currentUser) return;
+
+    const { data: games } = await supabaseClient
+        .from('game_unlocks')
+        .select('game_id');
+
+    console.log("Unlock system ready (extend here)");
+}
+
+
+// =========================
+// INIT
+// =========================
+updateAuthUI();
 
 </body>
 </html>
-
