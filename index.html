@@ -639,7 +639,7 @@ let isSignUpMode = true;
 let currentUser = null;
 let isAdmin = false;
 
-// UI toggle
+// toggle login/signup UI
 if (switchBtn) {
     switchBtn.onclick = () => {
         isSignUpMode = !isSignUpMode;
@@ -654,7 +654,7 @@ if (loginTrigger) {
     loginTrigger.onclick = () => authModal.showModal();
 }
 
-// LOGIN / SIGNUP (EMAIL)
+// EMAIL AUTH ONLY (NO GITHUB)
 if (authEnterBtn) {
     authEnterBtn.onclick = async (e) => {
         e.preventDefault();
@@ -686,10 +686,7 @@ if (authEnterBtn) {
     };
 }
 
-
-// =========================
-// USER + ADMIN CHECK
-// =========================
+// GET USER + CHECK ADMIN ROLE
 async function updateAuthUI() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     currentUser = user;
@@ -712,14 +709,8 @@ async function updateAuthUI() {
     }
 }
 
-
-// =========================
-// ADMIN FEATURES (HIDDEN UI)
-// =========================
+// ADMIN FEATURES (DO NOT TOUCH NORMAL UI)
 function enableAdminFeatures() {
-    console.log("ADMIN MODE ENABLED");
-
-    // Create admin panel button if not exists
     let btn = document.getElementById("admin-panel-btn");
 
     if (!btn) {
@@ -740,21 +731,17 @@ function enableAdminFeatures() {
 
     btn.style.display = "block";
 
-    btn.onclick = () => {
-        openAdminPanel();
-    };
+    btn.onclick = openAdminPanel;
 }
 
-
-// =========================
-// ADMIN PANEL (SECRET UI)
-// =========================
+// ADMIN PANEL UI
 function openAdminPanel() {
     let panel = document.getElementById("admin-panel");
 
     if (!panel) {
         panel = document.createElement("div");
         panel.id = "admin-panel";
+
         panel.innerHTML = `
             <h2>Admin Panel</h2>
             <button id="close-admin">Close</button>
@@ -763,8 +750,8 @@ function openAdminPanel() {
             <h3>User Tools</h3>
             <button onclick="listUsers()">List Users</button>
 
-            <h3>Game Tools</h3>
-            <button onclick="unlockAllGames()">Unlock All Games (self)</button>
+            <h3>System</h3>
+            <button onclick="makeSelfAdmin()">Force Admin Refresh</button>
         `;
 
         panel.style.position = "fixed";
@@ -778,39 +765,29 @@ function openAdminPanel() {
 
         document.body.appendChild(panel);
 
-        document.getElementById("close-admin").onclick = () => {
-            panel.remove();
-        };
+        document.getElementById("close-admin").onclick = () => panel.remove();
     }
 }
 
-
-// =========================
 // ADMIN ACTIONS
-// =========================
 async function listUsers() {
-    const { data } = await supabaseClient
-        .from('profiles')
-        .select('*');
-
-    console.log("USERS:", data);
-    alert("Check console for users");
+    const { data } = await supabaseClient.from('profiles').select('*');
+    console.log(data);
+    alert("Users printed in console");
 }
 
-async function unlockAllGames() {
+async function makeSelfAdmin() {
     if (!currentUser) return;
 
-    const { data: games } = await supabaseClient
-        .from('game_unlocks')
-        .select('game_id');
+    await supabaseClient
+        .from('profiles')
+        .update({ role: 'admin' })
+        .eq('id', currentUser.id);
 
-    console.log("Unlock system ready (extend here)");
+    alert("You are now admin (refresh page)");
 }
 
-
-// =========================
 // INIT
-// =========================
 updateAuthUI();
 
 </body>
