@@ -26,12 +26,16 @@ jobs:
           filter: 'blob:none'
           fetch-depth: 1
 
+      - name: Inject TMDB Secret
+        # This MUST happen before the Strip Repo step
+        run: |
+          sed -i "s/TMDB_REPLACE_ME/${{ secrets.TMDB_API_KEY }}/g" index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Strip Repo to Essentials
-        # This deletes every file NOT needed for the website to run.
-        # Reducing the file count is the ONLY way to speed up the 'finalizing' freeze.
+        # Keeps your site fast by removing non-website files
         run: |
           rm -rf .git .github .gitignore .prettierignore .prettierrc \
                  README.md package.json package-lock.json jsconfig.json \
@@ -41,8 +45,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
-          # Compression 0 is vital here. 
-          # It trades a larger upload for 0% CPU usage on the runner.
           compression-level: 0
 
       - name: Deploy to GitHub Pages
