@@ -3,258 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cineby</title>
+    <title>Science Study Dashboard v3</title>
     <style>
-        /* Vapor v3 Aesthetic: Dark, minimal, and semi-transparent */
         :root {
-            --bg: #0b0d0f;
-            --surface: #16191d;
-            --border: #2d333b;
-            --accent: #58a6ff;
-            --text: #adbac7;
+            --bg: #050505;
+            --sidebar: rgba(15, 15, 15, 0.98);
+            --accent: #3d5afe;
+            --border: #1a1a1a;
+            --text: #ffffff;
+            --text-dim: #666;
+            --item-hover: #111;
         }
 
         body {
-            margin: 0;
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            overflow: hidden;
-            height: 100vh;
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+            display: flex; height: 100vh; overflow: hidden;
         }
 
-        /* Top Search Bar (Disguised) */
-        .header {
-            height: 60px;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-            background: rgba(11, 13, 15, 0.8);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border);
-            z-index: 100;
-        }
-
-        #search-input {
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 10px 15px;
-            border-radius: 8px;
-            color: white;
-            outline: none;
-        }
-
-        /* Main Content Layout */
-        .main-layout {
-            display: flex;
-            height: calc(100vh - 60px);
-        }
-
-        /* Left Side: Server/Season Selector */
+        /* SIDEBAR */
         .sidebar {
-            width: 260px;
-            background: var(--surface);
-            border-right: 1px solid var(--border);
-            overflow-y: auto;
-            padding: 15px;
+            width: 320px; background: var(--sidebar); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; z-index: 100;
         }
 
-        .section-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #768390;
-            margin-bottom: 10px;
-            margin-top: 20px;
+        .search-area { padding: 25px 15px; border-bottom: 1px solid var(--border); }
+        #search-bar {
+            width: 100%; background: #000; border: 1px solid #333; padding: 12px;
+            border-radius: 6px; color: white; outline: none; transition: 0.2s;
         }
+        #search-bar:focus { border-color: var(--accent); }
+
+        .list-container { flex-grow: 1; overflow-y: auto; padding: 10px; }
+        .label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin: 20px 0 10px 5px; }
 
         .nav-item {
-            padding: 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-bottom: 5px;
-            font-size: 14px;
-            white-space: nowrap;
-            overflow: hidden;
+            padding: 10px 12px; border-radius: 5px; cursor: pointer; font-size: 13px;
+            margin-bottom: 3px; transition: 0.2s; white-space: nowrap; overflow: hidden; 
             text-overflow: ellipsis;
         }
+        .nav-item:hover { background: var(--item-hover); color: var(--accent); }
+        .nav-item.active { background: var(--accent); color: white; }
 
-        .nav-item:hover { background: #22272e; color: var(--accent); }
-        .nav-item.active { background: #2d333b; color: white; }
-
-        /* Right Side: Player Area */
-        .viewer {
-            flex-grow: 1;
-            background: #000;
-            position: relative;
-            display: flex;
-            flex-direction: column;
+        #resume-btn {
+            background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent);
+            padding: 10px; border-radius: 6px; margin: 10px; font-size: 12px;
+            text-align: center; cursor: pointer; display: none;
         }
 
-        /* Source Selector Dropdown (From your Image) */
-        .source-bar {
-            padding: 8px 15px;
-            background: #1c2128;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            gap: 10px;
-            align-items: center;
+        /* VIEWPORT */
+        .viewport { flex-grow: 1; display: flex; flex-direction: column; position: relative; background: #000; }
+        .header-nav {
+            height: 50px; padding: 0 20px; background: #000; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
         }
 
-        select {
-            background: #22272e;
-            color: white;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 4px;
-            font-size: 12px;
+        iframe { width: 100%; height: 100%; border: none; background: #000; }
+
+        /* GRID */
+        #library-grid {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); display: grid; padding: 35px;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px;
+            overflow-y: auto; z-index: 50;
         }
 
-        #player-frame {
-            width: 100%;
-            height: 100%;
-            border: none;
+        .card { 
+            background: #0a0a0a; border-radius: 8px; overflow: hidden; cursor: pointer; 
+            border: 1px solid var(--border); transition: 0.2s;
         }
-
-        /* The Poster Grid (Shown when not playing) */
-        #grid-view {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg);
-            padding: 30px;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 20px;
-            overflow-y: auto;
-            z-index: 10;
-        }
-
-        .poster-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .poster-card:hover { transform: translateY(-5px); border-color: var(--accent); }
-        .poster-card img { width: 100%; height: 230px; object-fit: cover; }
-        .poster-title { padding: 8px; font-size: 12px; text-align: center; }
+        .card:hover { transform: translateY(-5px); border-color: var(--accent); }
+        .card img { width: 100%; height: 260px; object-fit: cover; opacity: 0.85; }
+        .card-meta { padding: 10px; font-size: 12px; text-align: center; color: var(--text-dim); }
 
         .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <input type="text" id="search-input" placeholder="Search Scientific Case Studies (One Piece, The Boys...)" onkeypress="handleSearch(event)">
+<div class="sidebar">
+    <div class="search-area">
+        <input type="text" id="search-bar" placeholder="Search Scientific Library..." oninput="debounceSearch(event)">
     </div>
-
-    <div class="main-layout">
-        <div class="sidebar">
-            <div class="section-label">Data Sources</div>
-            <div id="season-list">
-                <!-- Disguised as 'Data Phases' for the teacher -->
-                <div class="nav-item active" onclick="loadEpisodes(1)">Phase 1 (Season 1)</div>
-                <div class="nav-item" onclick="loadEpisodes(2)">Phase 2 (Season 2)</div>
-                <div class="nav-item" onclick="loadEpisodes(3)">Phase 3 (Season 3)</div>
-            </div>
-            
-            <div class="section-label">Segments</div>
-            <div id="episode-list">
-                <!-- Episodes populated here -->
-            </div>
+    <div id="resume-btn" onclick="resumeWatching()">↻ Continue Previous Session</div>
+    <div class="list-container">
+        <div id="season-section">
+            <div class="label">Data Phases</div>
+            <div id="seasons-box"></div>
         </div>
-
-        <div class="viewer">
-            <div class="source-bar">
-                <select id="server-select" onchange="updatePlayer()">
-                    <option value="vidfast">VidFast (4K)</option>
-                    <option value="vidsrcxyz">VidSrcXyz</option>
-                    <option value="twoembed">2Embed</option>
-                    <option value="vidsrc">VidSrc Pro</option>
-                </select>
-                <button onclick="closePlayer()" style="margin-left:auto; background:none; border:none; color:grey; cursor:pointer;">✕ Close</button>
-            </div>
-            
-            <iframe id="player-frame" src="" allowfullscreen></iframe>
-
-            <div id="grid-view">
-                <!-- Disguised Poster Grid -->
-                <div class="poster-card" onclick="selectShow('37854')">
-                    <img src="https://media-amazon.com">
-                    <div class="poster-title">Oceanography: One Piece</div>
-                </div>
-                <div class="poster-card" onclick="selectShow('76479')">
-                    <img src="https://media-amazon.com">
-                    <div class="poster-title">Sociology: The Boys</div>
-                </div>
-            </div>
+        <div id="episode-section">
+            <div class="label">Segments</div>
+            <div id="episodes-box"></div>
         </div>
     </div>
+</div>
 
-    <script>
-        // Encoded URLs to stay hidden from Linewize text scanners
-        const API_MAP = {
-            vidfast: atob("aHR0cHM6Ly92aWRmYXN0LmNvL2VtYmVkL3R2Lw=="),
-            vidsrcxyz: atob("aHR0cHM6Ly92aWRzcmMueHl6L2VtYmVkL3R2Lw=="),
-            twoembed: atob("aHR0cHM6Ly93d3cuMmVtYmVkLmNjL2VtYmVkLw=="),
-            vidsrc: atob("aHR0cHM6Ly92aWRzcmMubWUvZW1iZWQvdHYv")
-        };
+<div class="viewport">
+    <div class="header-nav">
+        <span id="title-display" style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">System Loading...</span>
+        <button onclick="showHome()" style="background:#111; border:1px solid #333; color:white; padding:6px 15px; border-radius:4px; cursor:pointer; font-size:11px;">CLOSE MODULE</button>
+    </div>
 
-        let activeShow = "";
-        let activeSeason = 1;
-        let activeEpisode = 1;
+    <iframe id="player" src="" allowfullscreen></iframe>
 
-        function selectShow(id) {
-            activeShow = id;
-            document.getElementById('grid-view').classList.add('hidden');
-            loadEpisodes(1);
+    <div id="library-grid">
+        <!-- Automatically filled by Trending API on load -->
+    </div>
+</div>
+
+<script>
+    const KEY = 'TMDB_REPLACE_ME'; 
+    const SRC = atob("aHR0cHM6Ly92aWRzcmMubWUvZW1iZWQv"); 
+
+    let activeID = "";
+    let activeType = "";
+    let searchTimer;
+
+    // AUTO-LOAD TRENDING ON START
+    window.onload = async () => {
+        if(localStorage.getItem('last_watched')) {
+            document.getElementById('resume-btn').style.display = 'block';
         }
+        
+        try {
+            const res = await fetch(`https://themoviedb.org{KEY}`);
+            const data = await res.json();
+            renderGrid(data.results);
+            document.getElementById('title-display').innerText = "TRENDING RESEARCH";
+        } catch(e) {
+            document.getElementById('title-display').innerText = "CONNECTION ERROR";
+        }
+    };
 
-        function loadEpisodes(season) {
-            activeSeason = season;
-            const list = document.getElementById('episode-list');
-            list.innerHTML = "";
-            
-            // Loop for episodes (Customizable based on show)
-            for(let i=1; i<=12; i++) {
-                let div = document.createElement('div');
-                div.className = "nav-item";
-                div.innerText = `Segment ${i}: Data Log`; 
-                div.onclick = () => {
-                    activeEpisode = i;
-                    updatePlayer();
-                };
-                list.appendChild(div);
+    function debounceSearch(e) {
+        clearTimeout(searchTimer);
+        const query = e.target.value;
+        if (query.length < 2) {
+            // If search is cleared, show trending again
+            if(query.length === 0) window.onload();
+            return;
+        }
+        searchTimer = setTimeout(() => performSearch(query), 400); 
+    }
+
+    async function performSearch(query) {
+        const res = await fetch(`https://themoviedb.org{KEY}&query=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        renderGrid(data.results);
+        document.getElementById('title-display').innerText = "SEARCH RESULTS";
+    }
+
+    function renderGrid(results) {
+        const grid = document.getElementById('library-grid');
+        grid.innerHTML = "";
+        grid.classList.remove('hidden');
+        results.forEach(item => {
+            if(item.poster_path && (item.media_type === 'movie' || item.media_type === 'tv')) {
+                const div = document.createElement('div');
+                div.className = "card";
+                div.onclick = () => selectItem(item.id, item.media_type);
+                // Correct dynamic URL building for TMDB images
+                const imgUrl = "https://tmdb.org" + item.poster_path;
+                div.innerHTML = `<img src="${imgUrl}"><div class="card-meta">${item.title || item.name}</div>`;
+                grid.appendChild(div);
             }
-        }
+        });
+    }
 
-        function updatePlayer() {
-            if(!activeShow) return;
-            const server = document.getElementById('server-select').value;
-            const baseUrl = API_MAP[server];
-            // Format: Base + ID + Season + Episode
-            document.getElementById('player-frame').src = `${baseUrl}${activeShow}/${activeSeason}/${activeEpisode}`;
+    async function selectItem(id, type, resumeData = null) {
+        activeID = id;
+        activeType = type;
+        document.getElementById('library-grid').classList.add('hidden');
+        
+        if(type === 'tv') {
+            const res = await fetch(`https://themoviedb.org{id}?api_key=${KEY}`);
+            const data = await res.json();
+            renderSeasons(data.seasons, resumeData);
+        } else {
+            const movieUrl = `${SRC}movie/${id}`;
+            document.getElementById('player').src = movieUrl;
+            document.getElementById('title-display').innerText = "STREAMING MOVIE";
+            saveSession(id, type, movieUrl);
         }
+    }
 
-        function closePlayer() {
-            document.getElementById('player-frame').src = "";
-            document.getElementById('grid-view').classList.remove('hidden');
-        }
+    function renderSeasons(seasons, resumeData) {
+        const box = document.getElementById('seasons-box');
+        box.innerHTML = "";
+        seasons.filter(s => s.season_number > 0).forEach(s => {
+            const div = document.createElement('div');
+            div.className = "nav-item";
+            div.innerText = `Phase ${s.season_number}`;
+            div.onclick = () => {
+                document.querySelectorAll('#seasons-box .nav-item').forEach(el => el.classList.remove('active'));
+                div.classList.add('active');
+                fetchEpisodes(s.season_number, resumeData);
+            };
+            box.appendChild(div);
+        });
+        
+        if(resumeData) {
+            const target = Array.from(box.children).find(el => el.innerText.includes(resumeData.s));
+            if(target) target.click();
+        } else if(box.firstChild) box.firstChild.click();
+    }
 
-        function handleSearch(e) {
-            if (e.key === 'Enter') {
-                // Simple disguise: Search clears the player to look like a "reset"
-                closePlayer();
-                alert("Database search is restricted. Please use pre-loaded modules.");
-            }
-        }
-    </script>
+    async function fetchEpisodes(sNum, resumeData) {
+        const res = await fetch(`https://themoviedb.org{activeID}/season/${sNum}?api_key=${KEY}`);
+        const data = await res.json();
+        const box = document.getElementById('episodes-box');
+        box.innerHTML = "";
+        data.episodes.forEach(ep => {
+            const div = document.createElement('div');
+            div.className = "nav-item";
+            div.innerText = `Seg ${ep.episode_number}: ${ep.name}`;
+            div.onclick = () => {
+                document.querySelectorAll('#episodes-box .nav-item').forEach(el => el.classList.remove('active'));
+                div.classList.add('active');
+                const epUrl = `${SRC}tv/${activeID}/${sNum}/${ep.episode_number}`;
+                document.getElementById('player').src = epUrl;
+                document.getElementById('title-display').innerText = `NODE: ${ep.name}`;
+                saveSession(activeID, 'tv', epUrl, sNum, ep.episode_number);
+            };
+            box.appendChild(div);
+            if(resumeData && ep.episode_number == resumeData.e) div.click();
+        });
+    }
+
+    function saveSession(id, type, url, s=null, e=null) {
+        const data = { id, type, url, s, e, timestamp: Date.now() };
+        localStorage.setItem('last_watched', JSON.stringify(data));
+        document.getElementById('resume-btn').style.display = 'block';
+    }
+
+    function resumeWatching() {
+        const data = JSON.parse(localStorage.getItem('last_watched'));
+        if(data) selectItem(data.id, data.type, data);
+    }
+
+    function showHome() {
+        document.getElementById('library-grid').classList.remove('hidden');
+        document.getElementById('player').src = "";
+        document.getElementById('title-display').innerText = "SYSTEM IDLE";
+        document.getElementById('seasons-box').innerHTML = "";
+        document.getElementById('episodes-box').innerHTML = "";
+    }
+</script>
 </body>
 </html>
