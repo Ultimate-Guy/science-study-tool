@@ -73,8 +73,11 @@
         </div>
 
         <div class="controls" id="controls">
-            <select id="server" onchange="updatePlayer()">
-                <option value="vidsrc">VidSrc Pro (IMDb)</option>
+            <select id="server" onchange="updatePlayer(true)">
+                <option value="vidsrc">VidSrc (IMDb)</option>
+                <option value="vidsrcwin">VidSrc.win (TMDB)</option>
+                <option value="smashy">SmashyStream (TMDB)</option>
+                <option value="multi">MultiEmbed (TMDB)</option>
                 <option value="vidsrcxyz">VidSrcXyz (TMDB)</option>
                 <option value="vidfast">VidFast (TMDB)</option>
             </select>
@@ -84,8 +87,9 @@
         <div id="grid"></div>
         
         <iframe id="player" 
-                sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation" 
+                sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"
                 allowfullscreen
+                allow="fullscreen"
                 referrerpolicy="origin">
         </iframe>
     </div>
@@ -101,10 +105,33 @@
         const KEY = 'TMDB_REPLACE_ME';
 
         const SRC = {
-            vidsrc: "https://vidsrc.me/embed/",
-            vidsrcxyz: "https://vidsrc.xyz/embed/",
-            vidfast: "https://vidfast.co/embed/"
+            vidsrc: id => `https://vidsrc.me/embed/movie/${id}`,
+            vidsrc_tv: (id,s,e) => `https://vidsrc.me/embed/tv/${id}/${s}/${e}`,
+
+            vidsrcwin: id => `https://vidsrc.win/watch/${id}`,
+            vidsrcwin_tv: (id,s,e) => `https://vidsrc.win/tv/${id}/${s}/${e}`,
+
+            smashy: id => `https://smashystream.com/embed/movie/tmdb/${id}`,
+            smashy_tv: (id,s,e) => `https://smashystream.com/embed/tv/tmdb/${id}/${s}/${e}`,
+
+            multi: id => `https://multiembed.mov/?video_id=${id}`,
+            multi_tv: (id,s,e) => `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`,
+
+            vidsrcxyz: id => `https://vidsrc.xyz/embed/movie/${id}`,
+            vidsrcxyz_tv: (id,s,e) => `https://vidsrc.xyz/embed/tv/${id}/${s}/${e}`,
+
+            vidfast: id => `https://vidfast.co/embed/movie/${id}`,
+            vidfast_tv: (id,s,e) => `https://vidfast.co/embed/tv/${id}/${s}/${e}`
         };
+
+        const FALLBACK_ORDER = [
+            "vidsrc",
+            "vidsrcwin",
+            "smashy",
+            "multi",
+            "vidsrcxyz",
+            "vidfast"
+        ];
 
         let curId, curImdb, curType, curS, curE;
 
@@ -177,7 +204,7 @@
             curId = id; 
             curType = type;
 
-            // Fetch IMDb ID
+            // Fetch IMDb ID for VidSrc
             const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/external_ids?api_key=${KEY}`);
             const ids = await res.json();
             curImdb = ids.imdb_id;
@@ -187,28 +214,73 @@
             document.getElementById('controls').style.display = 'flex';
             document.getElementById('player').style.display = 'block';
 
-            updatePlayer();
+            updatePlayer(true);
         }
 
-        function updatePlayer() {
+        function updatePlayer(resetFallback = false) {
             const provider = document.getElementById('server').value;
-            const base = SRC[provider];
+
+            if (resetFallback) fallbackIndex = 0;
+
+            loadProvider(provider);
+        }
+
+        let fallbackIndex = 0;
+
+        function loadProvider(provider) {
+            const iframe = document.getElementById('player');
+
+            let url = "";
 
             if (provider === "vidsrc") {
-                // IMDb mode
-                if (curType === 'movie') {
-                    player.src = `${base}movie/${curImdb}`;
-                } else {
-                    player.src = `${base}tv/${curImdb}/${curS}/${curE}`;
-                }
-            } else {
-                // TMDB mode
-                if (curType === 'movie') {
-                    player.src = `${base}movie/${curId}`;
-                } else {
-                    player.src = `${base}tv/${curId}/${curS}/${curE}`;
-                }
+                url = (curType === 'movie')
+                    ? SRC.vidsrc(curImdb)
+                    : SRC.vidsrc_tv(curImdb, curS, curE);
             }
+
+            else if (provider === "vidsrcwin") {
+                url = (curType === 'movie')
+                    ? SRC.vidsrcwin(curId)
+                    : SRC.vidsrcwin_tv(curId, curS, curE);
+            }
+
+            else if (provider === "smashy") {
+                url = (curType === 'movie')
+                    ? SRC.smashy(curId)
+                    : SRC.smashy_tv(curId, curS, curE);
+            }
+
+            else if (provider === "multi") {
+                url = (curType === 'movie')
+                    ? SRC.multi(curId)
+                    : SRC.multi_tv(curId, curS, curE);
+            }
+
+            else if (provider === "vidsrcxyz") {
+                url = (curType === 'movie')
+                    ? SRC.vidsrcxyz(curId)
+                    : SRC.vidsrcxyz_tv(curId, curS, curE);
+            }
+
+            else if (provider === "vidfast") {
+                url = (curType === 'movie')
+                    ? SRC.vidfast(curId)
+                    : SRC.vidfast_tv(curId, curS, curE);
+            }
+
+            iframe.src = url;
+
+            // Auto fallback after 3 seconds if blank
+            setTimeout(() => {
+                if (!iframe.contentWindow || iframe.contentWindow.length === 0) {
+                    fallbackIndex++;
+                    if (fallbackIndex < FALLBACK_ORDER.length) {
+                        const nextProvider = FALLBACK_ORDER[fallbackIndex];
+                        document.getElementById('server').value = nextProvider;
+                        loadProvider(nextProvider);
+                    }
+                }
+            }, 3000);
         }
 
         function closePlayer() {
