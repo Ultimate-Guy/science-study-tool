@@ -27,15 +27,14 @@ jobs:
           fetch-depth: 1
 
       - name: Inject TMDB Secret
-        # This MUST happen before the Strip Repo step
         run: |
-          sed -i "s/TMDB_REPLACE_ME/${{ secrets.TMDB_API_KEY }}/g" index.html
+          # Targeting the subfolder specifically
+          sed -i "s/TMDB_REPLACE_ME/${{ secrets.TMDB_API_KEY }}/g" games/cineby/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Strip Repo to Essentials
-        # Keeps your site fast by removing non-website files
         run: |
           rm -rf .git .github .gitignore .prettierignore .prettierrc \
                  README.md package.json package-lock.json jsconfig.json \
