@@ -74,9 +74,9 @@
 
         <div class="controls" id="controls">
             <select id="server" onchange="updatePlayer()">
-                <option value="vidsrc">VidSrc Pro (Stable)</option>
-                <option value="vidsrcxyz">VidSrcXyz</option>
-                <option value="vidfast">VidFast (Backup)</option>
+                <option value="vidsrc">VidSrc Pro (IMDb)</option>
+                <option value="vidsrcxyz">VidSrcXyz (TMDB)</option>
+                <option value="vidfast">VidFast (TMDB)</option>
             </select>
             <button onclick="closePlayer()" style="background:none; border:none; color:#999; cursor:pointer; font-weight:bold;">✕ CLOSE</button>
         </div>
@@ -106,7 +106,7 @@
             vidfast: "https://vidfast.co/embed/"
         };
 
-        let curId, curType, curS, curE;
+        let curId, curImdb, curType, curS, curE;
 
         window.onload = () => fetchTrending();
 
@@ -173,31 +173,49 @@
             });
         }
 
-        function play(id, type) {
+        async function play(id, type) {
             curId = id; 
             curType = type;
+
+            // Fetch IMDb ID
+            const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/external_ids?api_key=${KEY}`);
+            const ids = await res.json();
+            curImdb = ids.imdb_id;
+
             document.getElementById('modal').style.display = 'none';
             document.getElementById('grid').style.display = 'none';
             document.getElementById('controls').style.display = 'flex';
             document.getElementById('player').style.display = 'block';
+
             updatePlayer();
         }
 
         function updatePlayer() {
-            const base = SRC[document.getElementById('server').value];
+            const provider = document.getElementById('server').value;
+            const base = SRC[provider];
 
-            if (curType === 'movie') {
-                document.getElementById('player').src = `${base}movie?tmdb=${curId}`;
+            if (provider === "vidsrc") {
+                // IMDb mode
+                if (curType === 'movie') {
+                    player.src = `${base}movie/${curImdb}`;
+                } else {
+                    player.src = `${base}tv/${curImdb}/${curS}/${curE}`;
+                }
             } else {
-                document.getElementById('player').src = `${base}tv?tmdb=${curId}&season=${curS}&episode=${curE}`;
+                // TMDB mode
+                if (curType === 'movie') {
+                    player.src = `${base}movie/${curId}`;
+                } else {
+                    player.src = `${base}tv/${curId}/${curS}/${curE}`;
+                }
             }
         }
 
         function closePlayer() {
-            document.getElementById('player').src = "";
-            document.getElementById('player').style.display = 'none';
-            document.getElementById('controls').style.display = 'none';
-            document.getElementById('grid').style.display = 'grid';
+            player.src = "";
+            player.style.display = 'none';
+            controls.style.display = 'none';
+            grid.style.display = 'grid';
         }
     </script>
 </body>
