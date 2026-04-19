@@ -165,14 +165,10 @@
             <div id="resume-btn" onclick="resumeWatching()">↻ Resume Last Watch</div>
             
             <div class="section-label">Seasons</div>
-            <div id="season-list">
-                <!-- Phases populated here -->
-            </div>
+            <div id="season-list"></div>
             
             <div class="section-label">Episodes</div>
-            <div id="episode-list">
-                <!-- Segments populated here -->
-            </div>
+            <div id="episode-list"></div>
         </div>
 
         <div class="viewer">
@@ -188,23 +184,21 @@
             
             <iframe id="player-frame" src="" allowfullscreen></iframe>
 
-            <div id="grid-view">
-                <!-- Trending/Search Results -->
-            </div>
+            <div id="grid-view"></div>
         </div>
     </div>
 
     <script>
         const KEY = 'TMDB_REPLACE_ME';
         const API_MAP = {
-            vidsrc: atob("aHR0cHM6Ly92aWRzcmMubWUvZW1iZWQvdHYv"),
-            vidfast: atob("aHR0cHM6Ly92aWRmYXN0LmNvL2VtYmVkL3R2Lw=="),
-            vidsrcxyz: atob("aHR0cHM6Ly92aWRzcmMueHl6L2VtYmVkL3R2Lw=="),
-            twoembed: atob("aHR0cHM6Ly93d3cuMmVtYmVkLmNjL2VtYmVkL3R2Lw==")
+            vidsrc: atob("aHR0cHM6Ly92aWRzcmMubWUvZW1iZWQv"),
+            vidfast: atob("aHR0cHM6Ly92aWRmYXN0LmNvL2VtYmVkLw=="),
+            vidsrcxyz: atob("aHR0cHM6Ly92aWRzcmMueHl6L2VtYmVkLw=="),
+            twoembed: atob("aHR0cHM6Ly93d3cuMmVtYmVkLmNjL2VtYmVkLw==")
         };
 
         let activeShow = "";
-        let activeType = "tv";
+        let activeType = "";
         let activeSeason = 1;
         let activeEpisode = 1;
         let searchTimer;
@@ -262,6 +256,9 @@
                 const data = await res.json();
                 renderSeasons(data.seasons, resumeData);
             } else {
+                // Clear sidebars for movies
+                document.getElementById('season-list').innerHTML = "";
+                document.getElementById('episode-list').innerHTML = "";
                 updatePlayer('movie');
             }
         }
@@ -313,19 +310,17 @@
             const server = document.getElementById('server-select').value;
             let baseUrl = API_MAP[server];
             
-            // Fix for movie vs tv paths
             if(type === 'movie') {
-                baseUrl = baseUrl.replace('/tv/', '/movie/');
-                document.getElementById('player-frame').src = `${baseUrl}${activeShow}`;
-                saveSession(activeShow, 'movie', document.getElementById('player-frame').src);
+                document.getElementById('player-frame').src = `${baseUrl}movie/${activeShow}`;
+                saveSession(activeShow, 'movie', null, null);
             } else {
-                document.getElementById('player-frame').src = `${baseUrl}${activeShow}/${activeSeason}/${activeEpisode}`;
-                saveSession(activeShow, 'tv', document.getElementById('player-frame').src, activeSeason, activeEpisode);
+                document.getElementById('player-frame').src = `${baseUrl}tv/${activeShow}/${activeSeason}/${activeEpisode}`;
+                saveSession(activeShow, 'tv', activeSeason, activeEpisode);
             }
         }
 
-        function saveSession(id, type, url, s=null, e=null) {
-            localStorage.setItem('last_watched', JSON.stringify({id, type, url, s, e}));
+        function saveSession(id, type, s, e) {
+            localStorage.setItem('last_watched', JSON.stringify({id, type, s, e}));
             document.getElementById('resume-btn').style.display = 'block';
         }
 
