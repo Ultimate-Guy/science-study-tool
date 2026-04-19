@@ -106,7 +106,7 @@
             vidfast: atob("aHR0cHM6Ly92aWRmYXN0LmNvL2VtYmVkLw==")
         };
 
-        let curId, curImdb, curType, curS, curE;
+        let curId, curType, curS, curE;
 
         window.onload = () => fetchTrending();
 
@@ -175,31 +175,24 @@
             });
         }
 
-        async function play(id, type) {
+        function play(id, type) {
             curId = id; 
             curType = type;
-            
-            try {
-                const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/external_ids?api_key=${KEY}`);
-                const ids = await res.json();
-                curImdb = ids.imdb_id;
-            } catch(e) { curImdb = null; }
-
             document.getElementById('modal').style.display = 'none';
             document.getElementById('grid').style.display = 'none';
             document.getElementById('controls').style.display = 'flex';
             document.getElementById('player').style.display = 'block';
-
             updatePlayer();
         }
 
         function updatePlayer() {
             const base = SRC[document.getElementById('server').value];
-            const useId = curImdb || curId;
-            document.getElementById('player').src =
-                (curType === 'movie')
-                ? `${base}movie/${useId}`
-                : `${base}tv/${useId}/${curS}/${curE}`;
+            
+            if (curType === 'movie') {
+                document.getElementById('player').src = `${base}movie/${curId}`;
+            } else {
+                document.getElementById('player').src = `${base}tv/${curId}/${curS}/${curE}`;
+            }
         }
 
         function closePlayer() {
