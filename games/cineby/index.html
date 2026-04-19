@@ -106,7 +106,7 @@
             vidfast: atob("aHR0cHM6Ly92aWRmYXN0LmNvL2VtYmVkLw==")
         };
 
-        let curId, curType, curS, curE;
+        let curId, curImdb, curType, curS, curE;
 
         window.onload = () => fetchTrending();
 
@@ -131,19 +131,14 @@
 
             data.forEach(item => {
                 if(!item.poster_path) return;
-
                 const d = document.createElement('div');
                 d.className = 'card';
-
                 const type = item.media_type || (item.title ? 'movie' : 'tv');
-
                 d.onclick = () => (type === 'tv') ? showTV(item.id) : play(item.id, 'movie');
-
                 d.innerHTML = `
                     <img src="https://image.tmdb.org/t/p/w500${item.poster_path}">
                     <div class="card-info">${item.title || item.name}</div>
                 `;
-
                 g.appendChild(d);
             });
         }
@@ -151,50 +146,44 @@
         async function showTV(id) {
             curId = id; 
             curType = 'tv';
-
             const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${KEY}`);
             const data = await res.json();
-
             document.getElementById('modal').style.display = 'flex';
-
             const sl = document.getElementById('s-list'); 
             sl.innerHTML = "<b>Seasons</b><br><br>";
-
-            data.seasons
-                .filter(s => s.season_number > 0)
-                .forEach(s => {
-                    const b = document.createElement('div'); 
-                    b.className = 'list-btn';
-                    b.innerText = `Season ${s.season_number}`;
-                    b.onclick = () => loadEpisodes(s.season_number);
-                    sl.appendChild(b);
-                });
+            data.seasons.filter(s => s.season_number > 0).forEach(s => {
+                const b = document.createElement('div'); 
+                b.className = 'list-btn';
+                b.innerText = `Season ${s.season_number}`;
+                b.onclick = () => loadEpisodes(s.season_number);
+                sl.appendChild(b);
+            });
         }
 
         async function loadEpisodes(s) {
             curS = s;
-
             const res = await fetch(`https://api.themoviedb.org/3/tv/${curId}/season/${s}?api_key=${KEY}`);
             const data = await res.json();
-
             const el = document.getElementById('e-list'); 
             el.innerHTML = "<b>Episodes</b><br><br>";
-
             data.episodes.forEach(e => {
                 const b = document.createElement('div'); 
                 b.className = 'list-btn';
                 b.innerText = `E${e.episode_number}: ${e.name}`;
-                b.onclick = () => { 
-                    curE = e.episode_number; 
-                    play(curId, 'tv'); 
-                };
+                b.onclick = () => { curE = e.episode_number; play(curId, 'tv'); };
                 el.appendChild(b);
             });
         }
 
-        function play(id, type) {
+        async function play(id, type) {
             curId = id; 
             curType = type;
+            
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/external_ids?api_key=${KEY}`);
+                const ids = await res.json();
+                curImdb = ids.imdb_id;
+            } catch(e) { curImdb = null; }
 
             document.getElementById('modal').style.display = 'none';
             document.getElementById('grid').style.display = 'none';
@@ -206,11 +195,11 @@
 
         function updatePlayer() {
             const base = SRC[document.getElementById('server').value];
-
+            const useId = curImdb || curId;
             document.getElementById('player').src =
                 (curType === 'movie')
-                ? `${base}movie/${curId}`
-                : `${base}tv/${curId}/${curS}/${curE}`;
+                ? `${base}movie/${useId}`
+                : `${base}tv/${useId}/${curS}/${curE}`;
         }
 
         function closePlayer() {
