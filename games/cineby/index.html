@@ -3,198 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vapor v3</title>
+    <title>Cineby</title>
     <style>
+        /* Vapor v3 Aesthetic: Dark, minimal, and semi-transparent */
         :root {
-            --bg: #080808;
-            --side: #111111;
-            --accent: #3d5afe;
-            --border: #1f1f1f;
-            --text: #efefef;
-            --dim: #777;
+            --bg: #0b0d0f;
+            --surface: #16191d;
+            --border: #2d333b;
+            --accent: #58a6ff;
+            --text: #adbac7;
         }
 
         body {
-            margin: 0; background: var(--bg); color: var(--text);
-            font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden;
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
         }
 
+        /* Top Search Bar */
+        .header {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            background: rgba(11, 13, 15, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        #search-input {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+            outline: none;
+        }
+
+        /* Main Content Layout */
+        .main-layout {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        /* Left Side: Sidebar */
         .sidebar {
-            width: 280px; background: var(--side); border-right: 1px solid var(--border);
-            display: flex; flex-direction: column;
+            width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 15px;
         }
 
-        .search-container { padding: 20px; }
-        #search-bar {
-            width: 100%; background: #000; border: 1px solid var(--border);
-            padding: 12px; border-radius: 8px; color: #fff; outline: none;
-            font-size: 13px; transition: border 0.3s;
+        .section-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #768390;
+            margin-bottom: 10px;
+            margin-top: 20px;
         }
-        #search-bar:focus { border-color: var(--accent); }
-
-        .scroller { flex-grow: 1; overflow-y: auto; padding: 10px; }
-        .head { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 8px 10px; }
 
         .nav-item {
-            padding: 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
-            margin-bottom: 2px; color: #aaa; transition: 0.2s;
-        }
-        .nav-item:hover { background: #1a1a1a; color: #fff; }
-        .nav-item.active { background: var(--accent); color: #fff; font-weight: 600; }
-
-        #resume-pill {
-            background: rgba(61, 90, 254, 0.1); color: var(--accent); border: 1px solid var(--accent);
-            margin: 0 20px 10px; padding: 8px; border-radius: 6px; font-size: 11px;
-            text-align: center; cursor: pointer; display: none;
-        }
-
-        .viewport { flex-grow: 1; position: relative; display: flex; flex-direction: column; background: #000; }
-        
-        .top-bar {
-            height: 50px; padding: 0 20px; border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between; background: var(--bg);
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 5px;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        iframe { width: 100%; height: 100%; border: none; }
+        .nav-item:hover { background: #22272e; color: var(--accent); }
+        .nav-item.active { background: var(--accent); color: white; }
 
-        #grid {
-            position: absolute; inset: 0; background: var(--bg); padding: 30px;
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 25px; overflow-y: auto; z-index: 10;
+        /* Right Side: Player Area */
+        .viewer {
+            flex-grow: 1;
+            background: #000;
+            position: relative;
+            display: flex;
+            flex-direction: column;
         }
 
-        .card { 
-            background: #121212; border-radius: 10px; overflow: hidden; cursor: pointer;
-            border: 1px solid var(--border); transition: transform 0.3s, border 0.3s;
+        .source-bar {
+            padding: 8px 15px;
+            background: #1c2128;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
-        .card:hover { transform: translateY(-5px); border-color: var(--accent); }
-        .card img { width: 100%; height: 260px; object-fit: cover; opacity: 0.9; }
-        .card-name { padding: 12px; font-size: 12px; text-align: center; font-weight: 500; }
+
+        select {
+            background: #22272e;
+            color: white;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 12px;
+        }
+
+        #player-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Poster Grid */
+        #grid-view {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg);
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .poster-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .poster-card:hover { transform: translateY(-5px); border-color: var(--accent); }
+        .poster-card img { width: 100%; height: 230px; object-fit: cover; }
+        .poster-title { padding: 8px; font-size: 12px; text-align: center; }
 
         .hidden { display: none !important; }
-        ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-thumb { background: #333; }
+
+        #resume-btn {
+            background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent);
+            padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px;
+            text-align: center; cursor: pointer; display: none;
+        }
     </style>
 </head>
 <body>
 
-<div class="sidebar">
-    <div class="search-container">
-        <input type="text" id="search-bar" placeholder="Search..." oninput="debounceSearch(event)">
-    </div>
-    <div id="resume-pill" onclick="resumeWatching()">Resume Last Session</div>
-    <div class="scroller">
-        <div id="season-wrap"><div class="head">Seasons</div><div id="seasons"></div></div>
-        <div id="episode-wrap"><div class="head">Episodes</div><div id="episodes"></div></div>
-    </div>
-</div>
-
-<div class="viewport">
-    <div class="top-bar">
-        <span id="now-playing" style="font-size: 11px; color: var(--dim); letter-spacing: 1px;">VAPOR V3 ONLINE</span>
-        <div onclick="showHome()" style="cursor:pointer; color:var(--dim); font-size:18px;">&times;</div>
+    <div class="header">
+        <input type="text" id="search-input" placeholder="Search Movies or TV Shows..." oninput="debounceSearch(event)">
     </div>
 
-    <iframe id="player" src="" allowfullscreen></iframe>
+    <div class="main-layout">
+        <div class="sidebar">
+            <div id="resume-btn" onclick="resumeWatching()">↻ Resume Last Watch</div>
+            
+            <div class="section-label">Seasons</div>
+            <div id="season-list">
+                <!-- Phases populated here -->
+            </div>
+            
+            <div class="section-label">Episodes</div>
+            <div id="episode-list">
+                <!-- Segments populated here -->
+            </div>
+        </div>
 
-    <div id="grid"></div>
-</div>
+        <div class="viewer">
+            <div class="source-bar">
+                <select id="server-select" onchange="updatePlayer()">
+                    <option value="vidsrc">VidSrc Pro</option>
+                    <option value="vidfast">VidFast (4K)</option>
+                    <option value="vidsrcxyz">VidSrcXyz</option>
+                    <option value="twoembed">2Embed</option>
+                </select>
+                <button onclick="closePlayer()" style="margin-left:auto; background:none; border:none; color:grey; cursor:pointer;">✕ Close</button>
+            </div>
+            
+            <iframe id="player-frame" src="" allowfullscreen></iframe>
 
-<script>
-    const KEY = 'TMDB_REPLACE_ME'; 
-    const SRC = atob("aHR0cHM6Ly92aWRzcmMubWUvZW1iZWQv"); 
+            <div id="grid-view">
+                <!-- Trending/Search Results -->
+            </div>
+        </div>
+    </div>
 
-    let activeID = "", activeType = "", searchTimer;
+    <script>
+        const KEY = 'TMDB_REPLACE_ME';
+        const API_MAP = {
+            vidsrc: atob("aHR0cHM6Ly92aWRzcmMubWUvZW1iZWQvdHYv"),
+            vidfast: atob("aHR0cHM6Ly92aWRmYXN0LmNvL2VtYmVkL3R2Lw=="),
+            vidsrcxyz: atob("aHR0cHM6Ly92aWRzcmMueHl6L2VtYmVkL3R2Lw=="),
+            twoembed: atob("aHR0cHM6Ly93d3cuMmVtYmVkLmNjL2VtYmVkL3R2Lw==")
+        };
 
-    window.onload = async () => {
-        if(localStorage.getItem('last_watched')) document.getElementById('resume-pill').style.display = 'block';
-        fetchTrending();
-    };
+        let activeShow = "";
+        let activeType = "tv";
+        let activeSeason = 1;
+        let activeEpisode = 1;
+        let searchTimer;
 
-    async function fetchTrending() {
-        const res = await fetch(`https://api.themoviedb.org/3/trending/all/week?api_key=${KEY}`);
-        const data = await res.json();
-        renderGrid(data.results);
-    }
+        window.onload = () => {
+            if(localStorage.getItem('last_watched')) {
+                document.getElementById('resume-btn').style.display = 'block';
+            }
+            fetchTrending();
+        };
 
-    function debounceSearch(e) {
-        clearTimeout(searchTimer);
-        const q = e.target.value;
-        if (!q) return fetchTrending();
-        searchTimer = setTimeout(() => performSearch(q), 400); 
-    }
-
-    async function performSearch(q) {
-        const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${KEY}&query=${encodeURIComponent(q)}`);
-        const data = await res.json();
-        renderGrid(data.results);
-    }
-
-    function renderGrid(results) {
-        const grid = document.getElementById('grid');
-        grid.innerHTML = "";
-        grid.classList.remove('hidden');
-        results.forEach(item => {
-            if(!item.poster_path) return;
-            const div = document.createElement('div');
-            div.className = "card";
-            div.onclick = () => selectMedia(item.id, item.media_type);
-            div.innerHTML = `<img src="https://image.tmdb.org/t/p/w500${item.poster_path}"><div class="card-name">${item.title || item.name}</div>`;
-            grid.appendChild(div);
-        });
-    }
-
-    async function selectMedia(id, type, resume = null) {
-        activeID = id; activeType = type;
-        document.getElementById('grid').classList.add('hidden');
-        if(type === 'tv') {
-            const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${KEY}`);
+        async function fetchTrending() {
+            const res = await fetch(`https://api.themoviedb.org/3/trending/all/week?api_key=${KEY}`);
             const data = await res.json();
-            renderSeasons(data.seasons, resume);
-        } else {
-            document.getElementById('player').src = `${SRC}movie/${id}`;
-            document.getElementById('seasons').innerHTML = "";
-            document.getElementById('episodes').innerHTML = "<div class='nav-item active'>Play Movie</div>";
-            saveSession(id, type, `${SRC}movie/${id}`);
+            renderGrid(data.results);
         }
-    }
 
-    async function fetchEpisodes(sNum, resume) {
-        const res = await fetch(`https://api.themoviedb.org/3/tv/${activeID}/season/${sNum}?api_key=${KEY}`);
-        const data = await res.json();
-        const box = document.getElementById('episodes'); box.innerHTML = "";
-        data.episodes.forEach(ep => {
-            const div = document.createElement('div');
-            div.className = "nav-item";
-            div.innerText = `E${ep.episode_number}: ${ep.name}`;
-            div.onclick = () => {
-                document.querySelectorAll('#episodes .nav-item').forEach(el => el.classList.remove('active'));
-                div.classList.add('active');
-                const url = `${SRC}tv/${activeID}/${sNum}/${ep.episode_number}`;
-                document.getElementById('player').src = url;
-                document.getElementById('now-playing').innerText = ep.name.toUpperCase();
-                saveSession(activeID, 'tv', url, sNum, ep.episode_number);
-            };
-            box.appendChild(div);
-            if(resume && ep.episode_number == resume.e) div.click();
-        });
-    }
+        function debounceSearch(e) {
+            clearTimeout(searchTimer);
+            const query = e.target.value;
+            if (!query) return fetchTrending();
+            searchTimer = setTimeout(() => performSearch(query), 400);
+        }
 
-    function saveSession(id, type, url, s=null, e=null) {
-        localStorage.setItem('last_watched', JSON.stringify({id, type, url, s, e}));
-        document.getElementById('resume-pill').style.display = 'block';
-    }
+        async function performSearch(query) {
+            const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${KEY}&query=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            renderGrid(data.results);
+        }
 
-    function resumeWatching() {
-        const data = JSON.parse(localStorage.getItem('last_watched'));
-        if(data) selectMedia(data.id, data.type, data);
-    }
+        function renderGrid(results) {
+            const grid = document.getElementById('grid-view');
+            grid.innerHTML = "";
+            grid.classList.remove('hidden');
+            results.forEach(item => {
+                if(!item.poster_path) return;
+                const div = document.createElement('div');
+                div.className = "poster-card";
+                div.onclick = () => selectShow(item.id, item.media_type);
+                div.innerHTML = `
+                    <img src="https://image.tmdb.org/t/p/w500${item.poster_path}">
+                    <div class="poster-title">${item.title || item.name}</div>
+                `;
+                grid.appendChild(div);
+            });
+        }
 
-    function showHome() {
-        document.getElementById('grid').classList.remove('hidden');
-        document.getElementById('player').src = "";
-        document.getElementById('now-playing').innerText = "VAPOR V3 ONLINE";
-    }
-</script>
+        async function selectShow(id, type, resumeData = null) {
+            activeShow = id;
+            activeType = type;
+            document.getElementById('grid-view').classList.add('hidden');
+            
+            if(type === 'tv') {
+                const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${KEY}`);
+                const data = await res.json();
+                renderSeasons(data.seasons, resumeData);
+            } else {
+                updatePlayer('movie');
+            }
+        }
+
+        function renderSeasons(seasons, resumeData) {
+            const list = document.getElementById('season-list');
+            list.innerHTML = "";
+            seasons.filter(s => s.season_number > 0).forEach(s => {
+                let div = document.createElement('div');
+                div.className = "nav-item";
+                div.innerText = `Season ${s.season_number}`;
+                div.onclick = () => {
+                    document.querySelectorAll('#season-list .nav-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                    loadEpisodes(s.season_number, resumeData);
+                };
+                list.appendChild(div);
+            });
+            if(resumeData) {
+                const target = Array.from(list.children).find(el => el.innerText.includes(`Season ${resumeData.s}`));
+                if(target) target.click();
+            } else if(list.firstChild) list.firstChild.click();
+        }
+
+        async function loadEpisodes(season, resumeData) {
+            activeSeason = season;
+            const res = await fetch(`https://api.themoviedb.org/3/tv/${activeShow}/season/${season}?api_key=${KEY}`);
+            const data = await res.json();
+            const list = document.getElementById('episode-list');
+            list.innerHTML = "";
+            
+            data.episodes.forEach(ep => {
+                let div = document.createElement('div');
+                div.className = "nav-item";
+                div.innerText = `E${ep.episode_number}: ${ep.name}`;
+                div.onclick = () => {
+                    document.querySelectorAll('#episode-list .nav-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                    activeEpisode = ep.episode_number;
+                    updatePlayer('tv');
+                };
+                list.appendChild(div);
+                if(resumeData && ep.episode_number == resumeData.e) div.click();
+            });
+        }
+
+        function updatePlayer(type = activeType) {
+            if(!activeShow) return;
+            const server = document.getElementById('server-select').value;
+            let baseUrl = API_MAP[server];
+            
+            // Fix for movie vs tv paths
+            if(type === 'movie') {
+                baseUrl = baseUrl.replace('/tv/', '/movie/');
+                document.getElementById('player-frame').src = `${baseUrl}${activeShow}`;
+                saveSession(activeShow, 'movie', document.getElementById('player-frame').src);
+            } else {
+                document.getElementById('player-frame').src = `${baseUrl}${activeShow}/${activeSeason}/${activeEpisode}`;
+                saveSession(activeShow, 'tv', document.getElementById('player-frame').src, activeSeason, activeEpisode);
+            }
+        }
+
+        function saveSession(id, type, url, s=null, e=null) {
+            localStorage.setItem('last_watched', JSON.stringify({id, type, url, s, e}));
+            document.getElementById('resume-btn').style.display = 'block';
+        }
+
+        function resumeWatching() {
+            const data = JSON.parse(localStorage.getItem('last_watched'));
+            if(data) selectShow(data.id, data.type, data);
+        }
+
+        function closePlayer() {
+            document.getElementById('player-frame').src = "";
+            document.getElementById('grid-view').classList.remove('hidden');
+        }
+    </script>
 </body>
 </html>
