@@ -101,9 +101,9 @@
         const KEY = 'TMDB_REPLACE_ME';
 
         const SRC = {
-            vidsrc: atob("aHR0cHM6Ly92aWRzcmMubWUvZW1iZWQv"),
-            vidsrcxyz: atob("aHR0cHM6Ly92aWRzcmMueHl6L2VtYmVkLw=="),
-            vidfast: atob("aHR0cHM6Ly92aWRmYXN0LmNvL2VtYmVkLw==")
+            vidsrc: "https://vidsrc.me/embed/",
+            vidsrcxyz: "https://vidsrc.xyz/embed/",
+            vidfast: "https://vidfast.co/embed/"
         };
 
         let curId, curType, curS, curE;
@@ -111,11 +111,9 @@
         window.onload = () => fetchTrending();
 
         async function fetchTrending() {
-            try {
-                const res = await fetch(`https://api.themoviedb.org/3/trending/all/week?api_key=${KEY}`);
-                const data = await res.json();
-                render(data.results);
-            } catch(e) { console.error("API Blocked"); }
+            const res = await fetch(`https://api.themoviedb.org/3/trending/all/week?api_key=${KEY}`);
+            const data = await res.json();
+            render(data.results);
         }
 
         async function search(q) {
@@ -187,11 +185,11 @@
 
         function updatePlayer() {
             const base = SRC[document.getElementById('server').value];
-            
+
             if (curType === 'movie') {
-                document.getElementById('player').src = `${base}movie/${curId}`;
+                document.getElementById('player').src = `${base}movie?tmdb=${curId}`;
             } else {
-                document.getElementById('player').src = `${base}tv/${curId}/${curS}/${curE}`;
+                document.getElementById('player').src = `${base}tv?tmdb=${curId}&season=${curS}&episode=${curE}`;
             }
         }
 
