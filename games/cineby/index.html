@@ -43,6 +43,7 @@
             text-align: center; font-weight: 700; font-size: 13px; 
             transform: translateY(100%); transition: 0.3s;
         }
+
         .card:hover .card-info { transform: translateY(0); }
         .card:hover img { filter: blur(2px) brightness(0.8); }
 
@@ -84,7 +85,8 @@
         
         <iframe id="player" 
                 sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation" 
-                allowfullscreen>
+                allowfullscreen
+                referrerpolicy="origin">
         </iframe>
     </div>
 
@@ -132,7 +134,10 @@
 
                 const d = document.createElement('div');
                 d.className = 'card';
-                d.onclick = () => (item.media_type === 'tv') ? showTV(item.id) : play(item.id, 'movie');
+
+                const type = item.media_type || (item.title ? 'movie' : 'tv');
+
+                d.onclick = () => (type === 'tv') ? showTV(item.id) : play(item.id, 'movie');
 
                 d.innerHTML = `
                     <img src="https://image.tmdb.org/t/p/w500${item.poster_path}">
