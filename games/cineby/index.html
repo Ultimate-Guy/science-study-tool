@@ -75,6 +75,7 @@
         <div class="controls" id="controls">
             <select id="server" onchange="updatePlayer(true)">
                 <option value="vidsrcto">VidSrc.to (IMDb)</option>
+                <option value="vidsrcme">VidSrcMe (TMDB)</option>
                 <option value="vidsrcwin">VidSrc.win (TMDB)</option>
                 <option value="smashy">SmashyStream (TMDB)</option>
                 <option value="multi">MultiEmbed (TMDB)</option>
@@ -109,6 +110,10 @@
             vidsrcto: id => `https://vidsrc.to/embed/movie/${id}`,
             vidsrcto_tv: (id,s,e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
 
+            // VidSrcMe (TMDB) — confirmed working
+            vidsrcme: id => `https://vidsrcme.su/embed/movie/${id}`,
+            vidsrcme_tv: (id,s,e) => `https://vidsrcme.su/embed/tv/${id}/${s}/${e}`,
+
             // VidSrc.win (TMDB)
             vidsrcwin: id => `https://vidsrc.win/watch/${id}`,
             vidsrcwin_tv: (id,s,e) => `https://vidsrc.win/tv/${id}/${s}/${e}`,
@@ -132,6 +137,7 @@
 
         const FALLBACK_ORDER = [
             "vidsrcto",
+            "vidsrcme",
             "vidsrcwin",
             "smashy",
             "multi",
@@ -240,14 +246,17 @@
             let url = "";
 
             if (provider === "vidsrcto") {
-                const id = curImdb || ""; // needs IMDb
-                if (!id) {
-                    // if no IMDb, skip to next provider
-                    return tryNextProvider();
-                }
+                const id = curImdb || "";
+                if (!id) return tryNextProvider();
                 url = (curType === 'movie')
                     ? SRC.vidsrcto(id)
                     : SRC.vidsrcto_tv(id, curS, curE);
+            }
+
+            else if (provider === "vidsrcme") {
+                url = (curType === 'movie')
+                    ? SRC.vidsrcme(curId)
+                    : SRC.vidsrcme_tv(curId, curS, curE);
             }
 
             else if (provider === "vidsrcwin") {
@@ -282,7 +291,6 @@
 
             iframe.src = url;
 
-            // naive fallback timer (can't inspect cross-origin content, so just time-based)
             const currentIndex = fallbackIndex;
             setTimeout(() => {
                 if (currentIndex === fallbackIndex) {
