@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cineby | Ad-Block Edition</title>
+    <title>Cineby | GitHub Pages Safe Edition</title>
     <style>
         :root { 
             --bg: #fdfdfd; 
@@ -74,13 +74,10 @@
 
         <div class="controls" id="controls">
             <select id="server" onchange="updatePlayer(true)">
-                <option value="vidsrcto">VidSrc.to (IMDb)</option>
-                <option value="vidsrcme">VidSrcMe (TMDB)</option>
-                <option value="vidsrcwin">VidSrc.win (TMDB)</option>
+                <option value="vidrock">VidRock (TMDB)</option>
                 <option value="smashy">SmashyStream (TMDB)</option>
                 <option value="multi">MultiEmbed (TMDB)</option>
-                <option value="vidsrcxyz">VidSrcXyz (TMDB)</option>
-                <option value="vidfast">VidFast (TMDB)</option>
+                <option value="vidbinge">VidBinge (TMDB)</option>
             </select>
             <button onclick="closePlayer()" style="background:none; border:none; color:#999; cursor:pointer; font-weight:bold;">✕ CLOSE</button>
         </div>
@@ -106,17 +103,9 @@
         const KEY = 'TMDB_REPLACE_ME';
 
         const SRC = {
-            // VidSrc.to (IMDb)
-            vidsrcto: id => `https://vidsrc.to/embed/movie/${id}`,
-            vidsrcto_tv: (id,s,e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
-
-            // VidSrcMe (TMDB) — confirmed working
-            vidsrcme: id => `https://vidsrcme.su/embed/movie/${id}`,
-            vidsrcme_tv: (id,s,e) => `https://vidsrcme.su/embed/tv/${id}/${s}/${e}`,
-
-            // VidSrc.win (TMDB)
-            vidsrcwin: id => `https://vidsrc.win/watch/${id}`,
-            vidsrcwin_tv: (id,s,e) => `https://vidsrc.win/tv/${id}/${s}/${e}`,
+            // VidRock (TMDB)
+            vidrock: id => `https://vidrock.net/movie/${id}`,
+            vidrock_tv: (id,s,e) => `https://vidrock.net/embed/tv/${id}/${s}/${e}`,
 
             // SmashyStream (TMDB)
             smashy: id => `https://smashystream.com/embed/movie/tmdb/${id}`,
@@ -126,26 +115,18 @@
             multi: id => `https://multiembed.mov/?video_id=${id}`,
             multi_tv: (id,s,e) => `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`,
 
-            // VidSrcXyz (TMDB)
-            vidsrcxyz: id => `https://vidsrc.xyz/embed/movie/${id}`,
-            vidsrcxyz_tv: (id,s,e) => `https://vidsrc.xyz/embed/tv/${id}/${s}/${e}`,
-
-            // VidFast (TMDB)
-            vidfast: id => `https://vidfast.co/embed/movie/${id}`,
-            vidfast_tv: (id,s,e) => `https://vidfast.co/embed/tv/${id}/${s}/${e}`
+            // VidBinge (TMDB)
+            vidbinge: id => `https://vidbinge.dev/embed/movie/${id}`
         };
 
         const FALLBACK_ORDER = [
-            "vidsrcto",
-            "vidsrcme",
-            "vidsrcwin",
+            "vidrock",
             "smashy",
             "multi",
-            "vidsrcxyz",
-            "vidfast"
+            "vidbinge"
         ];
 
-        let curId, curImdb, curType, curS, curE;
+        let curId, curType, curS, curE;
         let fallbackIndex = 0;
 
         window.onload = () => fetchTrending();
@@ -217,15 +198,6 @@
             curId = id; 
             curType = type;
 
-            // Fetch IMDb ID for VidSrc.to
-            try {
-                const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/external_ids?api_key=${KEY}`);
-                const ids = await res.json();
-                curImdb = ids.imdb_id;
-            } catch(e) {
-                curImdb = null;
-            }
-
             document.getElementById('modal').style.display = 'none';
             document.getElementById('grid').style.display = 'none';
             document.getElementById('controls').style.display = 'flex';
@@ -245,24 +217,10 @@
             const iframe = document.getElementById('player');
             let url = "";
 
-            if (provider === "vidsrcto") {
-                const id = curImdb || "";
-                if (!id) return tryNextProvider();
+            if (provider === "vidrock") {
                 url = (curType === 'movie')
-                    ? SRC.vidsrcto(id)
-                    : SRC.vidsrcto_tv(id, curS, curE);
-            }
-
-            else if (provider === "vidsrcme") {
-                url = (curType === 'movie')
-                    ? SRC.vidsrcme(curId)
-                    : SRC.vidsrcme_tv(curId, curS, curE);
-            }
-
-            else if (provider === "vidsrcwin") {
-                url = (curType === 'movie')
-                    ? SRC.vidsrcwin(curId)
-                    : SRC.vidsrcwin_tv(curId, curS, curE);
+                    ? SRC.vidrock(curId)
+                    : SRC.vidrock_tv(curId, curS, curE);
             }
 
             else if (provider === "smashy") {
@@ -277,16 +235,8 @@
                     : SRC.multi_tv(curId, curS, curE);
             }
 
-            else if (provider === "vidsrcxyz") {
-                url = (curType === 'movie')
-                    ? SRC.vidsrcxyz(curId)
-                    : SRC.vidsrcxyz_tv(curId, curS, curE);
-            }
-
-            else if (provider === "vidfast") {
-                url = (curType === 'movie')
-                    ? SRC.vidfast(curId)
-                    : SRC.vidfast_tv(curId, curS, curE);
+            else if (provider === "vidbinge") {
+                url = SRC.vidbinge(curId);
             }
 
             iframe.src = url;
