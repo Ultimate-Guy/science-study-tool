@@ -238,6 +238,7 @@
                 <option value="zxcstreampro">ZXCStream (PRO)</option>
                 <option value="vidsrcme">VidSrcMe</option>
                 <option value="godrive">GoDrivePlayer</option>
+                <option value="shopflix">ShopFlix21</option>
             </select>
 
             <div style="display:flex; gap:15px; align-items:center;">
@@ -303,6 +304,13 @@
             `https://godriveplayer.com/player.php?imdb=${imdb}`,
         godrive_tv: (id, s, e) =>
             `https://godriveplayer.com/player.php?type=series&tmdb=${id}&season=${s}&episode=${e}`
+        // ShopFlix21 (safe TMDB-based format)
+shopflix: id =>
+    `https://shopflix21.com/movie/${id}/?vod=1080p`,
+
+shopflix_tv: (id, s, e) =>
+    `https://shopflix21.com/serie/${id}_${s}_${e}/`,
+
     };
 
     let curId, curType, curS, curE;
