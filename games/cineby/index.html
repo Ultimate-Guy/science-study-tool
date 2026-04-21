@@ -268,50 +268,49 @@
 <script>
     const KEY = 'TMDB_REPLACE_ME';
 
-    // Providers
-    const SRC = {
-        // VidRock
-        vidrock: id => `https://vidrock.net/movie/${id}`,
-        vidrock_tv: (id, s, e) =>
-            `https://vidrock.net/embed/tv/${id}/${s}/${e}`,
+// Providers
+const SRC = {
+    // VidRock
+    vidrock: id => `https://vidrock.net/movie/${id}`,
+    vidrock_tv: (id, s, e) =>
+        `https://vidrock.net/embed/tv/${id}/${s}/${e}`,
 
-        // VidSrc.win
-        vidsrcwin: id =>
-            `https://vidsrc.win/embed/movie?tmdb=${id}`,
-        vidsrcwin_tv: (id, s, e) =>
-            `https://vidsrc.win/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
+    // VidSrc.win
+    vidsrcwin: id =>
+        `https://vidsrc.win/embed/movie?tmdb=${id}`,
+    vidsrcwin_tv: (id, s, e) =>
+        `https://vidsrc.win/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
 
-        // ZXCStream (XYZ)
-        zxcstream: id =>
-            `https://zxcstream.xyz/player/movie/${id}`,
-        zxcstream_tv: (id, s, e) =>
-            `https://zxcstream.xyz/player/tv/${id}/${s}/${e}`,
+    // ZXCStream (XYZ)
+    zxcstream: id =>
+        `https://zxcstream.xyz/player/movie/${id}`,
+    zxcstream_tv: (id, s, e) =>
+        `https://zxcstream.xyz/player/tv/${id}/${s}/${e}`,
 
-        // ZXCStream (PRO)
-        zxcstreampro: id =>
-            `https://zxcstream.pro/watch/movie/${id}`,
-        zxcstreampro_tv: (id, s, e) =>
-            `https://zxcstream.pro/watch/tv/${id}/${s}/${e}`,
+    // ZXCStream (PRO)
+    zxcstreampro: id =>
+        `https://zxcstream.pro/watch/movie/${id}`,
+    zxcstreampro_tv: (id, s, e) =>
+        `https://zxcstream.pro/watch/tv/${id}/${s}/${e}`,
 
-        // VidSrcMe (RU)
-        vidsrcme: id =>
-            `https://vidsrcme.ru/embed/movie?tmdb=${id}`,
-        vidsrcme_tv: (id, s, e) =>
-            `https://vidsrcme.ru/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
+    // VidSrcMe (RU)
+    vidsrcme: id =>
+        `https://vidsrcme.ru/embed/movie?tmdb=${id}`,
+    vidsrcme_tv: (id, s, e) =>
+        `https://vidsrcme.ru/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
 
-        // GoDrivePlayer
-        godrive: imdb =>
-            `https://godriveplayer.com/player.php?imdb=${imdb}`,
-        godrive_tv: (id, s, e) =>
-            `https://godriveplayer.com/player.php?type=series&tmdb=${id}&season=${s}&episode=${e}`
-        // ShopFlix21 (safe TMDB-based format)
-shopflix: id =>
-    `https://shopflix21.com/movie/${id}/?vod=1080p`,
+    // GoDrivePlayer
+    godrive: imdb =>
+        `https://godriveplayer.com/player.php?imdb=${imdb}`,
+    godrive_tv: (id, s, e) =>
+        `https://godriveplayer.com/player.php?type=series&tmdb=${id}&season=${s}&episode=${e}`,
 
-shopflix_tv: (id, s, e) =>
-    `https://shopflix21.com/serie/${id}_${s}_${e}/`,
-
-    };
+    // ShopFlix21
+    shopflix: id =>
+        `https://shopflix21.com/movie/${id}/?vod=1080p`,
+    shopflix_tv: (id, s, e) =>
+        `https://shopflix21.com/serie/${id}_${s}_${e}/`,
+};
 
     let curId, curType, curS, curE;
     let curImdbId = null;
