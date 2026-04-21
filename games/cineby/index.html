@@ -231,23 +231,22 @@
         </div>
 
         <div class="controls" id="controls">
-            <select id="server" onchange="updatePlayer(true)">
+            <select id="server" onchange="updatePlayer()">
                 <option value="vidrock">VidRock</option>
                 <option value="vidsrcwin">VidSrcWin</option>
                 <option value="zxcstream">ZXCStream</option>
                 <option value="vidsrcme">VidSrcMe</option>
+                <option value="godrive">GoDrivePlayer</option>
             </select>
-            <button
-                onclick="closePlayer()"
-                style="background:none; border:none; color:#999; cursor:pointer; font-weight:bold;"
-            >
-                ✕ CLOSE
-            </button>
+
+            <div style="display:flex; gap:15px; align-items:center;">
+                <button onclick="fullscreenPlayer()" style="background:none; border:none; font-size:18px; cursor:pointer;">⛶</button>
+                <button onclick="closePlayer()" style="background:none; border:none; color:#999; cursor:pointer; font-weight:bold;">✕ CLOSE</button>
+            </div>
         </div>
 
         <div id="grid"></div>
 
-        <!-- sandbox removed so VidRock / VidSrc can load -->
         <iframe
             id="player"
             allowfullscreen
@@ -267,37 +266,42 @@
 <script>
     const KEY = 'TMDB_REPLACE_ME';
 
-    // Provider definitions (adjust URLs if your providers use different patterns)
+    // Providers
     const SRC = {
         // VidRock
         vidrock: id => `https://vidrock.net/movie/${id}`,
-        vidrock_tv: (id, s, e) => `https://vidrock.net/embed/tv/${id}/${s}/${e}`,
+        vidrock_tv: (id, s, e) =>
+            `https://vidrock.net/embed/tv/${id}/${s}/${e}`,
 
-        // VidSrc.win (common pattern: tmdb param)
-        vidsrcwin: id => `https://vidsrc.win/embed/movie?tmdb=${id}`,
+        // VidSrc.win
+        vidsrcwin: id =>
+            `https://vidsrc.win/embed/movie?tmdb=${id}`,
         vidsrcwin_tv: (id, s, e) =>
             `https://vidsrc.win/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
 
-        // ZXCStream (you gave a movie example)
-        zxcstream: id => `https://zxcstream.pro/movie/${id}`,
-        // If they support TV, you can add:
-        // zxcstream_tv: (id, s, e) => `https://zxcstream.pro/tv/${id}/${s}/${e}`,
+        // ZXCStream
+        zxcstream: id =>
+            `https://zxcstream.pro/watch/movie/${id}`,
+        zxcstream_tv: (id, s, e) =>
+            `https://zxcstream.pro/watch/tv/${id}/${s}/${e}`,
 
-        // VidSrcMe (vidsrcme.ru – guessed pattern, tweak if needed)
-        vidsrcme: id => `https://vidsrcme.ru/embed/movie?tmdb=${id}`,
+        // VidSrcMe (RU)
+        vidsrcme: id =>
+            `https://vidsrcme.ru/embed/movie?tmdb=${id}`,
         vidsrcme_tv: (id, s, e) =>
-            `https://vidsrcme.ru/embed/tv?tmdb=${id}&season=${s}&episode=${e}`
+            `https://vidsrcme.ru/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
+
+        // GoDrivePlayer
+        // Movie uses IMDB
+        godrive: imdb =>
+            `https://godriveplayer.com/player.php?imdb=${imdb}`,
+        // TV uses TMDB
+        godrive_tv: (id, s, e) =>
+            `https://godriveplayer.com/player.php?type=series&tmdb=${id}&season=${s}&episode=${e}`
     };
 
-    const FALLBACK_ORDER = [
-        "vidrock",
-        "vidsrcwin",
-        "zxcstream",
-        "vidsrcme"
-    ];
-
     let curId, curType, curS, curE;
-    let fallbackIndex = 0;
+    let curImdbId = null; // for GoDrive movies
 
     window.onload = () => fetchTrending();
 
@@ -337,7 +341,10 @@
             d.className = 'card';
 
             const type = item.media_type || (item.title ? 'movie' : 'tv');
-            d.onclick = () => (type === 'tv') ? showTV(item.id) : play(item.id, 'movie');
+            d.onclick = () =>
+                (type === 'tv')
+                    ? showTV(item.id)
+                    : play(item.id, 'movie');
 
             d.innerHTML = `
                 <img src="https://image.tmdb.org/t/p/w500${item.poster_path}">
@@ -404,70 +411,74 @@
         }
     }
 
-    function play(id, type) {
+    async function fetchImdbId(tmdbId) {
+        try {
+            const res = await fetch(
+                `https://api.themoviedb.org/3/movie/${tmdbId}/external_ids?api_key=${KEY}`
+            );
+            const data = await res.json();
+            return data.imdb_id || null;
+        } catch (e) {
+            console.error(e);
+            return null;
+        }
+    }
+
+    async function play(id, type) {
         curId = id;
         curType = type;
+
+        if (type === 'movie') {
+            curImdbId = await fetchImdbId(id);
+        }
 
         document.getElementById('modal').style.display = 'none';
         document.getElementById('grid').style.display = 'none';
         document.getElementById('controls').style.display = 'flex';
         document.getElementById('player').style.display = 'block';
 
-        fallbackIndex = 0;
-        document.getElementById('server').value = FALLBACK_ORDER[0];
-        updatePlayer(true);
+        updatePlayer();
     }
 
-    function updatePlayer(resetFallback = false) {
-        const select = document.getElementById('server');
-        const provider = select.value;
-
-        if (resetFallback) {
-            fallbackIndex = FALLBACK_ORDER.indexOf(provider);
-            if (fallbackIndex < 0) fallbackIndex = 0;
-        }
-
+    function updatePlayer() {
+        const provider = document.getElementById('server').value;
         loadProvider(provider);
     }
 
     function loadProvider(provider) {
         const iframe = document.getElementById('player');
 
-        let fn;
         if (curType === 'movie') {
-            fn = SRC[provider];
+            if (provider === 'godrive') {
+                if (!curImdbId) {
+                    iframe.src = "";
+                    return;
+                }
+                iframe.src = SRC.godrive(curImdbId);
+                return;
+            }
+
+            const fn = SRC[provider];
+            if (!fn) {
+                iframe.src = "";
+                return;
+            }
+            iframe.src = fn(curId);
         } else {
-            fn = SRC[provider + "_tv"];
+            const fn = SRC[provider + "_tv"];
+            if (!fn) {
+                iframe.src = "";
+                return;
+            }
+            iframe.src = fn(curId, curS, curE);
         }
-
-        if (!fn) {
-            // no function for this type/provider, try next
-            return tryNextProvider();
-        }
-
-        let url;
-        if (curType === 'movie') {
-            url = fn(curId);
-        } else {
-            url = fn(curId, curS, curE);
-        }
-
-        iframe.src = url;
-
-        const currentIndex = fallbackIndex;
-        setTimeout(() => {
-            // if nothing changed provider-wise, try next
-            if (currentIndex === fallbackIndex) tryNextProvider();
-        }, 3500);
     }
 
-    function tryNextProvider() {
-        fallbackIndex++;
-        if (fallbackIndex < FALLBACK_ORDER.length) {
-            const nextProvider = FALLBACK_ORDER[fallbackIndex];
-            document.getElementById('server').value = nextProvider;
-            loadProvider(nextProvider);
-        }
+    function fullscreenPlayer() {
+        const iframe = document.getElementById("player");
+        if (iframe.requestFullscreen) iframe.requestFullscreen();
+        else if (iframe.webkitRequestFullscreen) iframe.webkitRequestFullscreen();
+        else if (iframe.msRequestFullscreen) iframe.msRequestFullscreen();
     }
 
     function closePlayer() {
