@@ -222,28 +222,38 @@
     <div class="main">
 
         <div class="header">
-            <input type="text" id="search-input" placeholder="Search..." onkeydown="if(event.key==='Enter') search(this.value)">
+            <input
+                type="text"
+                id="search-input"
+                placeholder="Search..."
+                onkeydown="if(event.key==='Enter') search(this.value)"
+            >
         </div>
 
         <div class="controls" id="controls">
             <select id="server" onchange="updatePlayer(true)">
                 <option value="vidrock">VidRock</option>
                 <option value="vidsrcwin">VidSrcWin</option>
-                <option value="vidsrcvip">VidSrcVIP</option>
-                <option value="smashystream">SmashyStream</option>
-                <option value="multiembed">MultiEmbed</option>
+                <option value="zxcstream">ZXCStream</option>
+                <option value="vidsrcme">VidSrcMe</option>
             </select>
-            <button onclick="closePlayer()" style="background:none; border:none; color:#999; cursor:pointer; font-weight:bold;">✕ CLOSE</button>
+            <button
+                onclick="closePlayer()"
+                style="background:none; border:none; color:#999; cursor:pointer; font-weight:bold;"
+            >
+                ✕ CLOSE
+            </button>
         </div>
 
         <div id="grid"></div>
 
-        <iframe id="player"
-            sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"
+        <!-- sandbox removed so VidRock / VidSrc can load -->
+        <iframe
+            id="player"
             allowfullscreen
             allow="fullscreen"
-            referrerpolicy="origin">
-        </iframe>
+            referrerpolicy="origin"
+        ></iframe>
 
     </div>
 
@@ -257,37 +267,33 @@
 <script>
     const KEY = 'TMDB_REPLACE_ME';
 
-    // Cloudflare Worker Proxy
-    function proxy(url) {
-        return "https://simple-worker.prabhavd75.workers.dev/?url=" + encodeURIComponent(url);
-    }
+    // Provider definitions (adjust URLs if your providers use different patterns)
+    const SRC = {
+        // VidRock
+        vidrock: id => `https://vidrock.net/movie/${id}`,
+        vidrock_tv: (id, s, e) => `https://vidrock.net/embed/tv/${id}/${s}/${e}`,
 
-    // Provider definitions — YOU fill in the real URL patterns
-   const SRC = {
-    vidrock: id => `https://vidrock.net/movie/${id}`,
-    vidrock_tv: (id,s,e) => `https://vidrock.net/embed/tv/${id}/${s}/${e}`,
+        // VidSrc.win (common pattern: tmdb param)
+        vidsrcwin: id => `https://vidsrc.win/embed/movie?tmdb=${id}`,
+        vidsrcwin_tv: (id, s, e) =>
+            `https://vidsrc.win/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
 
-    vidsrcwin: id => `https://example.com/...`,
-    vidsrcwin_tv: (id,s,e) => `https://example.com/...`,
+        // ZXCStream (you gave a movie example)
+        zxcstream: id => `https://zxcstream.pro/movie/${id}`,
+        // If they support TV, you can add:
+        // zxcstream_tv: (id, s, e) => `https://zxcstream.pro/tv/${id}/${s}/${e}`,
 
-    vidsrcvip: id => `https://example.com/...`,
-    vidsrcvip_tv: (id,s,e) => `https://example.com/...`,
-
-    smashystream: id => `https://smashystream.com/embed/movie/tmdb/${id}`,
-    smashystream_tv: (id,s,e) => `https://smashystream.com/embed/tv/tmdb/${id}/${s}/${e}`,
-
-    multiembed: id => `https://multiembed.mov/?video_id=${id}`,
-    multiembed_tv: (id,s,e) => `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}`,
-
-    vidbinge: id => `https://vidbinge.dev/embed/movie/${id}`
-};
+        // VidSrcMe (vidsrcme.ru – guessed pattern, tweak if needed)
+        vidsrcme: id => `https://vidsrcme.ru/embed/movie?tmdb=${id}`,
+        vidsrcme_tv: (id, s, e) =>
+            `https://vidsrcme.ru/embed/tv?tmdb=${id}&season=${s}&episode=${e}`
+    };
 
     const FALLBACK_ORDER = [
         "vidrock",
         "vidsrcwin",
-        "vidsrcvip",
-        "smashystream",
-        "multiembed"
+        "zxcstream",
+        "vidsrcme"
     ];
 
     let curId, curType, curS, curE;
@@ -296,16 +302,28 @@
     window.onload = () => fetchTrending();
 
     async function fetchTrending() {
-        const res = await fetch(`https://api.themoviedb.org/3/trending/all/week?api_key=${KEY}`);
-        const data = await res.json();
-        render(data.results);
+        try {
+            const res = await fetch(
+                `https://api.themoviedb.org/3/trending/all/week?api_key=${KEY}`
+            );
+            const data = await res.json();
+            render(data.results || []);
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     async function search(q) {
-        if (!q) return fetchTrending();
-        const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${KEY}&query=${encodeURIComponent(q)}`);
-        const data = await res.json();
-        render(data.results);
+        if (!q || !q.trim()) return fetchTrending();
+        try {
+            const res = await fetch(
+                `https://api.themoviedb.org/3/search/multi?api_key=${KEY}&query=${encodeURIComponent(q)}`
+            );
+            const data = await res.json();
+            render(data.results || []);
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     function render(data) {
@@ -334,39 +352,56 @@
         curId = id;
         curType = 'tv';
 
-        const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${KEY}`);
-        const data = await res.json();
+        try {
+            const res = await fetch(
+                `https://api.themoviedb.org/3/tv/${id}?api_key=${KEY}`
+            );
+            const data = await res.json();
 
-        document.getElementById('modal').style.display = 'flex';
+            document.getElementById('modal').style.display = 'flex';
 
-        const sl = document.getElementById('s-list');
-        sl.innerHTML = "<b>Seasons</b><br><br>";
+            const sl = document.getElementById('s-list');
+            sl.innerHTML = "<b>Seasons</b><br><br>";
 
-        data.seasons.filter(s => s.season_number > 0).forEach(s => {
-            const b = document.createElement('div');
-            b.className = 'list-btn';
-            b.innerText = `Season ${s.season_number}`;
-            b.onclick = () => loadEpisodes(s.season_number);
-            sl.appendChild(b);
-        });
+            (data.seasons || [])
+                .filter(s => s.season_number > 0)
+                .forEach(s => {
+                    const b = document.createElement('div');
+                    b.className = 'list-btn';
+                    b.innerText = `Season ${s.season_number}`;
+                    b.onclick = () => loadEpisodes(s.season_number);
+                    sl.appendChild(b);
+                });
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     async function loadEpisodes(s) {
         curS = s;
 
-        const res = await fetch(`https://api.themoviedb.org/3/tv/${curId}/season/${s}?api_key=${KEY}`);
-        const data = await res.json();
+        try {
+            const res = await fetch(
+                `https://api.themoviedb.org/3/tv/${curId}/season/${s}?api_key=${KEY}`
+            );
+            const data = await res.json();
 
-        const el = document.getElementById('e-list');
-        el.innerHTML = "<b>Episodes</b><br><br>";
+            const el = document.getElementById('e-list');
+            el.innerHTML = "<b>Episodes</b><br><br>";
 
-        data.episodes.forEach(e => {
-            const b = document.createElement('div');
-            b.className = 'list-btn';
-            b.innerText = `E${e.episode_number}: ${e.name}`;
-            b.onclick = () => { curE = e.episode_number; play(curId, 'tv'); };
-            el.appendChild(b);
-        });
+            (data.episodes || []).forEach(e => {
+                const b = document.createElement('div');
+                b.className = 'list-btn';
+                b.innerText = `E${e.episode_number}: ${e.name}`;
+                b.onclick = () => {
+                    curE = e.episode_number;
+                    play(curId, 'tv');
+                };
+                el.appendChild(b);
+            });
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     function play(id, type) {
@@ -384,23 +419,36 @@
     }
 
     function updatePlayer(resetFallback = false) {
+        const select = document.getElementById('server');
+        const provider = select.value;
+
         if (resetFallback) {
-            fallbackIndex = FALLBACK_ORDER.indexOf(document.getElementById('server').value);
+            fallbackIndex = FALLBACK_ORDER.indexOf(provider);
+            if (fallbackIndex < 0) fallbackIndex = 0;
         }
-        loadProvider(document.getElementById('server').value);
+
+        loadProvider(provider);
     }
 
     function loadProvider(provider) {
         const iframe = document.getElementById('player');
 
+        let fn;
+        if (curType === 'movie') {
+            fn = SRC[provider];
+        } else {
+            fn = SRC[provider + "_tv"];
+        }
+
+        if (!fn) {
+            // no function for this type/provider, try next
+            return tryNextProvider();
+        }
+
         let url;
         if (curType === 'movie') {
-            url = SRC[provider](curId);
+            url = fn(curId);
         } else {
-            const fn = SRC[provider + "_tv"];
-            if (!fn) {
-                return tryNextProvider();
-            }
             url = fn(curId, curS, curE);
         }
 
@@ -408,6 +456,7 @@
 
         const currentIndex = fallbackIndex;
         setTimeout(() => {
+            // if nothing changed provider-wise, try next
             if (currentIndex === fallbackIndex) tryNextProvider();
         }, 3500);
     }
