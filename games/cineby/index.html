@@ -234,7 +234,8 @@
             <select id="server" onchange="updatePlayer()">
                 <option value="vidrock">VidRock</option>
                 <option value="vidsrcwin">VidSrcWin</option>
-                <option value="zxcstream">ZXCStream</option>
+                <option value="zxcstream">ZXCStream (XYZ)</option>
+                <option value="zxcstreampro">ZXCStream (PRO)</option>
                 <option value="vidsrcme">VidSrcMe</option>
                 <option value="godrive">GoDrivePlayer</option>
             </select>
@@ -256,12 +257,12 @@
 
     </div>
 
-    <div id="modal" onclick="if(event.target===this) this.style.display='none'">
-        <div class="modal-box">
-            <div class="side-col" id="s-list"></div>
-            <div class="main-col" id="e-list"></div>
-        </div>
+<div id="modal" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-box">
+        <div class="side-col" id="s-list"></div>
+        <div class="main-col" id="e-list"></div>
     </div>
+</div>
 
 <script>
     const KEY = 'TMDB_REPLACE_ME';
@@ -279,10 +280,16 @@
         vidsrcwin_tv: (id, s, e) =>
             `https://vidsrc.win/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
 
-        // ZXCStream
+        // ZXCStream (XYZ)
         zxcstream: id =>
-            `https://zxcstream.pro/watch/movie/${id}`,
+            `https://zxcstream.xyz/player/movie/${id}`,
         zxcstream_tv: (id, s, e) =>
+            `https://zxcstream.xyz/player/tv/${id}/${s}/${e}`,
+
+        // ZXCStream (PRO)
+        zxcstreampro: id =>
+            `https://zxcstream.pro/watch/movie/${id}`,
+        zxcstreampro_tv: (id, s, e) =>
             `https://zxcstream.pro/watch/tv/${id}/${s}/${e}`,
 
         // VidSrcMe (RU)
@@ -292,16 +299,14 @@
             `https://vidsrcme.ru/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
 
         // GoDrivePlayer
-        // Movie uses IMDB
         godrive: imdb =>
             `https://godriveplayer.com/player.php?imdb=${imdb}`,
-        // TV uses TMDB
         godrive_tv: (id, s, e) =>
             `https://godriveplayer.com/player.php?type=series&tmdb=${id}&season=${s}&episode=${e}`
     };
 
     let curId, curType, curS, curE;
-    let curImdbId = null; // for GoDrive movies
+    let curImdbId = null;
 
     window.onload = () => fetchTrending();
 
