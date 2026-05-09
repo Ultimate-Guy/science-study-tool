@@ -98,13 +98,18 @@
           background: true,
           studyMode: false,
         };
-        return JSON.parse(localStorage.getItem('preferences')) || defaults;
+        const stored = JSON.parse(localStorage.getItem('preferences') || 'null');
+        return Object.assign({}, defaults, stored || {});
       },
 
       apply: function() {
         const preferences = this.getPreferences();
         if (preferences.studyMode) {
           document.title = 'Science Study Tool';
+          const pageHeading = document.getElementById('title');
+          if (pageHeading) {
+            pageHeading.textContent = 'Science Study Tool';
+          }
           const metaDesc = document.querySelector('meta[name="description"]');
           if (metaDesc) {
             metaDesc.content = 'Educational platform for learning and research';
@@ -115,8 +120,10 @@
           }
         } else {
           document.title = 'UltraGG2';
-          const metaDesc = document.querySelector('meta[name="description"]');
-          if (metaDesc) {
+          const pageHeading = document.getElementById('title');
+          if (pageHeading) {
+            pageHeading.textContent = 'UltraGG2';
+          }
             metaDesc.content = 'Cool site for stuff';
           }
           const metaKeywords = document.querySelector('meta[name="keywords"]');
@@ -859,6 +866,210 @@ async function makeSelfAdmin() {
 
 // INIT
 updateAuthUI();
+</script>
+<script>
+(function() {
+  const replacements = {
+    'UltraGG2': 'Science Study Tool',
+    'Ultra GG2': 'Science Study Tool',
+    'Games': 'Educational Resources',
+    'games': 'educational resources',
+    'Game': 'Educational Resource',
+    'game': 'educational resource',
+    'Proxy': 'Research Tool',
+    'proxy': 'research tool',
+    'Unblocked': 'Accessible',
+    'unblocked': 'accessible',
+    'Search For Games...': 'Search For Educational Resources...',
+    'Random Game': 'Random Educational Resource',
+    'Random game': 'Random educational resource',
+    'Games Color:': 'Resources Color:',
+  };
 
+  function escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function getPreferences() {
+    const stored = JSON.parse(localStorage.getItem('preferences') || 'null');
+    return Object.assign({ studyMode: false }, stored || {});
+  }
+
+  function isStudyModeEnabled() {
+    return getPreferences().studyMode === true;
+  }
+
+  function replaceTextNodes(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parentName = node.parentNode && node.parentNode.nodeName;
+        if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'OPTION', 'INPUT', 'BUTTON', 'SELECT', 'CODE', 'PRE', 'TITLE', 'HEAD', 'META', 'LINK'].includes(parentName)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+
+    let node = walker.nextNode();
+    while (node) {
+      let text = node.nodeValue;
+      for (const [oldWord, newWord] of Object.entries(replacements)) {
+        text = text.replace(new RegExp('\\b' + escapeRegex(oldWord) + '\\b', 'g'), newWord);
+      }
+      if (text !== node.nodeValue) {
+        node.nodeValue = text;
+      }
+      node = walker.nextNode();
+    }
+  }
+
+  function applyStudyModeVisuals() {
+    if (!isStudyModeEnabled()) {
+      return;
+    }
+
+    replaceTextNodes(document.body);
+
+    const pageHeading = document.getElementById('title');
+    if (pageHeading) {
+      pageHeading.textContent = 'Science Study Tool';
+    }
+
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+      searchInput.placeholder = 'Search For Educational Resources...';
+    }
+
+    const randButton = document.querySelector('.randgame');
+    if (randButton) {
+      randButton.textContent = 'Random Educational Resource';
+    }
+
+    const studyNotice = document.getElementById('study-mode-status-box');
+    if (studyNotice) {
+      studyNotice.remove();
+    }
+
+    createStatusBox('Study mode is active. Validating games now...', false, true);
+  }
+
+  function createStatusBox(message, success, loading) {
+    let box = document.getElementById('study-mode-status-box');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'study-mode-status-box';
+      box.style.position = 'fixed';
+      box.style.left = '20px';
+      box.style.right = '20px';
+      box.style.bottom = '20px';
+      box.style.zIndex = '999999';
+      box.style.padding = '15px 20px';
+      box.style.borderRadius = '12px';
+      box.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.25)';
+      box.style.fontFamily = 'Arial, sans-serif';
+      box.style.fontSize = '0.95rem';
+      box.style.color = '#fff';
+      box.style.display = 'flex';
+      box.style.alignItems = 'center';
+      box.style.justifyContent = 'space-between';
+      box.style.gap = '12px';
+      box.style.maxWidth = 'calc(100% - 40px)';
+      box.style.backdropFilter = 'blur(10px)';
+      document.body.appendChild(box);
+    }
+
+    box.style.background = success ? '#1d7a2b' : '#3f4b61';
+    if (loading) {
+      box.style.background = '#37517e';
+    }
+
+    const icon = success ? '✅' : loading ? '⏳' : '⚠️';
+    box.innerHTML = `<span style="flex:1;">${icon} ${message}</span>`;
+
+    if (success) {
+      const reload = document.createElement('span');
+      reload.style.marginLeft = '16px';
+      reload.style.opacity = '0.85';
+      reload.textContent = 'Reload page for new effects.';
+      box.appendChild(reload);
+    }
+  }
+
+  async function fetchUrl(url) {
+    try {
+      const response = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      if (response.ok) return true;
+    } catch (error) {
+      try {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (response.ok) return true;
+      } catch (innerError) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  async function validateGameLinks() {
+    const listItems = Array.from(document.querySelectorAll('#gamesList li'));
+    if (!listItems.length) {
+      createStatusBox('Study mode is active, but the game list is not loaded yet. Reload page to try again.', false, false);
+      return;
+    }
+
+    const urls = [...new Set(listItems.map((item) => item.getAttribute('url')).filter(Boolean))];
+    if (!urls.length) {
+      createStatusBox('Study mode is active, but no game URLs were found to verify.', false, false);
+      return;
+    }
+
+    let failed = 0;
+    for (let i = 0; i < urls.length; i += 1) {
+      const url = urls[i];
+      createStatusBox(`Checking ${i + 1}/${urls.length}: ${url}`, false, true);
+      // Use relative fetch for same-origin game paths
+      const ok = await fetchUrl(url);
+      if (!ok) {
+        failed += 1;
+      }
+    }
+
+    if (failed === 0) {
+      createStatusBox('Study mode is working ✅ All game links were verified successfully.', true, false);
+    } else {
+      createStatusBox(`Study mode is active, but ${failed}/${urls.length} game URLs failed to verify. Reload page and retry.`, false, false);
+    }
+  }
+
+  function initStudyMode() {
+    document.addEventListener('DOMContentLoaded', () => {
+      const checkbox = document.getElementById('studyModeCheckboxInput');
+      if (!checkbox) return;
+
+      checkbox.checked = isStudyModeEnabled();
+
+      checkbox.addEventListener('change', () => {
+        const prefs = getPreferences();
+        prefs.studyMode = checkbox.checked;
+        localStorage.setItem('preferences', JSON.stringify(prefs));
+        applyStudyModeVisuals();
+        if (checkbox.checked) {
+          validateGameLinks();
+        } else {
+          createStatusBox('Study mode has been turned off. Reload page for normal appearance.', false, false);
+        }
+      });
+
+      if (isStudyModeEnabled()) {
+        applyStudyModeVisuals();
+        validateGameLinks();
+      }
+    });
+  }
+
+  initStudyMode();
+})();
+</script>
 </body>
 </html>

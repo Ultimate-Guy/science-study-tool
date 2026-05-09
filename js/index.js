@@ -747,12 +747,17 @@ const preferencesDefaults = {
     maskTitle: 'Home',
     maskIconUrl: 'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png',
     background: true,
+    studyMode: false,
 };
 
 if (localStorage.getItem('preferences') == null) {
     localStorage.setItem('preferences', JSON.stringify(preferencesDefaults));
 }
 const preferences = JSON.parse(localStorage.getItem('preferences'));
+if (!('studyMode' in preferences)) {
+    preferences.studyMode = false;
+    localStorage.setItem('preferences', JSON.stringify(preferences));
+}
 const cloakCheckbox = document.getElementById('cloakCheckboxInput');
 const backgroundCheckbox = document.getElementById('backgroundCheckboxInput');
 const cloakUrl = document.getElementById('cloakUrlInput');
