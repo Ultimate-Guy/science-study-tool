@@ -754,12 +754,9 @@ function applyStudyMode() {
     };
 
     if (preferences.studyMode) {
-        // Replace text in DOM
-        document.querySelectorAll('*').forEach(element => {
-            if (element.children.length === 0 && element.textContent && 
-                element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE' && 
-                element.tagName !== 'LINK' && element.tagName !== 'META' && 
-                !element.querySelector('.star')) {
+        // Replace text in specific elements
+        document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span:not(.star)').forEach(element => {
+            if (element.children.length === 0 && element.textContent) {
                 let text = element.textContent;
                 for (const [oldWord, newWord] of Object.entries(replacements)) {
                     text = text.replace(new RegExp('\\b' + oldWord + '\\b', 'g'), newWord);
