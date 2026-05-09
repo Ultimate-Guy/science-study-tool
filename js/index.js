@@ -740,6 +740,74 @@ function randomGame() {
     currentMenu = $('#page-loader');
 }
 
+function applyStudyMode() {
+    const replacements = {
+        'Games': 'Educational Resources',
+        'games': 'educational resources',
+        'Game': 'Educational Resource',
+        'game': 'educational resource',
+        'Proxy': 'Research Tool',
+        'proxy': 'research tool',
+        'Unblocked': 'Accessible',
+        'unblocked': 'accessible',
+        'UltraGG2': 'Science Study Tool'
+    };
+
+    if (preferences.studyMode) {
+        // Replace text in DOM
+        document.querySelectorAll('*').forEach(element => {
+            if (element.children.length === 0 && element.textContent && !element.querySelector('.star')) {
+                let text = element.textContent;
+                for (const [oldWord, newWord] of Object.entries(replacements)) {
+                    text = text.replace(new RegExp('\\b' + oldWord + '\\b', 'g'), newWord);
+                }
+                element.textContent = text;
+            }
+        });
+
+        // Update games list
+        document.querySelectorAll('#gamesList li').forEach(li => {
+            const star = li.querySelector('.star');
+            let text = li.textContent.replace('★', '').trim();
+            for (const [oldWord, newWord] of Object.entries(replacements)) {
+                text = text.replace(new RegExp('\\b' + oldWord + '\\b', 'g'), newWord);
+            }
+            li.textContent = text;
+            li.appendChild(star);
+        });
+
+        // Update placeholders
+        const searchInput = document.getElementById('search');
+        if (searchInput) {
+            searchInput.placeholder = 'Search For Educational Resources...';
+        }
+
+        // Update button text
+        const randGameBtn = document.querySelector('.randgame');
+        if (randGameBtn) {
+            randGameBtn.textContent = 'Random Educational Resource';
+        }
+
+        // Update title
+        document.title = 'Science Study Tool';
+
+        // Update meta description
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+            metaDesc.content = 'Educational platform for learning and research';
+        }
+
+        // Update keywords
+        const metaKeywords = document.querySelector('meta[name="keywords"]');
+        if (metaKeywords) {
+            metaKeywords.content = 'education, learning, research, study tools, science, math, history, literature';
+        }
+    } else {
+        // Revert to original
+        location.reload();
+    }
+}
+
 const preferencesDefaults = {
     cloak: true,
     cloakUrl: 'https://classroom.google.com',
@@ -747,6 +815,7 @@ const preferencesDefaults = {
     maskTitle: 'Home',
     maskIconUrl: 'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png',
     background: true,
+    studyMode: false,
 };
 
 if (localStorage.getItem('preferences') == null) {
@@ -755,6 +824,7 @@ if (localStorage.getItem('preferences') == null) {
 const preferences = JSON.parse(localStorage.getItem('preferences'));
 const cloakCheckbox = document.getElementById('cloakCheckboxInput');
 const backgroundCheckbox = document.getElementById('backgroundCheckboxInput');
+const studyModeCheckbox = document.getElementById('studyModeCheckboxInput');
 const cloakUrl = document.getElementById('cloakUrlInput');
 const maskCheckbox = document.getElementById('maskCheckboxInput');
 const maskTitle = document.getElementById('maskTitleInput');
@@ -765,6 +835,9 @@ maskCheckbox.checked = preferences.mask;
 maskTitle.value = preferences.maskTitle;
 maskIcon.value = preferences.maskIconUrl;
 backgroundCheckbox.checked = preferences.background;
+studyModeCheckbox.checked = preferences.studyMode;
+
+applyStudyMode();
 
 const presets = {
     classroom: {
@@ -836,6 +909,12 @@ backgroundCheckbox.addEventListener('change', function () {
     preferences.background = backgroundCheckbox.checked;
     localStorage.setItem('preferences', JSON.stringify(preferences));
     inGame = !preferences.background;
+});
+
+studyModeCheckbox.addEventListener('change', function () {
+    preferences.studyMode = studyModeCheckbox.checked;
+    localStorage.setItem('preferences', JSON.stringify(preferences));
+    applyStudyMode();
 });
 
 /* if it is wanted to save on input change wather than submission

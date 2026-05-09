@@ -24,12 +24,24 @@ let games = json['games'];
 let themes = json['themes'];
 let config = json['config'];
 
+const preferences = JSON.parse(localStorage.getItem('preferences')) || {};
+const studyMode = preferences.studyMode || false;
+
 let gamesList = $('#gamesList');
 for (game in games) {
+    let displayName = game;
+    if (studyMode) {
+        // Replace game names with educational equivalents
+        displayName = game.replace(/\bGames?\b/g, 'Educational Resources')
+                          .replace(/\bProxy\b/g, 'Research Tool')
+                          .replace(/\bUnblocked\b/g, 'Accessible')
+                          .replace(/\bUltraGG2\b/g, 'Science Study Tool');
+        // Add more replacements as needed
+    }
     gamesList.append(
         `<li url="games/${games[game]['path']}" ${
             games[game]['aliases'] ? 'aliases="' + games[game]['aliases'].join(',') + '"' : ''
-        }>${game} <span class="star">★</span> </li>`,
+        }>${displayName} <span class="star">★</span> </li>`,
     );
 }
 
