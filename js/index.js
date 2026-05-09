@@ -770,13 +770,14 @@ function applyStudyMode() {
 
         // Update games list
         document.querySelectorAll('#gamesList li').forEach(li => {
-            const star = li.querySelector('.star');
             let text = li.textContent.replace('★', '').trim();
             for (const [oldWord, newWord] of Object.entries(replacements)) {
                 text = text.replace(new RegExp('\\b' + oldWord + '\\b', 'g'), newWord);
             }
-            li.textContent = text;
-            li.appendChild(star);
+            const textNode = li.firstChild;
+            if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                textNode.textContent = text + ' ';
+            }
         });
 
         // Update placeholders
