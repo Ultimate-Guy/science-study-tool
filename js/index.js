@@ -740,36 +740,6 @@ function randomGame() {
     currentMenu = $('#page-loader');
 }
 
-function applyStudyMode() {
-    if (preferences.studyMode) {
-        // Update title
-        document.title = 'Science Study Tool';
-
-        // Update meta description
-        const metaDesc = document.querySelector('meta[name="description"]');
-        if (metaDesc) {
-            metaDesc.content = 'Educational platform for learning and research';
-        }
-
-        // Update keywords
-        const metaKeywords = document.querySelector('meta[name="keywords"]');
-        if (metaKeywords) {
-            metaKeywords.content = 'education, learning, research, study tools, science, math, history, literature';
-        }
-    } else {
-        // Revert to original
-        document.title = 'UltraGG2';
-        const metaDesc = document.querySelector('meta[name="description"]');
-        if (metaDesc) {
-            metaDesc.content = 'Cool site for stuff';
-        }
-        const metaKeywords = document.querySelector('meta[name="keywords"]');
-        if (metaKeywords) {
-            metaKeywords.content = 'games, gamez, unblocked, unblocked games, tunnel rush, run 3, run, 3, hacks, chrome dino unblocked, chrome dino, chrome dinosaur, dinosaur game, dinosaur, chrome hacks, chrome dino hacks, chrome dinosaur hacks, chrome dino game hack, unblocked game site, idle breakout, idle breakout hack, idle breakout save, idle breakout code, idle breakout save generator, idle breakout unblocked, 2048, 2048 unblocked, 2048 no ads, no ads, ads, 2048 high score, cookie clicker, cookie clicker unblocked, cookie clicker github, cookie clicker no ads, flappy bird, flappy bird no ads, flappy bird unblocked, flash games, flash, bloons, bloons tower defense, bloons td, bloons td 1, bloons td 2, bloons td 3, bloons td 4, bloons td 5, bloons td 6, online, duck life, duck life 1, duck life 2, ducklife 3, factory balls, learn to fly, learn to fly game, raft wars, the impossible quiz, this is the only level, impossible quiz, impossible quiz online, impossible quiz answers, impossible quiz question, imposible quiz, quiz, quiz answers, hextris, retrobowl, retrobowl unblocked, retrobowl online, rooftop snipers, rooftop snipers unblocked, slope, slope online, slope unblocked, slope unblocked site, slope unblocked no ads, slope unblocked google site, slope unblocked online, slope unblocked school, smart ball, tunnel rush, tunnel rush online, tunnel rush unblocked, tunnel rush unblocked site, tunnel rush unblocked no ads, tunnel rush unblocked google site, slope google site, tunnel rush google site, tunnel rush unblocked online, tunnel rush unblocked school';
-        }
-    }
-}
-
 const preferencesDefaults = {
     cloak: true,
     cloakUrl: 'https://classroom.google.com',
@@ -777,7 +747,6 @@ const preferencesDefaults = {
     maskTitle: 'Home',
     maskIconUrl: 'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png',
     background: true,
-    studyMode: false,
 };
 
 if (localStorage.getItem('preferences') == null) {
@@ -786,7 +755,6 @@ if (localStorage.getItem('preferences') == null) {
 const preferences = JSON.parse(localStorage.getItem('preferences'));
 const cloakCheckbox = document.getElementById('cloakCheckboxInput');
 const backgroundCheckbox = document.getElementById('backgroundCheckboxInput');
-const studyModeCheckbox = document.getElementById('studyModeCheckboxInput');
 const cloakUrl = document.getElementById('cloakUrlInput');
 const maskCheckbox = document.getElementById('maskCheckboxInput');
 const maskTitle = document.getElementById('maskTitleInput');
@@ -797,11 +765,6 @@ maskCheckbox.checked = preferences.mask;
 maskTitle.value = preferences.maskTitle;
 maskIcon.value = preferences.maskIconUrl;
 backgroundCheckbox.checked = preferences.background;
-studyModeCheckbox.checked = preferences.studyMode;
-
-if (preferences.studyMode) {
-    applyStudyMode();
-}
 
 const presets = {
     classroom: {
@@ -873,16 +836,6 @@ backgroundCheckbox.addEventListener('change', function () {
     preferences.background = backgroundCheckbox.checked;
     localStorage.setItem('preferences', JSON.stringify(preferences));
     inGame = !preferences.background;
-});
-
-studyModeCheckbox.addEventListener('change', function () {
-    preferences.studyMode = studyModeCheckbox.checked;
-    localStorage.setItem('preferences', JSON.stringify(preferences));
-    if (preferences.studyMode) {
-        applyStudyMode();
-    } else {
-        location.reload();
-    }
 });
 
 /* if it is wanted to save on input change wather than submission
