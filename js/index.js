@@ -756,7 +756,10 @@ function applyStudyMode() {
     if (preferences.studyMode) {
         // Replace text in DOM
         document.querySelectorAll('*').forEach(element => {
-            if (element.children.length === 0 && element.textContent && !element.querySelector('.star')) {
+            if (element.children.length === 0 && element.textContent && 
+                element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE' && 
+                element.tagName !== 'LINK' && element.tagName !== 'META' && 
+                !element.querySelector('.star')) {
                 let text = element.textContent;
                 for (const [oldWord, newWord] of Object.entries(replacements)) {
                     text = text.replace(new RegExp('\\b' + oldWord + '\\b', 'g'), newWord);
@@ -802,9 +805,6 @@ function applyStudyMode() {
         if (metaKeywords) {
             metaKeywords.content = 'education, learning, research, study tools, science, math, history, literature';
         }
-    } else {
-        // Revert to original
-        location.reload();
     }
 }
 
@@ -837,7 +837,9 @@ maskIcon.value = preferences.maskIconUrl;
 backgroundCheckbox.checked = preferences.background;
 studyModeCheckbox.checked = preferences.studyMode;
 
-applyStudyMode();
+if (preferences.studyMode) {
+    applyStudyMode();
+}
 
 const presets = {
     classroom: {
@@ -914,7 +916,11 @@ backgroundCheckbox.addEventListener('change', function () {
 studyModeCheckbox.addEventListener('change', function () {
     preferences.studyMode = studyModeCheckbox.checked;
     localStorage.setItem('preferences', JSON.stringify(preferences));
-    applyStudyMode();
+    if (preferences.studyMode) {
+        applyStudyMode();
+    } else {
+        location.reload();
+    }
 });
 
 /* if it is wanted to save on input change wather than submission
