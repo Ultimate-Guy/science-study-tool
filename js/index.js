@@ -741,54 +741,7 @@ function randomGame() {
 }
 
 function applyStudyMode() {
-    const replacements = {
-        'Games': 'Educational Resources',
-        'games': 'educational resources',
-        'Game': 'Educational Resource',
-        'game': 'educational resource',
-        'Proxy': 'Research Tool',
-        'proxy': 'research tool',
-        'Unblocked': 'Accessible',
-        'unblocked': 'accessible',
-        'UltraGG2': 'Science Study Tool'
-    };
-
     if (preferences.studyMode) {
-        // Replace text in specific elements
-        document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span:not(.star)').forEach(element => {
-            if (element.children.length === 0 && element.textContent) {
-                let text = element.textContent;
-                for (const [oldWord, newWord] of Object.entries(replacements)) {
-                    text = text.replace(new RegExp('\\b' + oldWord + '\\b', 'g'), newWord);
-                }
-                element.textContent = text;
-            }
-        });
-
-        // Update games list
-        document.querySelectorAll('#gamesList li').forEach(li => {
-            let text = li.textContent.replace('★', '').trim();
-            for (const [oldWord, newWord] of Object.entries(replacements)) {
-                text = text.replace(new RegExp('\\b' + oldWord + '\\b', 'g'), newWord);
-            }
-            const textNode = li.firstChild;
-            if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-                textNode.textContent = text + ' ';
-            }
-        });
-
-        // Update placeholders
-        const searchInput = document.getElementById('search');
-        if (searchInput) {
-            searchInput.placeholder = 'Search For Educational Resources...';
-        }
-
-        // Update button text
-        const randGameBtn = document.querySelector('.randgame');
-        if (randGameBtn) {
-            randGameBtn.textContent = 'Random Educational Resource';
-        }
-
         // Update title
         document.title = 'Science Study Tool';
 
@@ -802,6 +755,17 @@ function applyStudyMode() {
         const metaKeywords = document.querySelector('meta[name="keywords"]');
         if (metaKeywords) {
             metaKeywords.content = 'education, learning, research, study tools, science, math, history, literature';
+        }
+    } else {
+        // Revert to original
+        document.title = 'UltraGG2';
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+            metaDesc.content = 'Cool site for stuff';
+        }
+        const metaKeywords = document.querySelector('meta[name="keywords"]');
+        if (metaKeywords) {
+            metaKeywords.content = 'games, gamez, unblocked, unblocked games, tunnel rush, run 3, run, 3, hacks, chrome dino unblocked, chrome dino, chrome dinosaur, dinosaur game, dinosaur, chrome hacks, chrome dino hacks, chrome dinosaur hacks, chrome dino game hack, unblocked game site, idle breakout, idle breakout hack, idle breakout save, idle breakout code, idle breakout save generator, idle breakout unblocked, 2048, 2048 unblocked, 2048 no ads, no ads, ads, 2048 high score, cookie clicker, cookie clicker unblocked, cookie clicker github, cookie clicker no ads, flappy bird, flappy bird no ads, flappy bird unblocked, flash games, flash, bloons, bloons tower defense, bloons td, bloons td 1, bloons td 2, bloons td 3, bloons td 4, bloons td 5, bloons td 6, online, duck life, duck life 1, duck life 2, ducklife 3, factory balls, learn to fly, learn to fly game, raft wars, the impossible quiz, this is the only level, impossible quiz, impossible quiz online, impossible quiz answers, impossible quiz question, imposible quiz, quiz, quiz answers, hextris, retrobowl, retrobowl unblocked, retrobowl online, rooftop snipers, rooftop snipers unblocked, slope, slope online, slope unblocked, slope unblocked site, slope unblocked no ads, slope unblocked google site, slope unblocked online, slope unblocked school, smart ball, tunnel rush, tunnel rush online, tunnel rush unblocked, tunnel rush unblocked site, tunnel rush unblocked no ads, tunnel rush unblocked google site, slope google site, tunnel rush google site, tunnel rush unblocked online, tunnel rush unblocked school';
         }
     }
 }
