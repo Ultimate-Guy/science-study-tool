@@ -1,5 +1,196 @@
 let currentMenu = $('.homepage');
 
+const STUDY_REPLACEMENTS = {
+    'UltraGG2': 'Science Study Tool',
+    'Games': 'Educational Resources',
+    'games': 'educational resources',
+    'Game': 'Educational Resource',
+    'game': 'educational resource',
+    'Proxy': 'Research Tool',
+    'proxy': 'research tool',
+    'Unblocked': 'Accessible',
+    'unblocked': 'accessible',
+    'Search For Games...': 'Search For Educational Resources...',
+    'Random Game': 'Random Educational Resource',
+};
+
+function getStudyPreferences() {
+    const stored = JSON.parse(localStorage.getItem('preferences') || 'null');
+    return Object.assign({ studyMode: false }, stored || {});
+}
+
+function isStudyModeActive() {
+    return getStudyPreferences().studyMode === true;
+}
+
+function showStudyModeStatus(message, success = false, loading = false) {
+    let box = document.getElementById('study-mode-status-box');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'study-mode-status-box';
+        box.style.position = 'fixed';
+        box.style.left = '20px';
+        box.style.right = '20px';
+        box.style.bottom = '20px';
+        box.style.zIndex = '999999';
+        box.style.padding = '15px 20px';
+        box.style.borderRadius = '14px';
+        box.style.boxShadow = '0 8px 30px rgba(0,0,0,0.25)';
+        box.style.fontFamily = 'Arial, sans-serif';
+        box.style.fontSize = '0.95rem';
+        box.style.color = '#fff';
+        box.style.display = 'flex';
+        box.style.alignItems = 'center';
+        box.style.justifyContent = 'space-between';
+        box.style.gap = '12px';
+        box.style.maxWidth = 'calc(100% - 40px)';
+        box.style.backdropFilter = 'blur(10px)';
+        document.body.appendChild(box);
+    }
+
+    if (loading) {
+        box.style.background = '#2f4f7f';
+    } else if (success) {
+        box.style.background = '#1e7d33';
+    } else {
+        box.style.background = '#6b3d16';
+    }
+
+    const icon = loading ? '⏳' : success ? '✅' : '⚠️';
+    box.innerHTML = '';
+
+    const messageSpan = document.createElement('span');
+    messageSpan.style.flex = '1';
+    messageSpan.textContent = `${icon} ${message}`;
+    box.appendChild(messageSpan);
+
+    if (success) {
+        const extra = document.createElement('span');
+        extra.style.marginLeft = '16px';
+        extra.style.opacity = '0.9';
+        extra.textContent = 'Reload page for new effects.';
+        box.appendChild(extra);
+    }
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = '✕';
+    closeButton.style.border = 'none';
+    closeButton.style.background = 'transparent';
+    closeButton.style.color = '#fff';
+    closeButton.style.fontSize = '1.1rem';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.opacity = '0.85';
+    closeButton.style.padding = '0 8px';
+    closeButton.addEventListener('click', () => box.remove());
+    box.appendChild(closeButton);
+}
+
+function replaceTextNodes(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            const parentName = node.parentNode && node.parentNode.nodeName;
+            if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+            if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'OPTION', 'INPUT', 'BUTTON', 'SELECT', 'CODE', 'PRE', 'TITLE', 'HEAD', 'META', 'LINK'].includes(parentName)) {
+                return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+        }
+    });
+
+    let node = walker.nextNode();
+    while (node) {
+        let text = node.nodeValue;
+        for (const [oldWord, newWord] of Object.entries(STUDY_REPLACEMENTS)) {
+            text = text.replace(new RegExp('\\b' + oldWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), newWord);
+        }
+        if (text !== node.nodeValue) {
+            node.nodeValue = text;
+        }
+        node = walker.nextNode();
+    }
+}
+
+async function fetchWithFallback(url) {
+    const tried = new Set();
+    const paths = [url];
+    const [path, query] = url.split('?');
+    if (!path.includes('.html') && !path.endsWith('/')) {
+        paths.push(path + '/index.html' + (query ? '?' + query : ''));
+    }
+
+    for (const candidate of paths) {
+        if (tried.has(candidate)) continue;
+        tried.add(candidate);
+        try {
+            const response = await fetch(candidate, { cache: 'no-store' });
+            if (response.ok) {
+                return { url: candidate, text: await response.text() };
+            }
+        } catch (error) {
+            // continue to next fallback
+        }
+    }
+    throw new Error('Failed to fetch game with fallback');
+}
+
+async function loadGameInIframe(url) {
+    const iframe = document.querySelector('#page-loader iframe');
+    if (!iframe) return;
+
+    if (!isStudyModeActive() || url.startsWith('http://') || url.startsWith('https://')) {
+        iframe.src = url;
+        return;
+    }
+
+    const maxAttempts = 3;
+    let attempt = 0;
+    let lastError = null;
+
+    while (attempt < maxAttempts) {
+        attempt += 1;
+        showStudyModeStatus(`Cloaking game code for study mode... (attempt ${attempt}/${maxAttempts})`, false, true);
+        try {
+            const result = await fetchWithFallback(url);
+            const html = result.text;
+            const actualUrl = result.url;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            if (!doc.head.querySelector('base')) {
+                const base = doc.createElement('base');
+                base.href = actualUrl.substring(0, actualUrl.lastIndexOf('/') + 1);
+                doc.head.insertBefore(base, doc.head.firstChild);
+            }
+
+            const title = doc.querySelector('title');
+            if (title) {
+                title.textContent = title.textContent.replace(/UltraGG2/g, 'Science Study Tool');
+            }
+            replaceTextNodes(doc.documentElement);
+
+            iframe.srcdoc = '<!doctype html>' + doc.documentElement.outerHTML;
+
+            iframe.onload = () => {
+                showStudyModeStatus('Study mode cloaking completed. Game is loaded.', true, false);
+            };
+            return;
+        } catch (err) {
+            lastError = err;
+            if (attempt < maxAttempts) {
+                showStudyModeStatus(`Cloaking attempt ${attempt} failed, retrying...`, false, true);
+                await new Promise((resolve) => setTimeout(resolve, 500));
+                continue;
+            }
+        }
+    }
+
+    showStudyModeStatus('Study mode cloaking failed, loading normally...', false, true);
+    iframe.src = url;
+    iframe.onload = () => showStudyModeStatus('Game loaded normally after failed cloaking.', false, false);
+}
+
+window.loadGameInIframe = loadGameInIframe;
+
 $('.column button .card').on('click', function () {
     let nextMenu = this.getAttribute('data');
 
@@ -726,16 +917,19 @@ function restoreColorChanges() {
     });
 }
 
-function randomGame() {
+async function randomGame() {
     const gameLinks = document.querySelectorAll('#gamesList li');
     const randomIndex = Math.floor(Math.random() * gameLinks.length);
     const randomGameLink = gameLinks[randomIndex];
-    // window.location.href = randomGameLink.getAttribute('url');
     const url = randomGameLink.getAttribute('url');
     inGame = true;
     $('#everything-else').fadeOut();
     $('#page-loader').fadeIn();
-    $('#page-loader iframe').attr('src', url);
+    if (window.loadGameInIframe) {
+        await window.loadGameInIframe(url);
+    } else {
+        $('#page-loader iframe').attr('src', url);
+    }
     $('#page-loader iframe')[0].focus();
     currentMenu = $('#page-loader');
 }

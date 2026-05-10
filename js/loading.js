@@ -98,7 +98,11 @@ $('#gamesList li').on('click', function () {
     inGame = true;
     $('#everything-else').fadeOut();
     $('#page-loader').fadeIn();
-    $('#page-loader iframe').attr('src', url);
+    if (window.loadGameInIframe) {
+        window.loadGameInIframe(url);
+    } else {
+        $('#page-loader iframe').attr('src', url);
+    }
     $('#page-loader iframe')[0].focus();
     currentMenu = $('#page-loader');
 });

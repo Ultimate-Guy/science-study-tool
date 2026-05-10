@@ -124,6 +124,8 @@
           if (pageHeading) {
             pageHeading.textContent = 'UltraGG2';
           }
+          const metaDesc = document.querySelector('meta[name="description"]');
+          if (metaDesc) {
             metaDesc.content = 'Cool site for stuff';
           }
           const metaKeywords = document.querySelector('meta[name="keywords"]');
@@ -924,6 +926,24 @@ updateAuthUI();
     }
   }
 
+  async function fetchUrl(url) {
+    const candidates = [url];
+    const [path, query] = url.split('?');
+    if (!path.includes('.html') && !path.endsWith('/')) {
+      candidates.push(path + '/index.html' + (query ? '?' + query : ''));
+    }
+
+    for (const candidate of candidates) {
+      try {
+        const response = await fetch(candidate, { cache: 'no-store' });
+        if (response.ok) return true;
+      } catch (error) {
+        // try next fallback
+      }
+    }
+    return false;
+  }
+
   function applyStudyModeVisuals() {
     if (!isStudyModeEnabled()) {
       return;
@@ -985,7 +1005,12 @@ updateAuthUI();
     }
 
     const icon = success ? '✅' : loading ? '⏳' : '⚠️';
-    box.innerHTML = `<span style="flex:1;">${icon} ${message}</span>`;
+    box.innerHTML = '';
+
+    const messageSpan = document.createElement('span');
+    messageSpan.style.flex = '1';
+    messageSpan.textContent = `${icon} ${message}`;
+    box.appendChild(messageSpan);
 
     if (success) {
       const reload = document.createElement('span');
@@ -994,21 +1019,18 @@ updateAuthUI();
       reload.textContent = 'Reload page for new effects.';
       box.appendChild(reload);
     }
-  }
 
-  async function fetchUrl(url) {
-    try {
-      const response = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-      if (response.ok) return true;
-    } catch (error) {
-      try {
-        const response = await fetch(url, { cache: 'no-store' });
-        if (response.ok) return true;
-      } catch (innerError) {
-        return false;
-      }
-    }
-    return false;
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.border = 'none';
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.color = '#fff';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.fontSize = '1.1rem';
+    closeBtn.style.opacity = '0.9';
+    closeBtn.style.padding = '0 8px';
+    closeBtn.addEventListener('click', () => box.remove());
+    box.appendChild(closeBtn);
   }
 
   async function validateGameLinks() {
@@ -1025,20 +1047,36 @@ updateAuthUI();
     }
 
     let failed = 0;
+    const failedUrls = [];
     for (let i = 0; i < urls.length; i += 1) {
       const url = urls[i];
       createStatusBox(`Checking ${i + 1}/${urls.length}: ${url}`, false, true);
-      // Use relative fetch for same-origin game paths
       const ok = await fetchUrl(url);
       if (!ok) {
         failed += 1;
+        failedUrls.push(url);
       }
+    }
+
+    if (failed > 0) {
+      createStatusBox(`Retrying ${failed} failed game URLs...`, false, true);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      let retryFailed = 0;
+      for (let i = 0; i < failedUrls.length; i += 1) {
+        const url = failedUrls[i];
+        createStatusBox(`Retrying ${i + 1}/${failedUrls.length}: ${url}`, false, true);
+        const ok = await fetchUrl(url);
+        if (!ok) {
+          retryFailed += 1;
+        }
+      }
+      failed = retryFailed;
     }
 
     if (failed === 0) {
       createStatusBox('Study mode is working ✅ All game links were verified successfully.', true, false);
     } else {
-      createStatusBox(`Study mode is active, but ${failed}/${urls.length} game URLs failed to verify. Reload page and retry.`, false, false);
+      createStatusBox(`Study mode is active, but ${failed}/${urls.length} game URLs still failed to verify. Reload page and retry.`, false, false);
     }
   }
 
