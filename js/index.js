@@ -110,6 +110,16 @@ function replaceTextNodes(root) {
     }
 }
 
+function normalizeGameUrl(url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+    const [path, query] = url.split('?');
+    if (!path.includes('.html') && !path.endsWith('/')) {
+        return path + '/index.html' + (query ? '?' + query : '');
+    }
+    return url;
+}
+
 async function fetchWithFallback(url) {
     const tried = new Set();
     const paths = [url];
@@ -133,12 +143,25 @@ async function fetchWithFallback(url) {
     throw new Error('Failed to fetch game with fallback');
 }
 
+function createBlobFromDocument(doc, actualUrl) {
+    if (!doc.head.querySelector('base')) {
+        const base = doc.createElement('base');
+        base.href = actualUrl.substring(0, actualUrl.lastIndexOf('/') + 1);
+        doc.head.insertBefore(base, doc.head.firstChild);
+    }
+
+    const html = '<!doctype html>' + doc.documentElement.outerHTML;
+    const blob = new Blob([html], { type: 'text/html' });
+    return URL.createObjectURL(blob);
+}
+
 async function loadGameInIframe(url) {
     const iframe = document.querySelector('#page-loader iframe');
     if (!iframe) return;
 
-    if (!isStudyModeActive() || url.startsWith('http://') || url.startsWith('https://')) {
-        iframe.src = url;
+    const normalizedUrl = normalizeGameUrl(url);
+    if (!isStudyModeActive() || normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
+        iframe.src = normalizedUrl;
         return;
     }
 
@@ -156,22 +179,17 @@ async function loadGameInIframe(url) {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
 
-            if (!doc.head.querySelector('base')) {
-                const base = doc.createElement('base');
-                base.href = actualUrl.substring(0, actualUrl.lastIndexOf('/') + 1);
-                doc.head.insertBefore(base, doc.head.firstChild);
-            }
-
             const title = doc.querySelector('title');
             if (title) {
                 title.textContent = title.textContent.replace(/UltraGG2/g, 'Science Study Tool');
             }
             replaceTextNodes(doc.documentElement);
 
-            iframe.srcdoc = '<!doctype html>' + doc.documentElement.outerHTML;
-
+            const blobUrl = createBlobFromDocument(doc, actualUrl);
+            iframe.src = blobUrl;
             iframe.onload = () => {
                 showStudyModeStatus('Study mode cloaking completed. Game is loaded.', true, false);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
             };
             return;
         } catch (err) {
@@ -185,7 +203,7 @@ async function loadGameInIframe(url) {
     }
 
     showStudyModeStatus('Study mode cloaking failed, loading normally...', false, true);
-    iframe.src = url;
+    iframe.src = normalizedUrl;
     iframe.onload = () => showStudyModeStatus('Game loaded normally after failed cloaking.', false, false);
 }
 

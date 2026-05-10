@@ -87,7 +87,7 @@ function updateGameList() {
 
 updateGameList();
 
-$('#gamesList li').on('click', function () {
+$('#gamesList li').on('click', async function () {
     let url = $(this).attr('url');
     if (window.location.protocol === 'file:' && !url.includes('.html')) {
         const searchParamsIndex = url.indexOf('?');
@@ -99,7 +99,7 @@ $('#gamesList li').on('click', function () {
     $('#everything-else').fadeOut();
     $('#page-loader').fadeIn();
     if (window.loadGameInIframe) {
-        window.loadGameInIframe(url);
+        await window.loadGameInIframe(url);
     } else {
         $('#page-loader iframe').attr('src', url);
     }
