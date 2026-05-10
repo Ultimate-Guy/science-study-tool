@@ -167,6 +167,15 @@ function createBlobFromDocument(doc, actualUrl) {
     return URL.createObjectURL(blob);
 }
 
+function createCloakedHtml(doc, actualUrl) {
+    if (!doc.head.querySelector('base')) {
+        const base = doc.createElement('base');
+        base.href = actualUrl.substring(0, actualUrl.lastIndexOf('/') + 1);
+        doc.head.insertBefore(base, doc.head.firstChild);
+    }
+    return '<!doctype html>' + doc.documentElement.outerHTML;
+}
+
 async function loadGameInIframe(url) {
     const iframe = document.querySelector('#page-loader iframe');
     if (!iframe) return;
@@ -174,6 +183,7 @@ async function loadGameInIframe(url) {
     const normalizedUrl = normalizeGameUrl(url);
     setLastLoadedGame(normalizedUrl);
     if (!isStudyModeActive() || normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
+        iframe.removeAttribute('srcdoc');
         iframe.src = normalizedUrl;
         return;
     }
@@ -198,9 +208,22 @@ async function loadGameInIframe(url) {
             }
             replaceTextNodes(doc.documentElement);
 
-            const blobUrl = createBlobFromDocument(doc, actualUrl);
-            setLastLoadedGame(normalizedUrl, blobUrl);
-            iframe.src = blobUrl;
+            const cloakedHtml = createCloakedHtml(doc, actualUrl);
+            iframe.onerror = () => {
+                showStudyModeStatus('Study mode cloaking failed in iframe, falling back to normal load.', false, true);
+                iframe.removeAttribute('srcdoc');
+                iframe.src = normalizedUrl;
+            };
+
+            if (typeof iframe.srcdoc !== 'undefined') {
+                iframe.srcdoc = cloakedHtml;
+                iframe.removeAttribute('src');
+            } else {
+                const blobUrl = createBlobFromDocument(doc, actualUrl);
+                setLastLoadedGame(normalizedUrl, blobUrl);
+                iframe.src = blobUrl;
+            }
+
             iframe.onload = () => {
                 showStudyModeStatus('Study mode cloaking completed. Game is loaded.', true, false);
             };
@@ -217,6 +240,7 @@ async function loadGameInIframe(url) {
 
     showStudyModeStatus('Study mode cloaking failed, loading normally...', false, true);
     setLastLoadedGame(normalizedUrl);
+    iframe.removeAttribute('srcdoc');
     iframe.src = normalizedUrl;
     iframe.onload = () => showStudyModeStatus('Game loaded normally after failed cloaking.', false, false);
 }
