@@ -120,6 +120,20 @@ function replaceTextNodes(root) {
         }
         node = walker.nextNode();
     }
+
+    // Also replace in script text content
+    const scripts = root.querySelectorAll('script');
+    for (const script of scripts) {
+        if (script.textContent) {
+            let text = script.textContent;
+            for (const [oldWord, newWord] of Object.entries(STUDY_REPLACEMENTS)) {
+                text = text.replace(new RegExp('\\b' + oldWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), newWord);
+            }
+            if (text !== script.textContent) {
+                script.textContent = text;
+            }
+        }
+    }
 }
 
 function normalizeGameUrl(url) {
@@ -173,7 +187,32 @@ function createCloakedHtml(doc, actualUrl) {
         base.href = actualUrl.substring(0, actualUrl.lastIndexOf('/') + 1);
         doc.head.insertBefore(base, doc.head.firstChild);
     }
+
+    // Absolutize all relative URLs
+    absolutizeUrls(doc, window.location.origin + '/' + actualUrl.substring(0, actualUrl.lastIndexOf('/') + 1));
+
     return '<!doctype html>' + doc.documentElement.outerHTML;
+}
+
+function absolutizeUrls(doc, baseUrl) {
+    const selectors = '[src], [href], [data-src], link[rel="stylesheet"], script[src], img[src], audio[src], video[src], source[src], iframe[src], embed[src], object[data]';
+    const elements = doc.querySelectorAll(selectors);
+
+    for (const el of elements) {
+        const attrs = ['src', 'href', 'data-src', 'data'];
+        for (const attr of attrs) {
+            if (el.hasAttribute(attr)) {
+                const value = el.getAttribute(attr);
+                if (value && !value.startsWith('http://') && !value.startsWith('https://') && !value.startsWith('data:') && !value.startsWith('#') && !value.startsWith('javascript:')) {
+                    try {
+                        el.setAttribute(attr, new URL(value, baseUrl).href);
+                    } catch (e) {
+                        // ignore invalid URLs
+                    }
+                }
+            }
+        }
+    }
 }
 
 async function loadGameInIframe(url) {
