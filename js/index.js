@@ -1,4 +1,6 @@
 let currentMenu = $('.homepage');
+let lastGameUrl = null;
+let lastStudyModeBlobUrl = null;
 
 const STUDY_REPLACEMENTS = {
     'UltraGG2': 'Science Study Tool',
@@ -21,6 +23,16 @@ function getStudyPreferences() {
 
 function isStudyModeActive() {
     return getStudyPreferences().studyMode === true;
+}
+
+function setLastLoadedGame(url, blobUrl = null) {
+    lastGameUrl = url;
+    if (blobUrl) {
+        if (lastStudyModeBlobUrl && lastStudyModeBlobUrl !== blobUrl) {
+            URL.revokeObjectURL(lastStudyModeBlobUrl);
+        }
+        lastStudyModeBlobUrl = blobUrl;
+    }
 }
 
 function showStudyModeStatus(message, success = false, loading = false) {
@@ -68,7 +80,7 @@ function showStudyModeStatus(message, success = false, loading = false) {
         const extra = document.createElement('span');
         extra.style.marginLeft = '16px';
         extra.style.opacity = '0.9';
-        extra.textContent = 'Reload page for new effects.';
+        extra.textContent = 'Reload game for new effects.';
         box.appendChild(extra);
     }
 
@@ -160,6 +172,7 @@ async function loadGameInIframe(url) {
     if (!iframe) return;
 
     const normalizedUrl = normalizeGameUrl(url);
+    setLastLoadedGame(normalizedUrl);
     if (!isStudyModeActive() || normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
         iframe.src = normalizedUrl;
         return;
@@ -186,10 +199,10 @@ async function loadGameInIframe(url) {
             replaceTextNodes(doc.documentElement);
 
             const blobUrl = createBlobFromDocument(doc, actualUrl);
+            setLastLoadedGame(normalizedUrl, blobUrl);
             iframe.src = blobUrl;
             iframe.onload = () => {
                 showStudyModeStatus('Study mode cloaking completed. Game is loaded.', true, false);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
             };
             return;
         } catch (err) {
@@ -203,6 +216,7 @@ async function loadGameInIframe(url) {
     }
 
     showStudyModeStatus('Study mode cloaking failed, loading normally...', false, true);
+    setLastLoadedGame(normalizedUrl);
     iframe.src = normalizedUrl;
     iframe.onload = () => showStudyModeStatus('Game loaded normally after failed cloaking.', false, false);
 }
@@ -627,13 +641,20 @@ function toggleStar(event, star) {
  * @return {void}
  */
   function refreshPage() {
-      const oldUrl = $('#page-loader iframe').attr('src');
-      console.log(oldUrl);
-      $('#page-loader iframe').attr('src', '');
+      const iframe = $('#page-loader iframe');
+      const currentUrl = lastGameUrl || iframe.attr('src');
+      if (!currentUrl) {
+          return;
+      }
 
-      // delay is needed for some reason
+      if (isStudyModeActive() && lastGameUrl) {
+          loadGameInIframe(lastGameUrl);
+          return;
+      }
+
+      iframe.attr('src', '');
       setTimeout(() => {
-          $('#page-loader iframe').attr('src', oldUrl);
+          iframe.attr('src', currentUrl);
       }, 10);
   }
 
