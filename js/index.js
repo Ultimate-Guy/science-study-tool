@@ -226,67 +226,57 @@ async function loadGameInIframe(url) {
 
     const normalizedUrl = normalizeGameUrl(url);
     setLastLoadedGame(normalizedUrl);
+
+    // If not study mode or external URL, use normal src loading
     if (!isStudyModeActive() || normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
         iframe.removeAttribute('srcdoc');
-        iframe.src = normalizedUrl;
+        iframe.setAttribute('src', normalizedUrl);
         return;
     }
 
-    const maxAttempts = 3;
-    let attempt = 0;
-    let lastError = null;
+    // Study mode: fetch HTML and inject via srcdoc
+    showStudyModeStatus('Loading game in study mode...', false, true);
+    try {
+        const response = await fetch(normalizedUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Failed to fetch game');
 
-    while (attempt < maxAttempts) {
-        attempt += 1;
-        showStudyModeStatus(`Cloaking game code for study mode... (attempt ${attempt}/${maxAttempts})`, false, true);
-        try {
-            const result = await fetchWithFallback(url);
-            const html = result.text;
-            const actualUrl = result.url;
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
+        let html = await response.text();
 
-            const title = doc.querySelector('title');
-            if (title) {
-                title.textContent = title.textContent.replace(/UltraGG2/g, 'Science Study Tool');
-            }
-            replaceTextNodes(doc.documentElement);
-
-            const cloakedHtml = createCloakedHtml(doc, actualUrl);
-            iframe.onerror = () => {
-                showStudyModeStatus('Study mode cloaking failed in iframe, falling back to normal load.', false, true);
-                iframe.removeAttribute('srcdoc');
-                iframe.src = normalizedUrl;
-            };
-
-            if (typeof iframe.srcdoc !== 'undefined') {
-                iframe.srcdoc = cloakedHtml;
-                iframe.removeAttribute('src');
-            } else {
-                const blobUrl = createBlobFromDocument(doc, actualUrl);
-                setLastLoadedGame(normalizedUrl, blobUrl);
-                iframe.src = blobUrl;
-            }
-
-            iframe.onload = () => {
-                showStudyModeStatus('Study mode cloaking completed. Game is loaded.', true, false);
-            };
-            return;
-        } catch (err) {
-            lastError = err;
-            if (attempt < maxAttempts) {
-                showStudyModeStatus(`Cloaking attempt ${attempt} failed, retrying...`, false, true);
-                await new Promise((resolve) => setTimeout(resolve, 500));
-                continue;
-            }
+        // Add base tag if missing
+        if (!html.includes('<base')) {
+            const baseUrl = normalizedUrl.substring(0, normalizedUrl.lastIndexOf('/') + 1);
+            html = html.replace(/<head[^>]*>/i, `<head><base href="${baseUrl}">`);
         }
-    }
 
-    showStudyModeStatus('Study mode cloaking failed, loading normally...', false, true);
-    setLastLoadedGame(normalizedUrl);
-    iframe.removeAttribute('srcdoc');
-    iframe.src = normalizedUrl;
-    iframe.onload = () => showStudyModeStatus('Game loaded normally after failed cloaking.', false, false);
+        // Apply study mode text replacements in HTML
+        for (const [oldWord, newWord] of Object.entries(STUDY_REPLACEMENTS)) {
+            html = html.replace(new RegExp(`\\b${oldWord.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, 'g'), newWord);
+        }
+
+        // Inject HTML directly into iframe
+        iframe.removeAttribute('src');
+        iframe.srcdoc = html;
+
+        iframe.onload = () => {
+            showStudyModeStatus('Study mode game loaded successfully!', true, false);
+        };
+
+        iframe.onerror = () => {
+            showStudyModeStatus('Game failed to load. Trying normal mode...', false, true);
+            setTimeout(() => {
+                iframe.removeAttribute('srcdoc');
+                iframe.setAttribute('src', normalizedUrl);
+            }, 500);
+        };
+
+    } catch (error) {
+        console.error('Study mode load failed:', error);
+        showStudyModeStatus('Study mode failed, loading normally...', false, true);
+        setTimeout(() => {
+            iframe.removeAttribute('srcdoc');
+            iframe.setAttribute('src', normalizedUrl);
+        }, 500);
+    }
 }
 
 window.loadGameInIframe = loadGameInIframe;
@@ -709,20 +699,19 @@ function toggleStar(event, star) {
  * @return {void}
  */
   function refreshPage() {
-      const iframe = $('#page-loader iframe');
-      const currentUrl = lastGameUrl || iframe.attr('src');
-      if (!currentUrl) {
-          return;
-      }
-
-      if (isStudyModeActive() && lastGameUrl) {
+      if (!lastGameUrl) return;
+      
+      // If study mode is active, reload through the study mode loader
+      if (isStudyModeActive()) {
           loadGameInIframe(lastGameUrl);
           return;
       }
 
+      // Otherwise, just refresh the iframe src
+      const iframe = $('#page-loader iframe');
       iframe.attr('src', '');
       setTimeout(() => {
-          iframe.attr('src', currentUrl);
+          iframe.attr('src', lastGameUrl);
       }, 10);
   }
 

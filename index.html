@@ -1,91 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-       <!-- 1. PANIC SYSTEM (Must be first to start listening immediately) -->
+  <style>
+    /* Hide panic key code immediately on page load */
+    .panic-key-code, #panic-key-system { display: none !important; visibility: hidden !important; }
+  </style>
+  <!-- 1. PANIC SYSTEM (Must be first to start listening immediately) -->
   <script>
     // Store original base URL for about:blank cloaking
     localStorage.setItem('originalBase', window.location.origin + '/');
-  </script>
-      getSettings: () => ({
-        key: localStorage.getItem('panicKey') || "",
-        url: localStorage.getItem('panicUrl') || "https://google.com"
-      }),
-
-      trigger: () => {
-        const { url } = PanicSystem.getSettings();
-        const finalUrl = url.startsWith('http') ? url : 'https://' + url;
-        document.body.innerHTML = ""; 
-        window.top.location.replace(finalUrl);
-      },
-
-      attachToIframe: (iframe) => {
-        try {
-          iframe.addEventListener('load', () => {
-            const frameWin = iframe.contentWindow;
-            frameWin.addEventListener('keydown', (e) => {
-              const { key } = PanicSystem.getSettings();
-              if (key && e.key === key && key !== "Press any key...") {
-                PanicSystem.trigger();
-              }
-            }, true);
-          });
-        } catch (e) { /* Different domain protection */ }
-      },
-
-      init: () => {
-        window.addEventListener('keydown', (e) => {
-          const { key } = PanicSystem.getSettings();
-          if (key && e.key === key && key !== "Press any key...") {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            PanicSystem.trigger();
-          }
-        }, true);
-
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach(m => m.addedNodes.forEach(node => {
-            if (node.tagName === 'IFRAME') PanicSystem.attachToIframe(node);
-            else if (node.querySelectorAll) {
-              node.querySelectorAll('iframe').forEach(PanicSystem.attachToIframe);
-            }
-          }));
-        });
-        
-        document.addEventListener('DOMContentLoaded', () => {
-          observer.observe(document.body, { childList: true, subtree: true });
-          document.querySelectorAll('iframe').forEach(PanicSystem.attachToIframe);
-
-          const input = document.getElementById('panicKeyInput');
-          const urlInput = document.getElementById('panicUrlInput');
-          const saveBtn = document.getElementById('savePanicSettings');
-
-          // --- FIX: LOAD SAVED URL INTO THE INPUT BOX ---
-          if (urlInput) {
-            urlInput.value = PanicSystem.getSettings().url;
-          }
-
-          if (input) {
-            input.value = PanicSystem.getSettings().key || "Click & press a key...";
-            input.onclick = () => { input.value = "Press any key..."; };
-            input.onkeydown = (e) => {
-              e.preventDefault();
-              localStorage.setItem('panicKey', e.key);
-              input.value = e.key;
-              input.blur();
-            };
-          }
-
-          if (saveBtn && urlInput) {
-            saveBtn.onclick = () => {
-              localStorage.setItem('panicUrl', urlInput.value);
-              saveBtn.innerText = "✅ Settings Saved!";
-              setTimeout(() => { saveBtn.innerText = "Save Panic Settings"; }, 2000);
-            };
-          }
-        });
-      }
-    };
-    PanicSystem.init();
+    
+    const PanicSystem = {
   </script>
   
   <script>
