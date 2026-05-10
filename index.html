@@ -3,7 +3,9 @@
 <head>
        <!-- 1. PANIC SYSTEM (Must be first to start listening immediately) -->
   <script>
-    const PanicSystem = {
+    // Store original base URL for about:blank cloaking
+    localStorage.setItem('originalBase', window.location.origin + '/');
+  </script>
       getSettings: () => ({
         key: localStorage.getItem('panicKey') || "",
         url: localStorage.getItem('panicUrl') || "https://google.com"

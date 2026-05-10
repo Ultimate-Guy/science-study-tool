@@ -154,13 +154,17 @@ async function fetchWithFallback(url) {
         paths.push(path + '/index.html' + (query ? '?' + query : ''));
     }
 
+    // If in about:blank, use stored original base
+    const base = window.location.href === 'about:blank' ? localStorage.getItem('originalBase') || '' : '';
+
     for (const candidate of paths) {
         if (tried.has(candidate)) continue;
         tried.add(candidate);
         try {
-            const response = await fetch(candidate, { cache: 'no-store' });
+            const fullUrl = base + candidate;
+            const response = await fetch(fullUrl, { cache: 'no-store' });
             if (response.ok) {
-                return { url: candidate, text: await response.text() };
+                return { url: fullUrl, text: await response.text() };
             }
         } catch (error) {
             // continue to next fallback
@@ -189,7 +193,8 @@ function createCloakedHtml(doc, actualUrl) {
     }
 
     // Absolutize all relative URLs
-    absolutizeUrls(doc, window.location.origin + '/' + actualUrl.substring(0, actualUrl.lastIndexOf('/') + 1));
+    const origin = window.location.href === 'about:blank' ? localStorage.getItem('originalBase') || window.location.origin : window.location.origin;
+    absolutizeUrls(doc, origin + actualUrl.substring(0, actualUrl.lastIndexOf('/') + 1));
 
     return '<!doctype html>' + doc.documentElement.outerHTML;
 }
