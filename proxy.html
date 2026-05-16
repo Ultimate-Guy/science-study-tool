@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phoenix Proxy</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    :root {
+      color-scheme: dark;
+      color: #f4f4f4;
+      background: #090909;
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #080808; }
+    body, button, input, select { font: 16px Inter, system-ui, sans-serif; }
+    .proxy-shell { display: flex; flex-direction: column; min-height: 100vh; }
+    .proxy-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; background: #100908; border-bottom: 1px solid #2f2f2f; }
+    .proxy-brand { display: grid; gap: 4px; }
+    .proxy-brand h1 { margin: 0; font-size: 1.25rem; letter-spacing: 0.02em; color: #fa2f2f; }
+    .proxy-brand p { margin: 0; color: #c7c7c7; font-size: 0.95rem; }
+    .proxy-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .proxy-actions button { border: 1px solid #4f4f4f; background: #121212; color: #fff; padding: 10px 14px; border-radius: 10px; cursor: pointer; }
+    .proxy-status { color: #efefef; font-size: 0.92rem; opacity: 0.9; }
+    .proxy-tabs { display: flex; align-items: center; gap: 10px; padding: 0 20px 10px; background: #090909; border-bottom: 1px solid #202020; overflow-x: auto; }
+    .proxy-tab { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 10px 14px; background: #151515; border: 1px solid #2f2f2f; color: #eee; cursor: pointer; white-space: nowrap; }
+    .proxy-tab.active { background: #220606; border-color: #ff3f3f; color: #fff; }
+    .proxy-tab .close-tab { margin-left: 6px; font-size: 0.85rem; color: #b5b5b5; }
+    .proxy-tab-add { min-width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2f2f2f; background: #141414; color: #ff4f4f; cursor: pointer; }
+    .proxy-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 16px 20px; background: #0f0f0f; border-bottom: 1px solid #2c2c2c; }
+    .proxy-toolbar button { width: 48px; height: 44px; border-radius: 12px; border: none; background: #141414; color: #f4f4f4; cursor: pointer; }
+    .proxy-toolbar input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid #2d2d2d; background: #111; color: #fff; }
+    .proxy-toolbar select { padding: 10px 12px; border-radius: 12px; border: 1px solid #2d2d2d; background: #111; color: #fff; }
+    .proxy-toolbar .go-button { min-width: 84px; }
+    .proxy-main { display: grid; grid-template-columns: 320px 1fr; gap: 14px; padding: 16px; flex: 1; }
+    .proxy-sidebar { display: flex; flex-direction: column; gap: 16px; color: #e6e6e6; }
+    .proxy-panel { background: #111; border: 1px solid #222; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .proxy-panel h3 { margin: 0 0 4px; font-size: 1rem; color: #ff4f4f; }
+    .proxy-panel p { margin: 0; color: #aaa; font-size: 0.95rem; }
+    .proxy-bookmarks, .proxy-quick-links { display: grid; gap: 10px; list-style: none; padding: 0; margin: 0; }
+    .proxy-bookmarks li, .proxy-quick-links button { border-radius: 12px; background: #131313; border: 1px solid #2b2b2b; padding: 12px 14px; color: #f4f4f4; cursor: pointer; text-align: left; }
+    .proxy-bookmarks li:hover, .proxy-panel button:hover, .proxy-quick-links button:hover { border-color: #ff3f3f; }
+    .proxy-panel button { border: 1px solid #2b2b2b; background: #141414; color: #f4f4f4; padding: 10px 12px; border-radius: 12px; cursor: pointer; }
+    .proxy-panel label { display: grid; gap: 6px; font-size: 0.95rem; }
+    .proxy-view { position: relative; display: flex; flex-direction: column; gap: 12px; }
+    .proxy-view iframe { flex: 1; width: 100%; min-height: 0; border: 1px solid #222; border-radius: 18px; background: #000; }
+    .proxy-footer { display: flex; justify-content: space-between; padding: 12px 16px; border-radius: 14px; background: rgba(22,22,22,0.95); color: #c9c9c9; font-size: 0.95rem; }
+    .proxy-sidebar .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .proxy-status-tag { font-size: 0.82rem; padding: 4px 10px; border-radius: 999px; background:#1d1d1d; color:#d7d7d7; }
+    .proxy-sidebar .server-list { display: grid; gap: 8px; }
+    @media(max-width: 960px) { .proxy-main { grid-template-columns: 1fr; } .proxy-toolbar { flex-direction: column; align-items: stretch; } }
+  </style>
+</head>
+<body>
+  <div class="proxy-shell">
+    <header class="proxy-header">
+      <div class="proxy-brand">
+        <h1>Phoenix Proxy</h1>
+        <p>Your browser-style proxy with tabs, bookmarks, and WISP server selection.</p>
+      </div>
+      <div class="proxy-actions">
+        <button id="proxy-return-home">Return Home</button>
+      </div>
+    </header>
+
+    <div class="proxy-tabs" id="proxy-tabs"></div>
+
+    <div class="proxy-toolbar">
+      <button id="proxy-back">◀</button>
+      <button id="proxy-forward">▶</button>
+      <button id="proxy-reload">⟳</button>
+      <input id="proxy-address" type="text" placeholder="Enter URL or search term" autocomplete="off" spellcheck="false" />
+      <button id="proxy-go" class="go-button">Go</button>
+      <button id="proxy-bookmark-current" title="Bookmark current page">★</button>
+    </div>
+
+    <div class="proxy-main">
+      <aside class="proxy-sidebar">
+        <section class="proxy-panel">
+          <h3>Bookmarks</h3>
+          <ul id="proxy-bookmarks" class="proxy-bookmarks"></ul>
+          <button id="proxy-add-bookmark">Add Current Page</button>
+        </section>
+
+        <section class="proxy-panel">
+          <h3>Proxy Settings</h3>
+          <label>
+            Transport
+            <select id="proxy-transport">
+              <option value="epoxy">Epoxy (recommended)</option>
+              <option value="libcurl">Libcurl</option>
+            </select>
+          </label>
+          <label>
+            Default Search Engine
+            <select id="proxy-search-engine"></select>
+          </label>
+          <label>
+            WISP Server
+            <select id="proxy-server"></select>
+          </label>
+          <div class="switch-row">
+            <span>Auto-switch servers</span>
+            <button id="proxy-autoswitch">Toggle</button>
+          </div>
+          <button id="proxy-save-settings">Save Proxy Settings</button>
+        </section>
+
+        <section class="proxy-panel">
+          <h3>Quick Links</h3>
+          <div class="proxy-quick-links">
+            <button data-url="https://duckduckgo.com">DuckDuckGo</button>
+            <button data-url="https://google.com">Google</button>
+            <button data-url="https://youtube.com">YouTube</button>
+            <button data-url="https://chat.openai.com">OpenAI Chat</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="proxy-view">
+        <iframe id="proxy-frame" src="about:blank"></iframe>
+        <div class="proxy-footer">
+          <span id="proxy-page-title">Ready</span>
+          <span id="proxy-status">Proxy not initialized</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <iframe id="bg-proxy-bootstrap" src="bg-proxy.html" style="display:none; width:0; height:0; border:none;"></iframe>
+  <script src="js/proxy.js"></script>
+</body>
+</html>

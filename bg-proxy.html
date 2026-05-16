@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bg-proxy</title>
+    <script src="https://cdn.jsdelivr.net/gh/Destroyed12121/Staticsj@main/JS/scramjet.all.js" defer></script>
+    <script type="module">
+        import * as BareMux from "https://cdn.jsdelivr.net/npm/@mercuryworkshop/bare-mux/dist/index.mjs";
+        window.BareMux = BareMux;
+        window.bareMuxReady = true;
+        window.parent.postMessage({ type: 'proxy-ready' }, '*');
+    </script>
+</head>
+<body>
+    <script>
+        const DEFAULT_WISP_SERVERS = [
+            'wss://incog.works/wisp/',
+            'wss://lunarrr.eminescusm.ro/w/'
+        ];
+
+        const DEFAULT_TRANSPORT = 'epoxy';
+        const TRANSPORT_MODULES = {
+            epoxy: 'https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport@2.1.28/dist/index.mjs',
+            libcurl: 'https://cdn.jsdelivr.net/npm/@mercuryworkshop/libcurl-transport@1.0.0/dist/index.mjs'
+        };
+
+        let connectionInstance = null;
+        let initPromise = null;
+
+        function getPreference(key, fallback) {
+            const value = localStorage.getItem(key);
+            return value === null ? fallback : value;
+        }
+
+        async function pingWispServer(url) {
+            const start = Date.now();
+            try {
+                return new Promise((resolve) => {
+                    const socket = new WebSocket(url);
+                    const timeout = setTimeout(() => {
+                        socket.close();
+                        resolve({ success: false, latency: null, url });
+                    }, 2500);
+
+                    socket.onopen = () => {
+                        const latency = Date.now() - start;
+                        clearTimeout(timeout);
+                        socket.close();
+                        resolve({ success: true, latency, url });
+                    };
+
+                    socket.onerror = () => {
+                        clearTimeout(timeout);
+                        socket.close();
+                        resolve({ success: false, latency: null, url });
+                    };
+                });
+            } catch (error) {
+                return { success: false, latency: null, url };
+            }
+        }
+
+        async function chooseWispServer() {
+            const preferred = getPreference('proxy_server', DEFAULT_WISP_SERVERS[0]);
+            const autoSwitch = getPreference('proxy_autoswitch', 'true') !== 'false';
+            const candidates = [preferred, ...DEFAULT_WISP_SERVERS.filter((u) => u !== preferred)];
+            if (!autoSwitch) return preferred;
+            const results = await Promise.all(candidates.map(pingWispServer));
+            const available = results.filter((r) => r.success).sort((a, b) => a.latency - b.latency);
+            return available[0]?.url || preferred;
+        }
+
+        async function ensureConnection() {
+            if (connectionInstance) return connectionInstance;
+            if (initPromise) return initPromise;
+
+            initPromise = (async () => {
+                let retries = 0;
+                while (!window.BareMux && retries < 50) {
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+                    retries += 1;
+                }
+
+                if (!window.BareMux) {
+                    throw new Error('BareMux not ready');
+                }
+
+                const transport = getPreference('proxy_transport', DEFAULT_TRANSPORT);
+                const moduleUrl = TRANSPORT_MODULES[transport] || TRANSPORT_MODULES.epoxy;
+                const wispUrl = await chooseWispServer();
+
+                const connection = new BareMux.BareMuxConnection('./bareworker.js');
+                try {
+                    await connection.setTransport(moduleUrl, [{ wisp: wispUrl }]);
+                } catch (error) {
+                    console.warn('[BG-Proxy] Transport failed, falling back to epoxy', error);
+                    await connection.setTransport(TRANSPORT_MODULES.epoxy, [{ wisp: wispUrl }]);
+                }
+
+                connectionInstance = connection;
+                return connectionInstance;
+            })();
+
+            return initPromise;
+        }
+
+        async function proxyImage(url, requestId) {
+            try {
+                const conn = await ensureConnection();
+                const client = new window.BareMux.BareClient(conn);
+                const response = await client.fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const reader = new FileReader();
+
+                return new Promise((resolve) => {
+                    reader.onload = () => {
+                        window.parent.postMessage({
+                            type: 'bg-proxy-response',
+                            requestId,
+                            success: true,
+                            data: reader.result,
+                            contentType: blob.type || 'application/octet-stream'
+                        }, '*');
+                        resolve();
+                    };
+                    reader.onerror = () => {
+                        window.parent.postMessage({
+                            type: 'bg-proxy-response',
+                            requestId,
+                            success: false,
+                            error: 'Failed to read blob'
+                        }, '*');
+                        resolve();
+                    };
+                    reader.readAsDataURL(blob);
+                });
+            } catch (error) {
+                console.error('[BG-Proxy] Failed to proxy image:', error);
+                window.parent.postMessage({
+                    type: 'bg-proxy-response',
+                    requestId,
+                    success: false,
+                    error: error.message
+                }, '*');
+            }
+        }
+
+        window.addEventListener('message', async (event) => {
+            if (event.data?.type === 'bg-proxy-request' && event.data.url && event.data.requestId) {
+                await proxyImage(event.data.url, event.data.requestId);
+            }
+        });
+    </script>
+</body>
+</html>

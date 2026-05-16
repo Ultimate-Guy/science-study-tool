@@ -227,59 +227,75 @@ async function loadGameInIframe(url) {
     const normalizedUrl = normalizeGameUrl(url);
     setLastLoadedGame(normalizedUrl);
 
-    // If not study mode or external URL, use normal src loading
-    if (!isStudyModeActive() || normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
-        iframe.removeAttribute('srcdoc');
-        iframe.setAttribute('src', normalizedUrl);
-        return;
-    }
-
-    // Study mode: fetch HTML and inject via srcdoc
-    showStudyModeStatus('Loading game in study mode...', false, true);
-    try {
-        const response = await fetch(normalizedUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error('Failed to fetch game');
-
-        let html = await response.text();
-
-        // Add base tag if missing
-        if (!html.includes('<base')) {
-            const baseUrl = normalizedUrl.substring(0, normalizedUrl.lastIndexOf('/') + 1);
-            html = html.replace(/<head[^>]*>/i, `<head><base href="${baseUrl}">`);
-        }
-
-        // Apply study mode text replacements in HTML
-        for (const [oldWord, newWord] of Object.entries(STUDY_REPLACEMENTS)) {
-            html = html.replace(new RegExp(`\\b${oldWord.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, 'g'), newWord);
-        }
-
-        // Inject HTML directly into iframe
-        iframe.removeAttribute('src');
-        iframe.srcdoc = html;
-
-        iframe.onload = () => {
-            showStudyModeStatus('Study mode game loaded successfully!', true, false);
-        };
-
-        iframe.onerror = () => {
-            showStudyModeStatus('Game failed to load. Trying normal mode...', false, true);
-            setTimeout(() => {
-                iframe.removeAttribute('srcdoc');
-                iframe.setAttribute('src', normalizedUrl);
-            }, 500);
-        };
-
-    } catch (error) {
-        console.error('Study mode load failed:', error);
-        showStudyModeStatus('Study mode failed, loading normally...', false, true);
-        setTimeout(() => {
-            iframe.removeAttribute('srcdoc');
-            iframe.setAttribute('src', normalizedUrl);
-        }, 500);
+    // Always use normal iframe src loading for best compatibility
+    // The service worker and proxy will handle requests transparently
+    iframe.removeAttribute('srcdoc');
+    iframe.setAttribute('src', normalizedUrl);
+    
+    // If study mode is active, optionally apply text replacements
+    if (isStudyModeActive()) {
+        iframe.addEventListener('load', () => {
+            try {
+                const frameDoc = iframe.contentDocument || iframe.contentWindow.document;
+                if (frameDoc) {
+                    replaceTextNodes(frameDoc.body);
+                    showStudyModeStatus('Study mode text replacements applied!', true, false);
+                }
+            } catch (e) {
+                // Cross-origin restrictions - this is expected for external games
+                console.log('Study mode replacements skipped (cross-origin game)');
+            }
+        }, { once: true });
     }
 }
 
 window.loadGameInIframe = loadGameInIframe;
+
+function getProxySetting(key, defaultValue) {
+    const value = localStorage.getItem('proxy_' + key);
+    return value === null ? defaultValue : value;
+}
+
+function initProxySettingsControls() {
+    const transportSelect = document.getElementById('proxyTransportSelect');
+    const searchEngineSelect = document.getElementById('proxySearchEngineSelect');
+    const serverSelect = document.getElementById('proxyServerSelect');
+    const autoSwitchToggle = document.getElementById('proxyAutoSwitchToggle');
+
+    if (!transportSelect || !searchEngineSelect || !serverSelect || !autoSwitchToggle) return;
+
+    transportSelect.value = getProxySetting('transport', 'epoxy');
+    searchEngineSelect.value = getProxySetting('searchEngine', 'google');
+    serverSelect.value = getProxySetting('server', 'wss://incog.works/wisp/');
+    const autoswitch = getProxySetting('autoswitch', 'true') === 'true';
+    autoSwitchToggle.classList.toggle('active', autoswitch);
+    autoSwitchToggle.textContent = autoswitch ? 'Auto-switch servers: ON' : 'Auto-switch servers: OFF';
+
+    transportSelect.addEventListener('change', (e) => {
+        localStorage.setItem('proxy_transport', e.target.value);
+        if (window.Notify) Notify.success('Saved', 'Proxy transport updated');
+        setTimeout(() => location.reload(), 500);
+    });
+
+    searchEngineSelect.addEventListener('change', (e) => {
+        localStorage.setItem('proxy_searchEngine', e.target.value);
+        if (window.Notify) Notify.success('Saved', 'Proxy default search engine updated');
+    });
+
+    serverSelect.addEventListener('change', (e) => {
+        localStorage.setItem('proxy_server', e.target.value);
+        if (window.Notify) Notify.success('Saved', 'Proxy server updated');
+    });
+
+    autoSwitchToggle.addEventListener('click', () => {
+        const enabled = autoSwitchToggle.classList.toggle('active');
+        localStorage.setItem('proxy_autoswitch', enabled ? 'true' : 'false');
+        autoSwitchToggle.textContent = enabled ? 'Auto-switch servers: ON' : 'Auto-switch servers: OFF';
+        if (window.Notify) Notify.success('Saved', 'Proxy auto-switch ' + (enabled ? 'enabled' : 'disabled'));
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initProxySettingsControls);
 
 $('.column button .card').on('click', function () {
     let nextMenu = this.getAttribute('data');
@@ -289,11 +305,8 @@ $('.column button .card').on('click', function () {
             $('#disabled').showModal();
             return;
         }
-        $('#everything-else').fadeOut(300, () => {
-            $('#page-loader').fadeIn(200);
-            $('#page-loader iframe').attr('src', config['proxyPath'] || '/proxy');
-            $('#page-loader iframe')[0].focus();
-        });
+        window.location.href = 'proxy.html';
+        return;
         currentMenu = $('#page-loader');
         inGame = !preferences.background; // if background is disabled (false) then inGame is set to to true turning off the background
         return;
