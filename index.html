@@ -161,19 +161,12 @@
     StudyMode.init();
   </script>
   
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-5937MNQKK5"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() {dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-5937MNQKK5');
-  </script>
+  <!-- Google Analytics removed to avoid blocked external dependencies -->
   
   <!-- Service Worker and Proxy Initialization -->
   <script>
-    // Register service worker for proxy support
-    if ('serviceWorker' in navigator) {
+    // Register service worker for proxy support (only on http/https)
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
       navigator.serviceWorker.register('./sw.js')
         .then(reg => {
           console.log('Service Worker registered successfully:', reg);
@@ -181,6 +174,8 @@
         .catch(err => {
           console.error('Service Worker registration failed:', err);
         });
+    } else {
+      console.log('Skipping service worker registration (insecure or unsupported context)');
     }
 
     // Initialize proxy system
@@ -208,7 +203,6 @@
   <meta name="og:image" content="favicon.png" />
   <!-- preloading some resources -->
   <link href="js/loading.js" rel="preload" as="script" />
-  <link href="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" rel="preload" as="script" />
   <link href="css/loading.css" rel="preload" as="style" type="text/css" />
   <link href="js/config.js" rel="prefetch" as="script" />
   <link href="fonts/Flexi_IBM_VGA_True_437.svg" rel="prefetch" as="font" />
@@ -718,11 +712,10 @@
       </p>
       <button onclick="document.getElementById('auth-modal').close()" style="background:none; border:none; color:grey; width:100%; cursor:pointer; margin-top:10px; font-size: 0.7rem;">Close</button>
   </dialog>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-fallback.js"></script>
   <script src="js/config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="js/jquery-fallback.js"></script>
   <script src="js/loading.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.8.0/lib/p5.min.js" defer></script>
   <script src="js/bg.js" defer></script>
   <script src="js/index.js" defer></script>
 <script>
@@ -776,24 +769,159 @@ const switchBtn = document.getElementById('modal-switch-btn');
 const switchText = document.getElementById('modal-switch-text');
 const loginTrigger = document.getElementById('login-trigger');
 const authEnterBtn = document.getElementById('auth-enter');
+const logoutBtn = document.getElementById('logout-btn');
+const userGreeting = document.getElementById('user-greeting');
 
 let isSignUpMode = true;
 let currentUser = null;
 let isAdmin = false;
 
+function saveLocalUser(user) {
+    if (!user) {
+        localStorage.removeItem('homepageUser');
+        return;
+    }
+    localStorage.setItem('homepageUser', JSON.stringify(user));
+}
+
+function getLocalUser() {
+    try {
+        return JSON.parse(localStorage.getItem('homepageUser')) || null;
+    } catch (err) {
+        return null;
+    }
+}
+
+function clearLocalUser() {
+    localStorage.removeItem('homepageUser');
+}
+
+function formatUserName(user) {
+    if (!user) return '';
+    if (user.username) return user.username;
+    if (user.email) return user.email.split('@')[0];
+    return user.id || 'User';
+}
+
+function hideAuthOverlay() {
+    if (loginTrigger) {
+        loginTrigger.style.display = 'none';
+    }
+    if (authModal && authModal.open) {
+        authModal.close();
+    }
+}
+
+function showAuthOverlayIfNeeded() {
+    if (currentUser) return;
+    if (loginTrigger) {
+        loginTrigger.style.display = 'block';
+    }
+}
+
+async function safeSupabaseGetUser() {
+    try {
+        const result = await supabaseClient.auth.getUser();
+        if (!result.error && result.data && result.data.user) {
+            const localUser = getLocalUser();
+            return Object.assign({}, result.data.user, {
+                username: localUser?.email === result.data.user.email ? localUser.username : localUser?.username,
+            });
+        }
+    } catch (e) {
+        // ignore
+    }
+    return getLocalUser();
+}
+
+async function safeSupabaseSignOut() {
+    try {
+        const result = await supabaseClient.auth.signOut();
+        if (result && result.error) {
+            clearLocalUser();
+            return false;
+        }
+        return true;
+    } catch (e) {
+        clearLocalUser();
+        return false;
+    }
+}
+
+async function safeSupabaseAuth(email, password, username, signUpMode) {
+    if (!email || !password) {
+        return { error: { message: 'Email and password are required.' } };
+    }
+
+    try {
+        const authMethod = signUpMode ? 'signUp' : 'signInWithPassword';
+        const result = await supabaseClient.auth[authMethod]({ email, password });
+        if (result && !result.error && result.data && result.data.user) {
+            const user = Object.assign({}, result.data.user, { username });
+            saveLocalUser(user);
+            return { user };
+        }
+
+        if (result && result.error) {
+            if (result.error.message && result.error.message.toLowerCase().includes('supabase unavailable offline')) {
+                const localUser = { email, username };
+                saveLocalUser(localUser);
+                return { user: localUser };
+            }
+            return result;
+        }
+    } catch (e) {
+        const localUser = { email, username };
+        saveLocalUser(localUser);
+        return { user: localUser };
+    }
+
+    return { error: { message: 'Login failed' } };
+}
+
+function applyAuthState(user) {
+    currentUser = user;
+    if (user) {
+        if (userGreeting) {
+            userGreeting.textContent = `Hello, ${formatUserName(user)}`;
+            userGreeting.style.display = 'block';
+        }
+        if (logoutBtn) {
+            logoutBtn.style.display = 'block';
+        }
+        if (loginTrigger) {
+            loginTrigger.style.display = 'none';
+        }
+    } else {
+        if (userGreeting) {
+            userGreeting.textContent = '';
+            userGreeting.style.display = 'none';
+        }
+        if (logoutBtn) {
+            logoutBtn.style.display = 'none';
+        }
+        if (loginTrigger) {
+            loginTrigger.style.display = 'block';
+        }
+    }
+}
+
 // toggle login/signup UI
 if (switchBtn) {
     switchBtn.onclick = () => {
         isSignUpMode = !isSignUpMode;
-        modalTitle.innerText = isSignUpMode ? "Sign Up" : "Login";
-        switchText.innerText = isSignUpMode ? "Have an account already?" : "Need an account?";
-        switchBtn.innerText = isSignUpMode ? "Login" : "Sign Up";
+        modalTitle.innerText = isSignUpMode ? 'Sign Up' : 'Login';
+        switchText.innerText = isSignUpMode ? 'Have an account already?' : 'Need an account?';
+        switchBtn.innerText = isSignUpMode ? 'Login' : 'Sign Up';
     };
 }
 
 // open modal
 if (loginTrigger) {
-    loginTrigger.onclick = () => authModal.showModal();
+    loginTrigger.onclick = () => {
+        showAuthOverlayIfNeeded();
+        authModal.showModal();
+    };
 }
 
 // EMAIL AUTH ONLY (NO GITHUB)
@@ -801,88 +929,85 @@ if (authEnterBtn) {
     authEnterBtn.onclick = async (e) => {
         e.preventDefault();
 
-        const email = document.getElementById('auth-username').value;
-        const password = document.getElementById('auth-password').value;
+        const username = document.getElementById('auth-username').value.trim();
+        const password = document.getElementById('auth-password').value.trim();
+        const email = username.includes('@') ? username : `${username}@local.test`;
 
-        let result;
-
-        if (isSignUpMode) {
-            result = await supabaseClient.auth.signUp({
-                email,
-                password
-            });
-        } else {
-            result = await supabaseClient.auth.signInWithPassword({
-                email,
-                password
-            });
-        }
-
+        const result = await safeSupabaseAuth(email, password, username, isSignUpMode);
         if (result.error) {
             alert(result.error.message);
             return;
         }
 
-        authModal.close();
-        await updateAuthUI();
+        applyAuthState(result.user);
+        hideAuthOverlay();
     };
 }
 
-// GET USER + CHECK ADMIN ROLE
+if (logoutBtn) {
+    logoutBtn.onclick = async () => {
+        await safeSupabaseSignOut();
+        clearLocalUser();
+        applyAuthState(null);
+        showAuthOverlayIfNeeded();
+    };
+}
+
 async function updateAuthUI() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    currentUser = user;
+    const user = await safeSupabaseGetUser();
+    applyAuthState(user);
 
     if (!user) {
-        isAdmin = false;
         return;
     }
 
-    const { data } = await supabaseClient
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+    try {
+        const { data } = await supabaseClient
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
 
-    isAdmin = data?.role === 'admin';
-
-    if (isAdmin) {
-        enableAdminFeatures();
+        isAdmin = data?.role === 'admin';
+        if (isAdmin) {
+            enableAdminFeatures();
+        }
+    } catch (e) {
+        // ignore admin lookup failures
     }
 }
 
 // ADMIN FEATURES (DO NOT TOUCH NORMAL UI)
 function enableAdminFeatures() {
-    let btn = document.getElementById("admin-panel-btn");
+    let btn = document.getElementById('admin-panel-btn');
 
     if (!btn) {
-        btn = document.createElement("button");
-        btn.id = "admin-panel-btn";
-        btn.innerText = "Admin Panel";
-        btn.style.position = "fixed";
-        btn.style.bottom = "80px";
-        btn.style.right = "30px";
-        btn.style.zIndex = "99999";
-        btn.style.padding = "10px";
-        btn.style.background = "#ff4444";
-        btn.style.color = "white";
-        btn.style.border = "none";
-        btn.style.cursor = "pointer";
+        btn = document.createElement('button');
+        btn.id = 'admin-panel-btn';
+        btn.innerText = 'Admin Panel';
+        btn.style.position = 'fixed';
+        btn.style.bottom = '80px';
+        btn.style.right = '30px';
+        btn.style.zIndex = '99999';
+        btn.style.padding = '10px';
+        btn.style.background = '#ff4444';
+        btn.style.color = 'white';
+        btn.style.border = 'none';
+        btn.style.cursor = 'pointer';
         document.body.appendChild(btn);
     }
 
-    btn.style.display = "block";
-
+    btn.style.display = 'block';
     btn.onclick = openAdminPanel;
 }
 
 // ADMIN PANEL UI
 function openAdminPanel() {
-    let panel = document.getElementById("admin-panel");
+    let panel = document.getElementById('admin-panel');
 
     if (!panel) {
-        panel = document.createElement("div");
-        panel.id = "admin-panel";
+        panel = document.createElement('div');
+        panel.id = 'admin-panel';
 
         panel.innerHTML = `
             <h2>Admin Panel</h2>
@@ -896,18 +1021,17 @@ function openAdminPanel() {
             <button onclick="makeSelfAdmin()">Force Admin Refresh</button>
         `;
 
-        panel.style.position = "fixed";
-        panel.style.top = "50%";
-        panel.style.left = "50%";
-        panel.style.transform = "translate(-50%, -50%)";
-        panel.style.background = "#222";
-        panel.style.color = "white";
-        panel.style.padding = "20px";
-        panel.style.zIndex = "999999";
+        panel.style.position = 'fixed';
+        panel.style.top = '50%';
+        panel.style.left = '50%';
+        panel.style.transform = 'translate(-50%, -50%)';
+        panel.style.background = '#222';
+        panel.style.color = 'white';
+        panel.style.padding = '20px';
+        panel.style.zIndex = '999999';
 
         document.body.appendChild(panel);
-
-        document.getElementById("close-admin").onclick = () => panel.remove();
+        document.getElementById('close-admin').onclick = () => panel.remove();
     }
 }
 
@@ -915,7 +1039,7 @@ function openAdminPanel() {
 async function listUsers() {
     const { data } = await supabaseClient.from('profiles').select('*');
     console.log(data);
-    alert("Users printed in console");
+    alert('Users printed in console');
 }
 
 async function makeSelfAdmin() {
@@ -926,11 +1050,13 @@ async function makeSelfAdmin() {
         .update({ role: 'admin' })
         .eq('id', currentUser.id);
 
-    alert("You are now admin (refresh page)");
+    alert('You are now admin (refresh page)');
 }
 
 // INIT
 updateAuthUI();
+window.hideAuthOverlay = hideAuthOverlay;
+window.showAuthOverlayIfNeeded = showAuthOverlayIfNeeded;
 </script>
 <script>
 (function() {

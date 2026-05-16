@@ -298,6 +298,10 @@ function initProxySettingsControls() {
 document.addEventListener('DOMContentLoaded', initProxySettingsControls);
 
 $('.column button .card').on('click', function () {
+    if (typeof hideAuthOverlay === 'function') {
+        hideAuthOverlay();
+    }
+
     let nextMenu = this.getAttribute('data');
 
     if (nextMenu === 'proxy') {
@@ -306,9 +310,6 @@ $('.column button .card').on('click', function () {
             return;
         }
         window.location.href = 'proxy.html';
-        return;
-        currentMenu = $('#page-loader');
-        inGame = !preferences.background; // if background is disabled (false) then inGame is set to to true turning off the background
         return;
     }
 

@@ -266,6 +266,7 @@ function bindServiceWorkerControl() {
 
 async function ensureServiceWorker() {
   if (!('serviceWorker' in navigator)) return false;
+  if (location.protocol === 'file:') return false;
   try {
     await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready;
