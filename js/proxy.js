@@ -8,6 +8,11 @@ const PROXY_STORAGE = {
   activeTab: 'proxy_active_tab'
 };
 
+const DEFAULT_WISP_SERVERS = [
+  { name: 'Incog Works', url: 'wss://incog.works/wisp/' },
+  { name: 'LunarRR', url: 'wss://lunarrr.eminescusm.ro/w/' }
+];
+
 const DEFAULT_SEARCH_ENGINES = [
   { id: 'google', name: 'Google', searchUrl: 'https://google.com/search?q=', homeUrl: 'https://google.com' },
   { id: 'duckduckgo', name: 'DuckDuckGo', searchUrl: 'https://duckduckgo.com/?q=', homeUrl: 'https://duckduckgo.com' },
