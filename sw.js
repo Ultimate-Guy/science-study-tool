@@ -118,25 +118,8 @@ async function chooseBestServer() {
   return wispConfig.wispurl;
 }
 
-self.addEventListener('install', (event) => self.skipWaiting());
+self.addEventListener('install', (event) => event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
-
-self.addEventListener('message', ({ data }) => {
-  if (data?.type === 'config') {
-    if (data.wispurl) {
-      wispConfig.wispurl = data.wispurl;
-    }
-    if (data.servers && data.servers.length) {
-      wispConfig.servers = data.servers;
-    }
-    if (typeof data.autoswitch !== 'undefined') {
-      wispConfig.autoswitch = data.autoswitch;
-    }
-    if (data.transport) {
-      wispConfig.transport = data.transport;
-    }
-  }
-});
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -144,21 +127,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (isAdBlocked(request.url)) {
-    event.respondWith(new Response(new ArrayBuffer(0), { status: 204, statusText: 'No Content' }));
-    return;
-  }
-
-  event.respondWith((async () => {
-    try {
-      await configReadyPromise;
-      await scramjet.loadConfig();
-      if (scramjet.route(event)) {
-        return scramjet.fetch(event);
-      }
-      return fetch(event.request);
-    } catch (error) {
-      return new Response('Proxy unavailable', { status: 503, statusText: 'Service Unavailable' });
-    }
-  })());
+  event.respondWith(
+    fetch(request).catch(() => new Response('Network unavailable', { status: 503, statusText: 'Service Unavailable' }))
+  );
 });

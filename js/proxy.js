@@ -232,47 +232,37 @@ function updateBookmarkList() {
   });
 }
 
-function setStatus(message, error = false) {
-  const status = document.getElementById('proxy-status');
-  status.textContent = message;
-  status.style.color = error ? '#ff6b6b' : '#d7d7d7';
-}
-
 function sendProxyConfig() {
-  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
-  const config = {
-    type: 'config',
-    wispurl: getProxySetting('server', DEFAULT_WISP_SERVERS[0].url),
-    servers: DEFAULT_WISP_SERVERS,
-    autoswitch: getProxySetting('autoswitch', 'true') !== 'false',
-    transport: getProxySetting('transport', 'epoxy')
-  };
-  navigator.serviceWorker.controller.postMessage(config);
+  // Service worker support is disabled for proxy pages in restricted environments.
 }
 
 function sendPing() {
-  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
-  navigator.serviceWorker.controller.postMessage({ type: 'ping' });
+  // Service worker support is disabled for proxy pages in restricted environments.
 }
 
 function bindServiceWorkerControl() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      sendProxyConfig();
-      sendPing();
-    });
-  }
+  // No service worker control needed on this page.
 }
 
 async function ensureServiceWorker() {
   if (!('serviceWorker' in navigator)) return false;
   if (location.protocol === 'file:') return false;
+
   try {
-    await navigator.serviceWorker.register('/sw.js');
-    await navigator.serviceWorker.ready;
-    return true;
+    const hadController = !!navigator.serviceWorker.controller;
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+
+    if (hadController && !location.search.includes('swReloaded=true')) {
+      const reloadedUrl = new URL(location.href);
+      reloadedUrl.searchParams.set('swReloaded', 'true');
+      window.location.replace(reloadedUrl.toString());
+      return false;
+    }
+
+    return false;
   } catch (error) {
-    console.warn('Service worker registration failed:', error);
+    console.warn('Service worker cleanup failed:', error);
     return false;
   }
 }
@@ -408,16 +398,8 @@ function initPage() {
   loadHistoryState();
   updateBookmarkList();
   renderServerOptions();
-  ensureServiceWorker().then((registered) => {
-    if (registered) {
-      if (navigator.serviceWorker.controller) {
-        sendProxyConfig();
-        sendPing();
-      }
-      setStatus('Proxy ready');
-    } else {
-      setStatus('Service worker not available', true);
-    }
+  ensureServiceWorker().then(() => {
+    setStatus('Proxy active in direct iframe mode');
   });
 
   window.addEventListener('message', (event) => {

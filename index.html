@@ -163,37 +163,11 @@
   
   <!-- Google Analytics removed to avoid blocked external dependencies -->
   
-  <!-- Service Worker and Proxy Initialization -->
+  <!-- Legacy service worker proxy initialization disabled for restricted environments -->
   <script>
-    // Register service worker for proxy support (only on http/https)
-    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => {
-          console.log('Service Worker registered successfully:', reg);
-        })
-        .catch(err => {
-          console.error('Service Worker registration failed:', err);
-        });
-    } else {
-      console.log('Skipping service worker registration (insecure or unsupported context)');
-    }
-
-    // Initialize proxy system
+    console.log('Service worker proxy support disabled for this environment');
     window.proxyReady = false;
     window.proxyError = null;
-
-    // Listen for proxy ready messages
-    window.addEventListener('message', (event) => {
-      if (event.data.type === 'proxy-ready') {
-        window.proxyReady = true;
-        console.log('Proxy system initialized');
-        document.dispatchEvent(new CustomEvent('proxy-ready'));
-      } else if (event.data.type === 'proxy-error') {
-        window.proxyError = event.data.error;
-        console.error('Proxy initialization error:', event.data.error);
-        document.dispatchEvent(new CustomEvent('proxy-error', { detail: event.data.error }));
-      }
-    });
   </script>
   
   <title>UltraGG2</title>
@@ -215,8 +189,6 @@
 
 <body>
   <!-- Hidden Proxy Initialization Iframe -->
-  <iframe id="proxy-initializer" src="./bg-proxy.html" style="display: none; width: 0; height: 0; border: none;"></iframe>
-  
   <noscript>
     <p id="noscript-text">This site requires you to be able to run JavaScript.</p>
   </noscript>
@@ -717,6 +689,21 @@
   <script src="js/jquery-fallback.js"></script>
   <script src="js/loading.js" defer></script>
   <script src="js/bg.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => {
+          reg.unregister().then((unregistered) => {
+            if (unregistered) {
+              console.log('Unregistered old service worker:', reg.scope);
+            }
+          });
+        });
+      }).catch((error) => {
+        console.warn('Service worker cleanup failed:', error);
+      });
+    }
+  </script>
   <script src="js/index.js" defer></script>
 <script>
     // 1. SUPABASE CONFIG
